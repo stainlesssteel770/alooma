@@ -134,71 +134,71 @@
       "threshold": null
     },
     "heart-jewelry-box": {
-      "qty": -18,
+      "qty": 0,
       "threshold": null
     },
     "cake-box": {
-      "qty": -18,
+      "qty": 0,
       "threshold": null
     },
     "circle-cardboard": {
-      "qty": -18,
+      "qty": 0,
       "threshold": null
     },
     "parchment-circle": {
-      "qty": -18,
+      "qty": 0,
       "threshold": null
     },
     "plastic-pet-bowl": {
-      "qty": -18,
+      "qty": 0,
       "threshold": null
     },
     "cream-circle-tray": {
-      "qty": -3,
+      "qty": 0,
       "threshold": null
     },
     "sprinkles-pack": {
-      "qty": -3,
+      "qty": 0,
       "threshold": null
     },
     "faux-cherries-bag": {
-      "qty": -3,
+      "qty": 0,
       "threshold": null
     },
     "glue-dots": {
-      "qty": -3,
+      "qty": 0,
       "threshold": null
     },
     "popsicle-stick": {
-      "qty": -18,
+      "qty": 0,
       "threshold": null
     },
     "ck-placemat": {
-      "qty": -18,
+      "qty": 0,
       "threshold": null
     },
     "printed-posters": {
-      "qty": -3,
+      "qty": 0,
       "threshold": null
     },
     "poster-stands": {
-      "qty": -9,
+      "qty": 0,
       "threshold": null
     },
     "ck-name-labels": {
-      "qty": -18,
+      "qty": 0,
       "threshold": null
     },
     "apron": {
-      "qty": -18,
+      "qty": 0,
       "threshold": null
     },
     "gloves": {
-      "qty": -18,
+      "qty": 0,
       "threshold": null
     },
     "ck-instructions": {
-      "qty": -18,
+      "qty": 0,
       "threshold": null
     },
     "mi-frames": {
@@ -238,7 +238,7 @@
       "threshold": null
     },
     "scissors": {
-      "qty": 194,
+      "qty": 0,
       "threshold": null
     },
     "tacky-glue": {
@@ -246,112 +246,9 @@
       "threshold": null
     },
     "permanent-markers": {
-      "qty": -3,
+      "qty": 0,
       "threshold": null
     }
   },
-  "history": [
-    {
-      "id": "livetest-pack",
-      "ts": "2026-10-22T22:11:01.727908Z",
-      "type": "packed",
-      "title": "Packed The Cakery \u2014 18 kits (CAK-18)",
-      "effects": [
-        {
-          "item": "heart-jewelry-box",
-          "delta": -18
-        },
-        {
-          "item": "cake-box",
-          "delta": -18
-        },
-        {
-          "item": "circle-cardboard",
-          "delta": -18
-        },
-        {
-          "item": "parchment-circle",
-          "delta": -18
-        },
-        {
-          "item": "plastic-pet-bowl",
-          "delta": -18
-        },
-        {
-          "item": "cream-circle-tray",
-          "delta": -3
-        },
-        {
-          "item": "sprinkles-pack",
-          "delta": -3
-        },
-        {
-          "item": "faux-cherries-bag",
-          "delta": -3
-        },
-        {
-          "item": "scissors",
-          "delta": -6
-        },
-        {
-          "item": "glue-dots",
-          "delta": -3
-        },
-        {
-          "item": "popsicle-stick",
-          "delta": -18
-        },
-        {
-          "item": "ck-placemat",
-          "delta": -18
-        },
-        {
-          "item": "printed-posters",
-          "delta": -3
-        },
-        {
-          "item": "poster-stands",
-          "delta": -9
-        },
-        {
-          "item": "ck-name-labels",
-          "delta": -18
-        },
-        {
-          "item": "permanent-markers",
-          "delta": -3
-        },
-        {
-          "item": "apron",
-          "delta": -18
-        },
-        {
-          "item": "gloves",
-          "delta": -18
-        },
-        {
-          "item": "ck-instructions",
-          "delta": -18
-        }
-      ],
-      "undone": false,
-      "craftId": "cak",
-      "kits": 18
-    },
-    {
-      "id": "livetest-receive",
-      "ts": "2026-10-22T22:10:59.901814Z",
-      "type": "received",
-      "title": "Received 200 \u00d7 Scissors",
-      "effects": [
-        {
-          "item": "scissors",
-          "delta": 200
-        }
-      ],
-      "undone": false,
-      "item": "scissors",
-      "amount": 200
-    }
-  ]
+  "history": []
 }
