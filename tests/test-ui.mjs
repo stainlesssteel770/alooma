@@ -129,7 +129,7 @@ try {
   eq(remoteData.inventory["heart-jewelry-box"].qty, 0, "undo pack restored heart boxes");
   eq(remoteData.history.find(h => h.type === "packed").undone, true, "entry marked undone");
 
-  /* Hand-packed HCB 18: heat gun 2 (tier), wood board 18 */
+  /* Hand-packed HCB 18: heat gun 1 (tier: up to and including 18 = 1), wood board 18 */
   await page.evaluate(() => document.querySelector('[data-tab="hand"]').click());
   await sleep(200);
   await page.evaluate(() => {
@@ -141,8 +141,8 @@ try {
   eq(await page.$eval("#hand-sku", e => e.textContent), "HCB-18", "hand SKU HCB-18");
   await page.click("#btn-record-hand");
   await sleep(600);
-  eq(remoteData.inventory["heat-gun"].qty, -2, "hand-packed HCB-18 heat gun tier = 2");
-  eq(remoteData.inventory["wood-burning-cream"].qty, -2, "hand-packed HCB-18 wood cream tier = 2");
+  eq(remoteData.inventory["heat-gun"].qty, -1, "hand-packed HCB-18 heat gun tier = 1");
+  eq(remoteData.inventory["wood-burning-cream"].qty, -1, "hand-packed HCB-18 wood cream tier = 1");
   eq(remoteData.inventory["wood-board"].qty, -18, "hand-packed HCB-18 wood board 18");
 
   /* Count fix via Enter counts: scissors counted 190 */

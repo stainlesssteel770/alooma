@@ -23,8 +23,9 @@ eq(qty(cak18, "scissors"), 6, "CAK18 scissors");
 eq(qty(cak18, "apron"), 18, "CAK18 apron");
 eq(L.sku("cak", 18), "CAK-18", "SKU format");
 
-/* --- Tier rule: heat gun + wood burning cream, ceil(kits/12) --- */
-for (const [kits, want] of [[6,1],[12,1],[18,2],[24,2],[30,3],[36,3],[42,4],[48,4]]) {
+/* --- Tier rule: heat gun + wood burning cream, 1 per 3 batches, ceil(kits/18).
+       Owner correction 2026-10-22: up to and including 18 = 1; 24-36 = 2. --- */
+for (const [kits, want] of [[6,1],[12,1],[18,1],[24,2],[30,2],[36,2],[42,3],[48,3],[54,3],[60,4]]) {
   eq(qty(L.computePack("hcb", kits), "heat-gun"), want, "heat gun " + kits);
   eq(qty(L.computePack("hcb", kits), "wood-burning-cream"), want, "wood cream " + kits);
 }

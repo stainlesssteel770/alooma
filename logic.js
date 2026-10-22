@@ -2,8 +2,10 @@
    Shared by the browser app and the node tests.
    Quantities are stored as "qty per 6 kits" (q6) because every order is a
    multiple of 6 kits. Special rules:
-   - "tier12": 1 for 6-12 kits, 2 for 18-24, 3 for 30-36 (ceil(kits/12)).
-     Used for the Heat gun and Wood burning cream (owner-confirmed 2026-10-22).
+   - "tier18": 1 per 3 batches (18 kits): 6-18 kits = 1, 24-36 = 2, 42-54 = 3
+     (ceil(kits/18)). Used for the Heat gun and Wood burning cream
+     (owner-confirmed 2026-10-22, corrected same day: "until and including
+     18 is 1, 24 until and including 36 is 2").
    - "trayA"/"trayB": JCA clay trays alternate. Total trays = kits/6, split
      A,B,A,B... (6 kits: A1 B0, 12: A1 B1, 18: A2 B1, 24: A2 B2, 30: A3 B2).
 */
@@ -83,7 +85,7 @@
   };
 
   function line(item, q6) { return { item: item, q6: q6 }; }
-  function tier(item) { return { item: item, rule: "tier12" }; }
+  function tier(item) { return { item: item, rule: "tier18" }; }
 
   var CRAFTS = [
     {
@@ -197,7 +199,7 @@
 
   /* Quantity of one recipe line for an order of `kits` kits. */
   function lineQty(ln, kits) {
-    if (ln.rule === "tier12") return Math.ceil(kits / 12);
+    if (ln.rule === "tier18") return Math.ceil(kits / 18);
     if (ln.rule === "trayA") return Math.ceil(kits / 6 / 2);
     if (ln.rule === "trayB") return Math.floor(kits / 6 / 2);
     return ln.q6 * (kits / 6);

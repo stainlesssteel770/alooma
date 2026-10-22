@@ -32,8 +32,8 @@ Live site: https://stainlesssteel770.github.io/alooma/
 
 Most lines are qty-per-6-kits from the recipe tables in `logic.js`. Two special rules:
 
-- **Heat gun** and **Wood burning cream** (Hafrashat Challah): 1 for 6–12 kits, 2 for
-  18–24, 3 for 30–36 — `ceil(kits / 12)`.
+- **Heat gun** and **Wood burning cream** (Hafrashat Challah): 1 per 3 batches —
+  6–18 kits = 1, 24–36 = 2, 42–54 = 3 — `ceil(kits / 18)`.
 - **JCA Clay Trays** alternate: one tray per 6 kits split A, B, A, B… (6 kits = A1, 12 = A1+B1,
   18 = A2+B1, 24 = A2+B2, 30 = A3+B2). Tambourines use 1 large-square tray per 6 kits.
   JCA Instructions brochure is 2 per 6 kits (confirmed — every other brochure is 6).
