@@ -18,9 +18,23 @@
   /* ---------- small helpers ---------- */
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
-  function toast(msg) {
-    var t = $("toast"); t.textContent = msg; t.hidden = false;
-    setTimeout(function () { t.hidden = true; }, 4200);
+  var toastTimer = null;
+  function showToast(html, actionLabel, actionFn, ms) {
+    var t = $("toast");
+    t.innerHTML = html;
+    if (actionLabel) {
+      var b = document.createElement("button");
+      b.textContent = actionLabel;
+      b.addEventListener("click", function () { t.hidden = true; actionFn(); });
+      t.appendChild(b);
+    }
+    t.hidden = false;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, ms || 4200);
+  }
+  function toast(msg) { showToast(esc(msg), null, null, 4200); }
+  function actionToast(msg, entry) {
+    showToast(esc(msg), "UNDO", function () { undoEntry(entry, true); }, 6500);
   }
   function showError(msg) {
     var b = $("error-banner"); b.textContent = msg; b.hidden = false;
@@ -139,7 +153,7 @@
     L.applyEffects(state.data.inventory, entry.effects, +1);
     state.data.history.unshift(entry);
     renderAll();
-    return saveData(commitMsg).then(function () { toast("Saved: " + entry.title); });
+    return saveData(commitMsg).then(function () { actionToast(entry.title, entry); });
   }
   function requireEditor() {
     if (state.editor) return true;
@@ -161,9 +175,30 @@
   function qtyOf(itemId) { return state.data.inventory[itemId] ? state.data.inventory[itemId].qty : 0; }
 
   /* ---------- Packing tab ---------- */
+  function markChips(forId, kits) {
+    document.querySelectorAll('.kits-chip[data-for="' + forId + '"]').forEach(function (c) {
+      c.classList.toggle("selected", parseInt(c.getAttribute("data-kits"), 10) === kits);
+    });
+  }
+  function updatePackProgress() {
+    var boxes = $("pack-table").querySelectorAll("tbody input[type=checkbox]");
+    var checked = 0;
+    boxes.forEach(function (cb) { if (cb.checked) checked++; });
+    var total = boxes.length;
+    $("pack-progress").textContent = total ? checked + " of " + total + " checked" : "";
+    $("pack-progress-fill").style.width = total ? Math.round(checked / total * 100) + "%" : "0";
+    var override = $("pack-override").checked;
+    var btn = $("btn-complete-pack");
+    btn.disabled = !(total > 0 && (checked === total || override));
+    btn.textContent = checked === total && total > 0
+      ? "✓ Completed packing — all items checked"
+      : "✓ Completed packing";
+    $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
+  }
   function renderPack() {
     craftButtons("pack-crafts", state.packCraft, function (id) { state.packCraft = id; renderPack(); });
     var kits = parseInt($("pack-kits").value, 10);
+    markChips("pack", kits);
     var err = $("pack-error"), warn = $("pack-warning");
     err.textContent = ""; warn.hidden = true;
     var valid = L.validKits(kits);
@@ -171,7 +206,8 @@
     var tbody = $("pack-table").querySelector("tbody");
     tbody.innerHTML = "";
     if (!valid) {
-      err.textContent = kits ? "Kits are ordered in multiples of 6 — enter 6, 12, 18, 24…" : "";
+      err.textContent = kits ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : "Enter the number of kits — orders are multiples of 6.";
+      updatePackProgress();
       return;
     }
     var pack = L.computePack(state.packCraft, kits);
@@ -181,12 +217,17 @@
       if (onHand < r.qty) shortages.push(r.name + " (need " + r.qty + ", have " + onHand + ")");
       var tr = document.createElement("tr");
       tr.innerHTML =
-        '<td><input type="checkbox" data-idx="' + idx + '"></td>' +
-        "<td>" + esc(r.name) + "</td>" +
+        '<td><input type="checkbox" data-idx="' + idx + '" aria-label="Packed: ' + esc(r.name) + '"></td>' +
+        '<td><span class="row-name">' + esc(r.name) + "</span></td>" +
         '<td class="num">' + r.qty + "</td>" +
         '<td class="num' + (onHand < r.qty ? " short" : "") + '">' + onHand + "</td>";
-      tr.querySelector("input").addEventListener("change", function (ev) {
-        tr.classList.toggle("checked-row", ev.target.checked);
+      var cb = tr.querySelector("input");
+      cb.addEventListener("change", function () {
+        tr.classList.toggle("checked-row", cb.checked);
+        updatePackProgress();
+      });
+      tr.addEventListener("click", function (ev) {
+        if (ev.target !== cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event("change")); }
       });
       tbody.appendChild(tr);
     });
@@ -195,6 +236,7 @@
         "<br>You can still record the packing — those counts will go below zero so the shortage stays visible.";
       warn.hidden = false;
     }
+    updatePackProgress();
   }
   function currentPack() {
     var kits = parseInt($("pack-kits").value, 10);
@@ -213,8 +255,7 @@
       cur.pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
       { craftId: craft.id, kits: cur.kits }
     );
-    $("pack-list-wrap").hidden = true;
-    $("pack-table").querySelectorAll("input[type=checkbox]").forEach(function (cb) { cb.checked = false; });
+    $("pack-override").checked = false;
     commitChange(entry, "Packed " + L.sku(craft.id, cur.kits));
   }
 
@@ -222,12 +263,13 @@
   function renderHand() {
     craftButtons("hand-crafts", state.handCraft, function (id) { state.handCraft = id; renderHand(); });
     var kits = parseInt($("hand-kits").value, 10);
+    markChips("hand", kits);
     var err = $("hand-error"); err.textContent = "";
     var valid = L.validKits(kits);
     $("hand-sku").textContent = valid ? L.sku(state.handCraft, kits) : "—";
     var tbody = $("hand-table").querySelector("tbody");
     tbody.innerHTML = "";
-    if (!valid) { err.textContent = kits ? "Kits are ordered in multiples of 6 — enter 6, 12, 18, 24…" : ""; return; }
+    if (!valid) { err.textContent = kits ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : "Enter the number of kits — orders are multiples of 6."; return; }
     L.computePack(state.handCraft, kits).forEach(function (r) {
       var tr = document.createElement("tr");
       tr.innerHTML = "<td>" + esc(r.name) + '</td><td class="num">' + r.qty + '</td><td class="num">' + qtyOf(r.item) + "</td>";
@@ -252,9 +294,28 @@
   }
 
   /* ---------- Inventory tab ---------- */
+  var invOpenItem = null, invPanelMode = "receive";
+  var invQuery = "", invLowOnly = false;
   function isLow(itemId) {
     var rec = state.data.inventory[itemId];
     return rec && rec.threshold !== null && rec.threshold !== undefined && rec.qty <= rec.threshold;
+  }
+  function applyInvFilters() {
+    var lowCount = 0;
+    document.querySelectorAll(".inv-item").forEach(function (row) {
+      var itemId = row.getAttribute("data-item");
+      var low = isLow(itemId);
+      if (low) lowCount++;
+      var matchName = !invQuery || L.ITEMS[itemId].toLowerCase().indexOf(invQuery) >= 0;
+      var matchLow = !invLowOnly || low;
+      row.style.display = matchName && matchLow ? "" : "none";
+    });
+    document.querySelectorAll("#inventory-groups .inv-group").forEach(function (g) {
+      var any = Array.prototype.some.call(g.querySelectorAll(".inv-item"), function (r) { return r.style.display !== "none"; });
+      g.style.display = any ? "" : "none";
+    });
+    $("low-count").textContent = lowCount;
+    $("btn-lowfilter").setAttribute("aria-pressed", invLowOnly ? "true" : "false");
   }
   function renderInventory() {
     var wrap = $("inventory-groups"); wrap.innerHTML = "";
@@ -263,19 +324,35 @@
       var html = "<h3>" + esc(g.name) + "</h3>";
       g.items.forEach(function (itemId) {
         var rec = state.data.inventory[itemId];
+        var badge = "";
+        if (rec.qty === 0 && rec.threshold !== null && rec.threshold !== undefined) badge = '<span class="low-badge out-badge">Out of stock</span>';
+        else if (isLow(itemId)) badge = '<span class="low-badge">Low · ≤' + rec.threshold + "</span>";
         html +=
           '<div class="inv-item" data-item="' + itemId + '">' +
-          '<span class="inv-name">' + esc(L.ITEMS[itemId]) + "</span>" +
-          (isLow(itemId) ? '<span class="low-badge">Low stock</span>' : "") +
+          '<button type="button" class="inv-main" aria-expanded="' + (invOpenItem === itemId) + '">' +
+          '<span class="inv-name">' + esc(L.ITEMS[itemId]) + "</span>" + badge +
           '<span class="inv-qty">' + rec.qty + "</span>" +
-          '<span class="inv-controls editor-only">' +
-          '<label>Receive<input type="number" class="in-receive" min="0" step="1" placeholder="Qty"></label>' +
-          '<button class="btn btn-receive">+ Receive</button>' +
-          '<label>Set count<input type="number" class="in-set" min="0" step="1" placeholder="Actual"></label>' +
-          '<button class="btn btn-set">Fix count</button>' +
-          '<label>Low at/below<input type="number" class="in-threshold" min="0" step="1" placeholder="Off" value="' + (rec.threshold === null || rec.threshold === undefined ? "" : rec.threshold) + '"></label>' +
-          '<button class="btn btn-threshold">Set warning</button>' +
-          "</span></div>";
+          '<span class="inv-chev" aria-hidden="true">' + (invOpenItem === itemId ? "▾" : "▸") + "</span>" +
+          "</button>";
+        if (invOpenItem === itemId) {
+          var modes = [["receive", "Receive"], ["set", "Set count"], ["warning", "Warning"]];
+          var seg = modes.map(function (m) {
+            return '<button type="button" data-mode="' + m[0] + '"' + (invPanelMode === m[0] ? ' class="on"' : "") + ">" + m[1] + "</button>";
+          }).join("");
+          var placeholder = invPanelMode === "receive" ? "How many arrived?"
+            : invPanelMode === "set" ? "Actual count (now " + rec.qty + ")"
+            : "Warn at or below (blank = off)";
+          var prefill = invPanelMode === "warning" && rec.threshold !== null && rec.threshold !== undefined ? rec.threshold : "";
+          var goLabel = invPanelMode === "receive" ? "Add" : invPanelMode === "set" ? "Set" : "Save";
+          html +=
+            '<div class="inv-panel editor-only">' +
+            '<div class="seg" role="group" aria-label="Action for ' + esc(L.ITEMS[itemId]) + '">' + seg + "</div>" +
+            '<div class="inrow"><input type="number" class="inv-panel-input" min="0" step="1" inputmode="numeric" placeholder="' + placeholder + '" value="' + prefill + '">' +
+            '<button type="button" class="go inv-panel-go">' + goLabel + "</button></div>" +
+            '<div class="panel-note">On hand now: ' + rec.qty + (rec.threshold !== null && rec.threshold !== undefined ? " · low-stock warning at or below " + rec.threshold : " · no low-stock warning") + "</div>" +
+            "</div>";
+        }
+        html += "</div>";
       });
       div.innerHTML = html;
       wrap.appendChild(div);
@@ -283,43 +360,47 @@
     wrap.querySelectorAll(".inv-item").forEach(function (row) {
       var itemId = row.getAttribute("data-item");
       var name = L.ITEMS[itemId];
-      row.querySelector(".btn-receive").addEventListener("click", function () {
-        if (!requireEditor()) return;
-        var v = parseInt(row.querySelector(".in-receive").value, 10);
-        if (!Number.isInteger(v) || v <= 0) { showError("Enter how many " + name + " were received (a whole number above 0)."); return; }
-        clearError();
-        commitChange(
-          newEntry("received", "Received " + v + " × " + name, [{ item: itemId, delta: v }], { item: itemId, amount: v }),
-          "Received " + v + " x " + name
-        );
+      row.querySelector(".inv-main").addEventListener("click", function () {
+        if (invOpenItem === itemId) { invOpenItem = null; }
+        else { invOpenItem = itemId; invPanelMode = "receive"; }
+        renderInventory();
       });
-      row.querySelector(".btn-set").addEventListener("click", function () {
-        if (!requireEditor()) return;
-        var v = parseInt(row.querySelector(".in-set").value, 10);
-        if (!Number.isInteger(v) || v < 0) { showError("Enter the actual counted number for " + name + " (0 or more)."); return; }
-        var cur = qtyOf(itemId);
-        if (v === cur) { toast(name + " is already " + cur + " — nothing to fix."); return; }
-        clearError();
-        var entry = newEntry(
-          "count-fix",
-          "Count fix " + name + ": " + cur + " → " + v,
-          [{ item: itemId, delta: v - cur }],
-          { item: itemId, counted: v }
-        );
-        commitChange(entry, "Count fix " + name + " to " + v);
+      var panel = row.querySelector(".inv-panel");
+      if (!panel) return;
+      panel.querySelectorAll(".seg button").forEach(function (b) {
+        b.addEventListener("click", function () { invPanelMode = b.getAttribute("data-mode"); renderInventory(); });
       });
-      row.querySelector(".btn-threshold").addEventListener("click", function () {
+      panel.querySelector(".inv-panel-go").addEventListener("click", function () {
         if (!requireEditor()) return;
-        var raw = row.querySelector(".in-threshold").value;
+        var raw = panel.querySelector(".inv-panel-input").value;
         var v = raw === "" ? null : parseInt(raw, 10);
-        if (raw !== "" && (!Number.isInteger(v) || v < 0)) { showError("Low-stock warning for " + name + " must be 0 or more, or blank for off."); return; }
-        clearError();
-        state.data.inventory[itemId].threshold = v;
-        renderAll();
-        saveData("Low-stock warning " + name + " -> " + (v === null ? "off" : v))
-          .then(function () { toast("Warning for " + name + ": " + (v === null ? "off" : "at or below " + v)); });
+        if (invPanelMode === "receive") {
+          if (!Number.isInteger(v) || v <= 0) { showError("Enter how many " + name + " were received (a whole number above 0)."); return; }
+          clearError();
+          commitChange(
+            newEntry("received", "Received " + v + " × " + name, [{ item: itemId, delta: v }], { item: itemId, amount: v }),
+            "Received " + v + " x " + name
+          );
+        } else if (invPanelMode === "set") {
+          if (!Number.isInteger(v) || v < 0) { showError("Enter the actual counted number for " + name + " (0 or more)."); return; }
+          var cur = qtyOf(itemId);
+          if (v === cur) { toast(name + " is already " + cur + " — nothing to fix."); return; }
+          clearError();
+          commitChange(
+            newEntry("count-fix", "Count fix " + name + ": " + cur + " → " + v, [{ item: itemId, delta: v - cur }], { item: itemId, counted: v }),
+            "Count fix " + name + " to " + v
+          );
+        } else {
+          if (raw !== "" && (!Number.isInteger(v) || v < 0)) { showError("Low-stock warning for " + name + " must be 0 or more, or blank for off."); return; }
+          clearError();
+          state.data.inventory[itemId].threshold = v;
+          renderAll();
+          saveData("Low-stock warning " + name + " -> " + (v === null ? "off" : v))
+            .then(function () { toast("Warning for " + name + ": " + (v === null ? "off" : "at or below " + v)); });
+        }
       });
     });
+    applyInvFilters();
   }
   function renderCountEntry() {
     var list = $("count-entry-list"); list.innerHTML = "";
@@ -368,21 +449,35 @@
 
   /* ---------- History tab ---------- */
   var TYPE_LABEL = { "received": "Received", "packed": "Packed", "hand-packed": "Hand-packed", "count-fix": "Count fix", "import": "Backup import" };
+  var TYPE_DOT = { "packed": "#14632F", "hand-packed": "#20242B", "received": "#5C6570", "count-fix": "#B45309", "import": "#5C6570" };
+  function fmtDateRel(iso) {
+    var d = new Date(iso), now = new Date();
+    var sameDay = d.toDateString() === now.toDateString();
+    var yest = new Date(now); yest.setDate(now.getDate() - 1);
+    var day = sameDay ? "Today" : d.toDateString() === yest.toDateString() ? "Yesterday"
+      : d.toLocaleDateString([], { month: "short", day: "numeric" });
+    return day + " " + d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
   function renderHistory() {
     var wrap = $("history-list"); wrap.innerHTML = "";
     if (!state.data.history.length) { wrap.innerHTML = '<p class="hint">No changes logged yet.</p>'; return; }
     state.data.history.forEach(function (entry) {
       var div = document.createElement("div");
       div.className = "history-entry" + (entry.undone ? " undone" : "");
-      var effects = entry.effects.map(function (e) {
+      var eff = entry.effects.map(function (e) {
         return esc(L.ITEMS[e.item] || e.item) + " " + (e.delta > 0 ? "+" : "") + e.delta;
-      }).join(" · ");
+      });
+      var summary = eff.slice(0, 3).join(" · ");
+      if (eff.length > 3) summary += " · +" + (eff.length - 3) + " more";
+      var fullList = eff.length > 3
+        ? "<details><summary>Show all " + eff.length + " changes</summary>" + eff.join(" · ") + "</details>" : "";
       div.innerHTML =
-        '<div class="history-head"><span class="history-title">' + esc(entry.title) + "</span>" +
-        '<span class="history-date">' + esc(TYPE_LABEL[entry.type] || entry.type) + " · " + esc(fmtDate(entry.ts)) + "</span></div>" +
-        (effects ? '<div class="history-effects">' + effects + "</div>" : "") +
+        '<div class="history-head"><span class="type-dot" style="background:' + (TYPE_DOT[entry.type] || "#5C6570") + '"></span>' +
+        '<span class="history-title">' + esc(entry.title) + "</span>" +
+        '<span class="history-date">' + esc(fmtDateRel(entry.ts)) + "</span></div>" +
+        (eff.length ? '<div class="history-effects">' + summary + fullList + "</div>" : "") +
         (entry.undone ? '<div class="undone-tag">Undone</div>' : "") +
-        (!entry.undone && state.editor ? '<div class="history-actions"><button class="btn btn-edit">Edit</button><button class="btn btn-undo">Undo</button></div>' : "");
+        (!entry.undone && state.editor ? '<div class="history-actions"><button class="btn btn-edit">Edit…</button><button class="btn btn-undo">Undo</button></div>' : "");
       wrap.appendChild(div);
       if (!entry.undone && state.editor) {
         div.querySelector(".btn-undo").addEventListener("click", function () { undoEntry(entry); });
@@ -390,9 +485,10 @@
       }
     });
   }
-  function undoEntry(entry) {
+  function undoEntry(entry, skipConfirm) {
     if (!requireEditor()) return;
-    if (!window.confirm("Undo this entry?\n\n" + entry.title + "\n\nIts inventory changes will be reversed exactly.")) return;
+    if (entry.undone) return;
+    if (!skipConfirm && !window.confirm("Undo this entry?\n\n" + entry.title + "\n\nIts inventory changes will be reversed exactly.")) return;
     L.applyEffects(state.data.inventory, entry.effects, -1);
     entry.undone = true;
     renderAll();
@@ -475,8 +571,7 @@
     var title = mode === "count" ? "Count Sheet" : "Current Inventory";
     var head =
       '<div class="label-title">Alooma — ' + title + "</div>" +
-      '<div class="label-sub">' + new Date().toLocaleString() + "</div>" +
-      '<div class="order-id">Order ID: ____________________</div>';
+      '<div class="label-sub">' + new Date().toLocaleString() + "</div>";
     if (mode === "count") {
       head = '<div class="label-title">Alooma — Count Sheet</div><div class="label-sub">' +
         new Date().toLocaleString() + " · Write the counted number, then type it back in under Inventory → Enter counted numbers</div>";
@@ -594,18 +689,48 @@
 
     document.querySelectorAll("#tabs button").forEach(function (b) {
       b.addEventListener("click", function () {
-        document.querySelectorAll("#tabs button").forEach(function (x) { x.classList.remove("active"); });
+        document.querySelectorAll("#tabs button").forEach(function (x) { x.classList.remove("active"); x.setAttribute("aria-selected", "false"); });
         document.querySelectorAll(".tab-panel").forEach(function (x) { x.classList.remove("active"); });
         b.classList.add("active");
+        b.setAttribute("aria-selected", "true");
         $("tab-" + b.getAttribute("data-tab")).classList.add("active");
       });
     });
     $("pack-kits").addEventListener("input", renderPack);
     $("hand-kits").addEventListener("input", renderHand);
-    $("btn-open-list").addEventListener("click", function () {
-      var w = $("pack-list-wrap"); w.hidden = false;
-      w.scrollIntoView({ behavior: "smooth", block: "start" });
+    function wireStepper(inputId, minusId, plusId, renderFn) {
+      $(minusId).addEventListener("click", function () {
+        var v = parseInt($(inputId).value, 10);
+        $(inputId).value = Number.isInteger(v) ? Math.max(6, v - 6) : 6;
+        renderFn();
+      });
+      $(plusId).addEventListener("click", function () {
+        var v = parseInt($(inputId).value, 10);
+        $(inputId).value = Number.isInteger(v) ? v + 6 : 6;
+        renderFn();
+      });
+    }
+    wireStepper("pack-kits", "pack-minus", "pack-plus", renderPack);
+    wireStepper("hand-kits", "hand-minus", "hand-plus", renderHand);
+    document.querySelectorAll(".kits-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        var target = chip.getAttribute("data-for");
+        $(target + "-kits").value = chip.getAttribute("data-kits");
+        if (target === "pack") renderPack(); else renderHand();
+      });
     });
+    $("btn-check-all").addEventListener("click", function () {
+      var boxes = $("pack-table").querySelectorAll("tbody input[type=checkbox]");
+      var allChecked = boxes.length > 0 && Array.prototype.every.call(boxes, function (cb) { return cb.checked; });
+      boxes.forEach(function (cb) {
+        cb.checked = !allChecked;
+        cb.closest("tr").classList.toggle("checked-row", cb.checked);
+      });
+      updatePackProgress();
+    });
+    $("pack-override").addEventListener("change", updatePackProgress);
+    $("inv-search").addEventListener("input", function (ev) { invQuery = ev.target.value.trim().toLowerCase(); applyInvFilters(); });
+    $("btn-lowfilter").addEventListener("click", function () { invLowOnly = !invLowOnly; applyInvFilters(); });
     $("btn-print-sheet").addEventListener("click", printPackSheet);
     $("btn-complete-pack").addEventListener("click", completePacking);
     $("btn-record-hand").addEventListener("click", recordHand);

@@ -71,8 +71,7 @@ try {
   eq(await page.$$eval("#pack-crafts .craft-btn", els => els.length), 6, "6 craft buttons");
   eq(await page.$eval("#pack-sku", e => e.textContent), "CAK-18", "default SKU CAK-18");
 
-  /* Pack list shows CAK-18 needs */
-  await page.click("#btn-open-list");
+  /* Pack list is visible immediately (new look: no "open list" step) */
   await sleep(200);
   const packRows = await page.$$eval("#pack-table tbody tr", trs => trs.map(tr => [...tr.children].map(td => td.textContent.trim()).join("|")));
   eq(packRows.length, 19, "CAK pack list 19 rows");
@@ -88,32 +87,65 @@ try {
   const ls = await page.evaluate(() => localStorage.getItem("alooma.editor.v1"));
   eq(JSON.parse(ls).login, "testeditor", "editor saved on this device only (localStorage)");
 
-  /* Receive: 200 scissors via the real Inventory button */
+  /* Receive: 200 scissors via the new item panel (tap item -> Receive -> qty -> Add) */
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
   await sleep(200);
   await page.evaluate(() => {
+    document.querySelector('.inv-item[data-item="scissors"] .inv-main').click();
+  });
+  await sleep(250);
+  await page.evaluate(() => {
     const row = document.querySelector('.inv-item[data-item="scissors"]');
-    row.querySelector(".in-receive").value = "200";
-    row.querySelector(".btn-receive").click();
+    row.querySelector(".inv-panel-input").value = "200";
+    row.querySelector(".inv-panel-go").click();
   });
   await sleep(600);
   eq(remoteData.inventory["scissors"].qty, 200, "receive committed to (mock) repo");
   eq(remoteData.history[0].type, "received", "receive logged in history data");
 
-  /* Threshold: scissors low at/below 250 -> badge shows */
+  /* Threshold: open panel, switch to Warning mode, set 250 -> badge shows */
   await page.evaluate(() => {
     const row = document.querySelector('.inv-item[data-item="scissors"]');
-    row.querySelector(".in-threshold").value = "250";
-    row.querySelector(".btn-threshold").click();
+    if (!row.querySelector(".inv-panel")) row.querySelector(".inv-main").click();
+  });
+  await sleep(250);
+  await page.evaluate(() => {
+    document.querySelector('.inv-item[data-item="scissors"] .seg button[data-mode="warning"]').click();
+  });
+  await sleep(250);
+  await page.evaluate(() => {
+    const row = document.querySelector('.inv-item[data-item="scissors"]');
+    row.querySelector(".inv-panel-input").value = "250";
+    row.querySelector(".inv-panel-go").click();
   });
   await sleep(600);
+  eq(remoteData.inventory["scissors"].threshold, 250, "threshold saved via panel");
   eq(await page.$$eval('.inv-item[data-item="scissors"] .low-badge', els => els.length), 1, "low-stock badge at qty<=threshold");
 
-  /* Complete CAK-18 packing via the real button (confirm auto-accepted) */
+  /* Target-size audit (editor, inventory panel open): nothing interactive under 44px */
+  const smallTargets = await page.evaluate(() =>
+    [...document.querySelectorAll('#tab-inventory button, #tab-inventory input:not([type="checkbox"])')]
+      .filter(el => el.offsetParent !== null)
+      .map(el => ({ tag: el.tagName + "." + el.className, h: Math.round(el.getBoundingClientRect().height) }))
+      .filter(x => x.h < 44));
+  eq(smallTargets.length, 0, "inventory: no interactive element under 44px (found: " + JSON.stringify(smallTargets.slice(0, 4)) + ")");
+
+  /* Complete CAK-18: button stays disabled until all items checked (or printed-sheet override) */
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
-  await page.click("#btn-open-list");
+  eq(await page.$eval("#btn-complete-pack", e => e.disabled), true, "complete disabled before checking items");
+  /* The whole pack flow is now: craft (already Cakery) -> chip 18 -> Check all -> Completed -> confirm */
+  await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
+  await page.click("#btn-check-all");
   await sleep(150);
+  eq(await page.$eval("#pack-progress", e => e.textContent), "19 of 19 checked", "check-all progress text");
+  eq(await page.$eval("#btn-complete-pack", e => e.disabled), false, "complete enabled after check-all");
+  const smallPack = await page.evaluate(() =>
+    [...document.querySelectorAll('#tab-pack button, #tab-pack input:not([type="checkbox"])')]
+      .filter(el => el.offsetParent !== null)
+      .map(el => ({ tag: el.tagName + "." + el.className, h: Math.round(el.getBoundingClientRect().height) }))
+      .filter(x => x.h < 44));
+  eq(smallPack.length, 0, "pack: no interactive element under 44px (found: " + JSON.stringify(smallPack.slice(0, 4)) + ")");
   await page.click("#btn-complete-pack");
   await sleep(600);
   eq(remoteData.inventory["scissors"].qty, 194, "CAK-18 deducted 6 scissors (200->194)");
@@ -183,6 +215,7 @@ try {
   });
   eq((invPrint.match(/Scissors/g) || []).length, 1, "inventory report lists Scissors once");
   eq(invPrint.includes("Shared items"), true, "inventory report has Shared group");
+  eq(invPrint.includes("Order ID:"), false, "inventory report has NO Order ID line (fixed)");
   const countPrint = await page.evaluate(() => {
     document.querySelector("#btn-print-count").click();
     return document.querySelector("#print-area").innerHTML;

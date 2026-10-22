@@ -45,12 +45,12 @@ paper ≠ parchment circle, Clay Tray A ≠ B).
 ## Tests
 
 - `node tests/test-logic.js` — quantity logic: CAK-18 deductions match the old site exactly,
-  tier rule, tray alternation, pack/receive/undo/edit arithmetic (71 checks).
+  tier rule, tray alternation, pack/receive/undo/edit arithmetic (75 checks).
 - `node tests/test-ui.mjs` — drives the real page and real buttons in headless Chrome with
-  the GitHub API mocked (connect, receive, threshold, complete pack, undo, hand-pack,
-  count entry, edit, prints, disconnect — 32 checks).
+  the GitHub API mocked (connect, item-panel receive + warning, check-all pack, undo,
+  hand-pack, count entry, edit, prints, tap-target sizes, disconnect — 39 checks).
 - `node tests/check-print.mjs` — renders the prints to PDF and verifies the page size is
-  exactly 4×6 in.
+  exactly 4×6 in and the page count equals the content (no blank labels).
 
 ## Making an editor token (one time)
 

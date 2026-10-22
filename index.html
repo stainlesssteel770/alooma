@@ -4,13 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Alooma — Warehouse Packing Helper</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314632F'/%3E%3Ctext x='32' y='44' font-family='Arial,sans-serif' font-size='36' font-weight='bold' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <header class="app-header">
-  <div class="header-text">
-    <h1>Alooma</h1>
-    <p>Warehouse packing helper</p>
+  <div class="brand">
+    <span class="logo" aria-hidden="true">A</span>
+    <div class="header-text">
+      <h1>Alooma</h1>
+      <p>Warehouse packing helper</p>
+    </div>
   </div>
   <div class="header-status">
     <span id="conn-badge" class="badge badge-view">View only</span>
@@ -18,12 +22,12 @@
   </div>
 </header>
 
-<nav class="tabs" id="tabs">
-  <button data-tab="pack" class="active">Packing</button>
-  <button data-tab="hand">Hand-packed</button>
-  <button data-tab="inventory">Inventory</button>
-  <button data-tab="history">History</button>
-  <button data-tab="settings">Settings</button>
+<nav class="tabs" id="tabs" role="tablist" aria-label="Main">
+  <button data-tab="pack" class="active" role="tab" aria-selected="true"><span class="tab-ic" aria-hidden="true">📦</span>Packing</button>
+  <button data-tab="hand" role="tab" aria-selected="false"><span class="tab-ic" aria-hidden="true">✋</span>Hand-packed</button>
+  <button data-tab="inventory" role="tab" aria-selected="false"><span class="tab-ic" aria-hidden="true">🗄️</span>Inventory</button>
+  <button data-tab="history" role="tab" aria-selected="false"><span class="tab-ic" aria-hidden="true">🕘</span>History</button>
+  <button data-tab="settings" role="tab" aria-selected="false"><span class="tab-ic" aria-hidden="true">⚙️</span>Settings</button>
 </nav>
 
 <div id="error-banner" class="error-banner" hidden></div>
@@ -33,28 +37,43 @@
   <!-- PACKING -->
   <section id="tab-pack" class="tab-panel active">
     <h2>Pack an order — one craft at a time</h2>
-    <p class="hint">Pick a craft, type the number of kits. An order with several crafts is packed one craft at a time, one sheet per craft.</p>
+    <p class="hint">Pick a craft and the number of kits. An order with several crafts is packed one craft at a time, one sheet per craft.</p>
     <div class="craft-grid" id="pack-crafts"></div>
-    <div class="kits-row">
-      <label>Number of kits
-        <input type="number" id="pack-kits" min="6" step="6" value="18" inputmode="numeric">
-      </label>
+    <div class="kits-block">
+      <div class="kits-row">
+        <label for="pack-kits">Number of kits</label>
+        <div class="stepper">
+          <button type="button" id="pack-minus" aria-label="6 fewer kits">−</button>
+          <input type="number" id="pack-kits" min="6" step="6" value="18" inputmode="numeric" aria-label="Number of kits">
+          <button type="button" id="pack-plus" aria-label="6 more kits">+</button>
+        </div>
+      </div>
+      <div class="chips" id="pack-chips">
+        <button type="button" class="kits-chip" data-for="pack" data-kits="6">6</button>
+        <button type="button" class="kits-chip" data-for="pack" data-kits="12">12</button>
+        <button type="button" class="kits-chip" data-for="pack" data-kits="18">18</button>
+        <button type="button" class="kits-chip" data-for="pack" data-kits="24">24</button>
+        <button type="button" class="kits-chip" data-for="pack" data-kits="36">36</button>
+      </div>
       <div class="sku-box">Order SKU: <strong id="pack-sku">—</strong></div>
     </div>
     <p id="pack-error" class="field-error"></p>
     <div id="pack-warning" class="warning" hidden></div>
-    <div class="btn-row">
-      <button id="btn-print-sheet" class="btn">🖨 Print packing sheet (4×6)</button>
-      <button id="btn-open-list" class="btn">☑ Open pack list</button>
-    </div>
-    <div id="pack-list-wrap" hidden>
-      <h3>Pack list — check each item as you pack it</h3>
+    <div id="pack-list-wrap">
+      <div class="list-head">
+        <h3>Pack list</h3>
+        <span id="pack-progress" class="progress-text"></span>
+        <button type="button" id="btn-check-all" class="btn btn-quiet">Check all</button>
+      </div>
+      <div class="progress-bar" aria-hidden="true"><i id="pack-progress-fill"></i></div>
       <table class="data-table" id="pack-table">
-        <thead><tr><th></th><th>Item</th><th>Need</th><th>On hand</th></tr></thead>
+        <thead><tr><th></th><th>Item</th><th class="num">Need</th><th class="num">On hand</th></tr></thead>
         <tbody></tbody>
       </table>
-      <div class="btn-row">
-        <button id="btn-complete-pack" class="btn btn-primary editor-only">✓ Completed packing — subtract from inventory</button>
+      <label class="override-row"><input type="checkbox" id="pack-override"> I packed from the printed sheet</label>
+      <div class="action-bar">
+        <button id="btn-print-sheet" class="btn btn-secondary">🖨 Print packing sheet (4×6)</button>
+        <button id="btn-complete-pack" class="btn btn-primary editor-only" disabled>✓ Completed packing</button>
       </div>
       <p class="hint editor-note" hidden>View-only on this device — connect a GitHub token in Settings to record packing.</p>
     </div>
@@ -65,19 +84,31 @@
     <h2>Hand-packed</h2>
     <p class="hint">For orders packed by hand off a label: pick the craft and number of kits, and the same items come off inventory.</p>
     <div class="craft-grid" id="hand-crafts"></div>
-    <div class="kits-row">
-      <label>Number of kits
-        <input type="number" id="hand-kits" min="6" step="6" value="6" inputmode="numeric">
-      </label>
+    <div class="kits-block">
+      <div class="kits-row">
+        <label for="hand-kits">Number of kits</label>
+        <div class="stepper">
+          <button type="button" id="hand-minus" aria-label="6 fewer kits">−</button>
+          <input type="number" id="hand-kits" min="6" step="6" value="6" inputmode="numeric" aria-label="Number of kits">
+          <button type="button" id="hand-plus" aria-label="6 more kits">+</button>
+        </div>
+      </div>
+      <div class="chips" id="hand-chips">
+        <button type="button" class="kits-chip" data-for="hand" data-kits="6">6</button>
+        <button type="button" class="kits-chip" data-for="hand" data-kits="12">12</button>
+        <button type="button" class="kits-chip" data-for="hand" data-kits="18">18</button>
+        <button type="button" class="kits-chip" data-for="hand" data-kits="24">24</button>
+        <button type="button" class="kits-chip" data-for="hand" data-kits="36">36</button>
+      </div>
       <div class="sku-box">Order SKU: <strong id="hand-sku">—</strong></div>
     </div>
     <p id="hand-error" class="field-error"></p>
     <table class="data-table" id="hand-table">
-      <thead><tr><th>Item</th><th>Subtract</th><th>On hand</th></tr></thead>
+      <thead><tr><th>Item</th><th class="num">Subtract</th><th class="num">On hand</th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="btn-row">
-      <button id="btn-record-hand" class="btn btn-primary editor-only">✓ Record hand-packed — subtract from inventory</button>
+    <div class="action-bar">
+      <button id="btn-record-hand" class="btn btn-primary editor-only">✓ Record hand-packed</button>
     </div>
     <p class="hint editor-note" hidden>View-only on this device — connect a GitHub token in Settings to record hand-packing.</p>
   </section>
@@ -85,11 +116,14 @@
   <!-- INVENTORY -->
   <section id="tab-inventory" class="tab-panel">
     <h2>Inventory</h2>
+    <input type="search" id="inv-search" class="search-box" placeholder="Search items…" aria-label="Search items">
     <div class="btn-row">
+      <button id="btn-lowfilter" class="btn chip-btn" aria-pressed="false">⚠ Low stock · <span id="low-count">0</span></button>
       <button id="btn-print-inventory" class="btn">🖨 Print inventory report (4×6)</button>
       <button id="btn-print-count" class="btn">🖨 Print count sheet (4×6)</button>
       <button id="btn-enter-counts" class="btn editor-only">✎ Enter counted numbers</button>
     </div>
+    <p class="hint editor-only">Tap an item to receive stock, fix its count, or set its low-stock warning.</p>
     <div id="count-entry" class="count-entry" hidden>
       <h3>Enter counted numbers</h3>
       <p class="hint">Type the real counted number for any item you counted, leave the rest blank, then apply. Each changed item is logged as a count fix.</p>
