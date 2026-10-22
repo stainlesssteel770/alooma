@@ -134,71 +134,71 @@
       "threshold": null
     },
     "heart-jewelry-box": {
-      "qty": 0,
+      "qty": -18,
       "threshold": null
     },
     "cake-box": {
-      "qty": 0,
+      "qty": -18,
       "threshold": null
     },
     "circle-cardboard": {
-      "qty": 0,
+      "qty": -18,
       "threshold": null
     },
     "parchment-circle": {
-      "qty": 0,
+      "qty": -18,
       "threshold": null
     },
     "plastic-pet-bowl": {
-      "qty": 0,
+      "qty": -18,
       "threshold": null
     },
     "cream-circle-tray": {
-      "qty": 0,
+      "qty": -3,
       "threshold": null
     },
     "sprinkles-pack": {
-      "qty": 0,
+      "qty": -3,
       "threshold": null
     },
     "faux-cherries-bag": {
-      "qty": 0,
+      "qty": -3,
       "threshold": null
     },
     "glue-dots": {
-      "qty": 0,
+      "qty": -3,
       "threshold": null
     },
     "popsicle-stick": {
-      "qty": 0,
+      "qty": -18,
       "threshold": null
     },
     "ck-placemat": {
-      "qty": 0,
+      "qty": -18,
       "threshold": null
     },
     "printed-posters": {
-      "qty": 0,
+      "qty": -3,
       "threshold": null
     },
     "poster-stands": {
-      "qty": 0,
+      "qty": -9,
       "threshold": null
     },
     "ck-name-labels": {
-      "qty": 0,
+      "qty": -18,
       "threshold": null
     },
     "apron": {
-      "qty": 0,
+      "qty": -18,
       "threshold": null
     },
     "gloves": {
-      "qty": 0,
+      "qty": -18,
       "threshold": null
     },
     "ck-instructions": {
-      "qty": 0,
+      "qty": -18,
       "threshold": null
     },
     "mi-frames": {
@@ -238,7 +238,7 @@
       "threshold": null
     },
     "scissors": {
-      "qty": 200,
+      "qty": 194,
       "threshold": null
     },
     "tacky-glue": {
@@ -246,11 +246,98 @@
       "threshold": null
     },
     "permanent-markers": {
-      "qty": 0,
+      "qty": -3,
       "threshold": null
     }
   },
   "history": [
+    {
+      "id": "livetest-pack",
+      "ts": "2026-10-22T22:11:01.727908Z",
+      "type": "packed",
+      "title": "Packed The Cakery \u2014 18 kits (CAK-18)",
+      "effects": [
+        {
+          "item": "heart-jewelry-box",
+          "delta": -18
+        },
+        {
+          "item": "cake-box",
+          "delta": -18
+        },
+        {
+          "item": "circle-cardboard",
+          "delta": -18
+        },
+        {
+          "item": "parchment-circle",
+          "delta": -18
+        },
+        {
+          "item": "plastic-pet-bowl",
+          "delta": -18
+        },
+        {
+          "item": "cream-circle-tray",
+          "delta": -3
+        },
+        {
+          "item": "sprinkles-pack",
+          "delta": -3
+        },
+        {
+          "item": "faux-cherries-bag",
+          "delta": -3
+        },
+        {
+          "item": "scissors",
+          "delta": -6
+        },
+        {
+          "item": "glue-dots",
+          "delta": -3
+        },
+        {
+          "item": "popsicle-stick",
+          "delta": -18
+        },
+        {
+          "item": "ck-placemat",
+          "delta": -18
+        },
+        {
+          "item": "printed-posters",
+          "delta": -3
+        },
+        {
+          "item": "poster-stands",
+          "delta": -9
+        },
+        {
+          "item": "ck-name-labels",
+          "delta": -18
+        },
+        {
+          "item": "permanent-markers",
+          "delta": -3
+        },
+        {
+          "item": "apron",
+          "delta": -18
+        },
+        {
+          "item": "gloves",
+          "delta": -18
+        },
+        {
+          "item": "ck-instructions",
+          "delta": -18
+        }
+      ],
+      "undone": false,
+      "craftId": "cak",
+      "kits": 18
+    },
     {
       "id": "livetest-receive",
       "ts": "2026-10-22T22:10:59.901814Z",
