@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alooma — Warehouse Packing Helper</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="app-header">
+  <div class="header-text">
+    <h1>Alooma</h1>
+    <p>Warehouse packing helper</p>
+  </div>
+  <div class="header-status">
+    <span id="conn-badge" class="badge badge-view">View only</span>
+    <span id="save-status" class="save-status"></span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="pack" class="active">Packing</button>
+  <button data-tab="hand">Hand-packed</button>
+  <button data-tab="inventory">Inventory</button>
+  <button data-tab="history">History</button>
+  <button data-tab="settings">Settings</button>
+</nav>
+
+<div id="error-banner" class="error-banner" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<main>
+  <!-- PACKING -->
+  <section id="tab-pack" class="tab-panel active">
+    <h2>Pack an order — one craft at a time</h2>
+    <p class="hint">Pick a craft, type the number of kits. An order with several crafts is packed one craft at a time, one sheet per craft.</p>
+    <div class="craft-grid" id="pack-crafts"></div>
+    <div class="kits-row">
+      <label>Number of kits
+        <input type="number" id="pack-kits" min="6" step="6" value="18" inputmode="numeric">
+      </label>
+      <div class="sku-box">Order SKU: <strong id="pack-sku">—</strong></div>
+    </div>
+    <p id="pack-error" class="field-error"></p>
+    <div id="pack-warning" class="warning" hidden></div>
+    <div class="btn-row">
+      <button id="btn-print-sheet" class="btn">🖨 Print packing sheet (4×6)</button>
+      <button id="btn-open-list" class="btn">☑ Open pack list</button>
+    </div>
+    <div id="pack-list-wrap" hidden>
+      <h3>Pack list — check each item as you pack it</h3>
+      <table class="data-table" id="pack-table">
+        <thead><tr><th></th><th>Item</th><th>Need</th><th>On hand</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="btn-row">
+        <button id="btn-complete-pack" class="btn btn-primary editor-only">✓ Completed packing — subtract from inventory</button>
+      </div>
+      <p class="hint editor-note" hidden>View-only on this device — connect a GitHub token in Settings to record packing.</p>
+    </div>
+  </section>
+
+  <!-- HAND-PACKED -->
+  <section id="tab-hand" class="tab-panel">
+    <h2>Hand-packed</h2>
+    <p class="hint">For orders packed by hand off a label: pick the craft and number of kits, and the same items come off inventory.</p>
+    <div class="craft-grid" id="hand-crafts"></div>
+    <div class="kits-row">
+      <label>Number of kits
+        <input type="number" id="hand-kits" min="6" step="6" value="6" inputmode="numeric">
+      </label>
+      <div class="sku-box">Order SKU: <strong id="hand-sku">—</strong></div>
+    </div>
+    <p id="hand-error" class="field-error"></p>
+    <table class="data-table" id="hand-table">
+      <thead><tr><th>Item</th><th>Subtract</th><th>On hand</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="btn-row">
+      <button id="btn-record-hand" class="btn btn-primary editor-only">✓ Record hand-packed — subtract from inventory</button>
+    </div>
+    <p class="hint editor-note" hidden>View-only on this device — connect a GitHub token in Settings to record hand-packing.</p>
+  </section>
+
+  <!-- INVENTORY -->
+  <section id="tab-inventory" class="tab-panel">
+    <h2>Inventory</h2>
+    <div class="btn-row">
+      <button id="btn-print-inventory" class="btn">🖨 Print inventory report (4×6)</button>
+      <button id="btn-print-count" class="btn">🖨 Print count sheet (4×6)</button>
+      <button id="btn-enter-counts" class="btn editor-only">✎ Enter counted numbers</button>
+    </div>
+    <div id="count-entry" class="count-entry" hidden>
+      <h3>Enter counted numbers</h3>
+      <p class="hint">Type the real counted number for any item you counted, leave the rest blank, then apply. Each changed item is logged as a count fix.</p>
+      <div id="count-entry-list"></div>
+      <div class="btn-row">
+        <button id="btn-apply-counts" class="btn btn-primary">Apply counts</button>
+        <button id="btn-cancel-counts" class="btn">Cancel</button>
+      </div>
+    </div>
+    <div id="inventory-groups"></div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="tab-history" class="tab-panel">
+    <h2>History</h2>
+    <p class="hint">Every change — received, packed, hand-packed, count fix — is logged here. Any entry can be edited or undone (editor only).</p>
+    <div id="history-list"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="tab-settings" class="tab-panel">
+    <h2>Settings</h2>
+
+    <div class="card">
+      <h3>Editor access on this device</h3>
+      <p id="settings-conn-status" class="hint"></p>
+      <div id="connect-form">
+        <label>GitHub token
+          <input type="password" id="gh-token" autocomplete="off" placeholder="Paste a GitHub token">
+        </label>
+        <div class="repo-row">
+          <label>Repo owner <input type="text" id="gh-owner" value="stainlesssteel770"></label>
+          <label>Repo name <input type="text" id="gh-repo" value="alooma"></label>
+        </div>
+        <div class="btn-row">
+          <button id="btn-connect" class="btn btn-primary">Connect this device</button>
+        </div>
+        <p id="connect-error" class="field-error"></p>
+        <details>
+          <summary>How to make a token (one time, ~2 minutes)</summary>
+          <ol class="help-list">
+            <li>On github.com, click your profile picture → <em>Settings</em> → <em>Developer settings</em> → <em>Personal access tokens</em> → <em>Fine-grained tokens</em> → <em>Generate new token</em>.</li>
+            <li>Name it "Alooma editor", set an expiration you're comfortable with.</li>
+            <li>Repository access: <em>Only select repositories</em> → pick <strong>alooma</strong>.</li>
+            <li>Permissions → Repository permissions → <em>Contents</em> → <strong>Read and write</strong>. Leave everything else off.</li>
+            <li>Generate, copy the token, and paste it here. It is saved <strong>only on this device</strong> — never in the repo, never on the site.</li>
+          </ol>
+        </details>
+      </div>
+      <div id="disconnect-wrap" hidden>
+        <div class="btn-row">
+          <button id="btn-disconnect" class="btn btn-danger">Disconnect token from this device</button>
+        </div>
+        <p class="hint">Disconnecting removes the saved token from this device only. The site goes back to view-only here; your data in the repo is untouched.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Backup</h3>
+      <p class="hint">Export downloads everything (inventory + history) as one file. Import replaces the current data with a backup file (editor only) and is logged in History.</p>
+      <div class="btn-row">
+        <button id="btn-export" class="btn">⬇ Export backup</button>
+        <label class="btn file-btn editor-only">⬆ Import backup
+          <input type="file" id="import-file" accept="application/json,.json" hidden>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>About</h3>
+      <p class="hint">Data lives in <code>data.json</code> in the public GitHub repo <span id="about-repo">stainlesssteel770/alooma</span>. Every edit commits a new version of that file through the GitHub API, so any device opening this page sees the current status. Viewers need no sign-in. There is no access code.</p>
+    </div>
+  </section>
+</main>
+
+<div id="print-area"></div>
+
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
