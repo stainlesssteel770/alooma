@@ -238,7 +238,7 @@
       "threshold": null
     },
     "scissors": {
-      "qty": 0,
+      "qty": 200,
       "threshold": null
     },
     "tacky-glue": {
@@ -250,5 +250,21 @@
       "threshold": null
     }
   },
-  "history": []
+  "history": [
+    {
+      "id": "livetest-receive",
+      "ts": "2026-10-22T22:10:59.901814Z",
+      "type": "received",
+      "title": "Received 200 \u00d7 Scissors",
+      "effects": [
+        {
+          "item": "scissors",
+          "delta": 200
+        }
+      ],
+      "undone": false,
+      "item": "scissors",
+      "amount": 200
+    }
+  ]
 }
