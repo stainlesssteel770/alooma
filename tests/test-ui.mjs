@@ -454,12 +454,18 @@ try {
   eq(remoteData.settings.features.boxes === true, true, "C1: boxes toggle saved to the shared data");
   eq(await page.evaluate(() => !document.querySelector("#boxes-editor").hidden), true, "C1: boxes editor opens with the toggle");
   await page.select("#rule-craft", "cak");
-  await page.select("#rule-kits", "12");
-  await page.click('#rule-boxes input[value="A"]');
-  await page.click('#rule-boxes input[value="B"]');
+  await page.type("#rule-kits", "12");
+  await page.select("#rule-boxes", "Box A");
   await page.click("#btn-rule-add");
   await waitRemote(() => (remoteData.settings.boxRules || []).length === 1, "box rule saved");
-  eq(remoteData.settings.boxRules[0].boxes.join(",") === "A,B", true, "C1: rule saved (CAK 12 = A + B)");
+  eq(remoteData.settings.boxRules[0].boxes.join(",") === "Box A", true, "C1: rule saved (CAK 12 = Box A, picked from the dropdown)");
+  /* The kits field validates: 7 is not a multiple of 6, so no rule is added */
+  await page.type("#rule-kits", "7");
+  await page.click("#btn-rule-add");
+  await sleep(300);
+  eq((remoteData.settings.boxRules || []).length, 1, "Boxes: kit counts that aren't multiples of 6 are rejected");
+  eq(await page.$eval("#rule-error", e => e.textContent.includes("multiple of 6")), true, "Boxes: the kits field explains the multiple-of-6 rule");
+  await page.evaluate(() => { document.querySelector("#rule-kits").value = ""; });
 
   // Packing: an exact match shows the boxes; 18 kits (no rule) does not
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
@@ -469,7 +475,7 @@ try {
   await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
   await page.click("#btn-mode-hand");
   await waitDom(() => !document.querySelector("#pack-boxes").hidden, "boxes line shows");
-  eq((await page.$eval("#pack-boxes-text", e => e.textContent)).includes("Box A + Box B"), true, "C1: boxes line shows the rule's boxes");
+  eq(await page.$eval("#pack-boxes-text", e => e.textContent), "Box A", "C1: boxes line shows the rule's box");
   await page.click("#btn-pack-change");
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await sleep(200);
@@ -480,12 +486,12 @@ try {
   await page.click("#btn-mode-hand");
   await waitDom(() => !document.querySelector("#pack-boxes").hidden, "boxes line shows again");
   await page.click("#btn-boxes-change");
-  await page.evaluate(() => [...document.querySelectorAll("#pack-boxes-chips .kits-chip")].find(x => x.textContent === "C").click());
+  await page.evaluate(() => [...document.querySelectorAll("#pack-boxes-chips .kits-chip")].find(x => x.textContent === "Box C").click());
   await page.click("#btn-boxes-done");
   eq((await page.$eval("#pack-boxes-text", e => e.textContent)).includes("Box C"), true, "C1: Change override adds Box C for this order");
   await page.evaluate(() => document.querySelector("#btn-print-sheet").click());
   await sleep(250);
-  eq((await page.evaluate(() => document.querySelector("#print-area").textContent)).includes("BOXES: A + B + C"), true, "C1+C3: packing sheet prints BOXES: A + B + C");
+  eq((await page.evaluate(() => document.querySelector("#print-area").textContent)).includes("BOXES: Box A + Box C"), true, "C1+C3: packing sheet prints BOXES: Box A + Box C");
   await page.click("#btn-mode-hand");
   await sleep(200);
   await page.click("#btn-check-all");
@@ -527,6 +533,19 @@ try {
   await sleep(200);
   const binOrder = await page.evaluate(() => [...document.querySelectorAll("#pack-table tbody tr .row-bin")].map(e => e.textContent));
   eq(binOrder.length === 19 && binOrder.every((b, i) => i === 0 || binOrder[i - 1] <= b) && binOrder[18] === "BIN-99", true, "C2: pack list sorts by bin (BIN-99 last)");
+
+  /* Boxes are a free-form list: add a fourth box by name and it joins the
+     rule dropdown; delete it and it leaves the list */
+  await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
+  await page.type("#new-box-name", "Mailer box");
+  await page.click("#btn-box-add");
+  await waitRemote(() => (remoteData.settings.boxes || []).includes("Mailer box"), "box added");
+  eq(remoteData.settings.boxes.includes("Mailer box"), true, "Boxes: typed box name saved to the shared list");
+  eq(await page.evaluate(() => [...document.querySelectorAll("#rule-boxes option")].map(o => o.value).includes("Mailer box")), true, "Boxes: new box appears in the rule dropdown");
+  eq(await page.evaluate(() => document.querySelector("#box-list").textContent.includes("Mailer box")), true, "Boxes: new box shows in the box list");
+  await page.evaluate(() => [...document.querySelectorAll("#box-list .box-rule-row")].find(r => r.textContent.includes("Mailer box")).querySelector("button").click());
+  await waitRemote(() => !(remoteData.settings.boxes || []).includes("Mailer box"), "box removed");
+  eq(remoteData.settings.boxes.includes("Mailer box"), false, "Boxes: deleted box leaves the shared list");
 
   // Both features back OFF: today's screens again
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
