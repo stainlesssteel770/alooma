@@ -34,7 +34,40 @@
   }
   function toast(msg) { showToast(esc(msg), null, null, 4200); }
   function actionToast(msg, entry) {
-    showToast(esc(msg), "UNDO", function () { undoEntry(entry, true); }, 6500);
+    showToast(esc(msg), "UNDO", function () { undoEntry(entry, true); }, 10000);
+  }
+  /* ---------- in-app confirm sheet (no window.confirm / window.prompt) ---------- */
+  var sheetCb = null;
+  function openSheet(opts) {
+    $("sheet-title").textContent = opts.title || "";
+    $("sheet-sub").textContent = opts.sub || "";
+    $("sheet-summary").textContent = opts.summary || "";
+    $("sheet-primary").textContent = opts.primary || "Confirm";
+    var wrap = $("sheet-input-wrap");
+    if (opts.input) {
+      wrap.hidden = false;
+      $("sheet-input-label").textContent = opts.input.label || "";
+      var inp = $("sheet-input");
+      inp.value = opts.input.value;
+      inp.min = opts.input.min != null ? opts.input.min : "";
+      inp.step = opts.input.step || 1;
+    } else { wrap.hidden = true; }
+    sheetCb = opts.onConfirm;
+    $("sheet-backdrop").hidden = false;
+  }
+  function closeSheet() { $("sheet-backdrop").hidden = true; sheetCb = null; }
+  function packSummary(pack) {
+    var shorts = [];
+    pack.forEach(function (r) {
+      var oh = qtyOf(r.item);
+      if (oh < r.qty) shorts.push(r.name + " " + oh + " of " + r.qty);
+    });
+    var s = pack.length + " items";
+    if (shorts.length) {
+      s += " · Short: " + shorts.slice(0, 2).join(" · ");
+      if (shorts.length > 2) s += " · +" + (shorts.length - 2) + " more";
+    } else { s += " · Nothing short"; }
+    return s;
   }
   function showError(msg) {
     var b = $("error-banner"); b.textContent = msg; b.hidden = false;
@@ -254,16 +287,22 @@
     if (!requireEditor()) return;
     var cur = currentPack(); if (!cur) return;
     var craft = cur.craft;
-    var lines = cur.pack.map(function (r) { return r.name + " −" + r.qty; }).join("\n");
-    if (!window.confirm("Completed packing?\n\n" + craft.name + " — " + cur.kits + " kits (" + L.sku(craft.id, cur.kits) + ")\nThis subtracts from inventory:\n\n" + lines)) return;
-    var entry = newEntry(
-      "packed",
-      "Packed " + craft.name + " — " + cur.kits + " kits (" + L.sku(craft.id, cur.kits) + ")",
-      cur.pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
-      { craftId: craft.id, kits: cur.kits }
-    );
-    state.packPrintedKey = null;
-    commitChange(entry, "Packed " + L.sku(craft.id, cur.kits));
+    openSheet({
+      title: craft.name,
+      sub: cur.kits + " kits · " + L.sku(craft.id, cur.kits),
+      summary: packSummary(cur.pack),
+      primary: "Subtract from inventory",
+      onConfirm: function () {
+        var entry = newEntry(
+          "packed",
+          "Packed " + craft.name + " — " + cur.kits + " kits (" + L.sku(craft.id, cur.kits) + ")",
+          cur.pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
+          { craftId: craft.id, kits: cur.kits }
+        );
+        state.packPrintedKey = null;
+        commitChange(entry, "Packed " + L.sku(craft.id, cur.kits));
+      }
+    });
   }
 
   /* ---------- Hand-packed tab ---------- */
@@ -294,15 +333,21 @@
     if (!state.handCraft || !L.validKits(kits)) return;
     var craft = L.craftById(state.handCraft);
     var pack = L.computePack(craft.id, kits);
-    var lines = pack.map(function (r) { return r.name + " −" + r.qty; }).join("\n");
-    if (!window.confirm("Record hand-packed?\n\n" + craft.name + " — " + kits + " kits (" + L.sku(craft.id, kits) + ")\nThis subtracts from inventory:\n\n" + lines)) return;
-    var entry = newEntry(
-      "hand-packed",
-      "Hand-packed " + craft.name + " — " + kits + " kits (" + L.sku(craft.id, kits) + ")",
-      pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
-      { craftId: craft.id, kits: kits }
-    );
-    commitChange(entry, "Hand-packed " + L.sku(craft.id, kits));
+    openSheet({
+      title: craft.name,
+      sub: kits + " kits · " + L.sku(craft.id, kits) + " · hand-packed",
+      summary: packSummary(pack),
+      primary: "Subtract from inventory",
+      onConfirm: function () {
+        var entry = newEntry(
+          "hand-packed",
+          "Hand-packed " + craft.name + " — " + kits + " kits (" + L.sku(craft.id, kits) + ")",
+          pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
+          { craftId: craft.id, kits: kits }
+        );
+        commitChange(entry, "Hand-packed " + L.sku(craft.id, kits));
+      }
+    });
   }
 
   /* ---------- Inventory tab ---------- */
@@ -500,11 +545,24 @@
   function undoEntry(entry, skipConfirm) {
     if (!requireEditor()) return;
     if (entry.undone) return;
-    if (!skipConfirm && !window.confirm("Undo this entry?\n\n" + entry.title + "\n\nIts inventory changes will be reversed exactly.")) return;
-    L.applyEffects(state.data.inventory, entry.effects, -1);
-    entry.undone = true;
-    renderAll();
-    saveData("Undo: " + entry.title).then(function () { toast("Undone: " + entry.title); });
+    var doUndo = function () {
+      L.applyEffects(state.data.inventory, entry.effects, -1);
+      entry.undone = true;
+      renderAll();
+      saveData("Undo: " + entry.title).then(function () { toast("Undone: " + entry.title); });
+    };
+    if (skipConfirm) { doUndo(); return; }
+    var eff = entry.effects.map(function (e) {
+      return (L.ITEMS[e.item] || e.item) + " " + (e.delta > 0 ? "+" : "") + e.delta;
+    });
+    var summary = eff.slice(0, 3).join(" · ") + (eff.length > 3 ? " · +" + (eff.length - 3) + " more" : "");
+    openSheet({
+      title: "Undo this entry?",
+      sub: entry.title,
+      summary: "These changes will be reversed exactly: " + summary,
+      primary: "Undo — reverse it",
+      onConfirm: doUndo
+    });
   }
   function replaceEffects(entry, newEffects, newTitle, extraUpdates) {
     /* reverse old, apply new, keep one history entry */
@@ -520,30 +578,56 @@
   function editEntry(entry) {
     if (!requireEditor()) return;
     if (entry.type === "received") {
-      var v = parseInt(window.prompt("Received quantity for " + (L.ITEMS[entry.item] || "") + ":", entry.amount), 10);
-      if (!Number.isInteger(v) || v <= 0) return;
-      replaceEffects(entry, [{ item: entry.item, delta: v }],
-        "Received " + v + " × " + L.ITEMS[entry.item], { amount: v })
-        .then(function () { toast("Entry updated."); });
+      openSheet({
+        title: "Edit entry",
+        sub: "Received — " + (L.ITEMS[entry.item] || ""),
+        summary: "",
+        input: { label: "Received quantity", value: entry.amount, min: 1 },
+        primary: "Save",
+        onConfirm: function (v) {
+          if (!Number.isInteger(v) || v <= 0) { toast("Enter a quantity above 0."); return; }
+          replaceEffects(entry, [{ item: entry.item, delta: v }],
+            "Received " + v + " × " + L.ITEMS[entry.item], { amount: v })
+            .then(function () { toast("Entry updated."); });
+        }
+      });
     } else if (entry.type === "count-fix") {
-      var c = parseInt(window.prompt("Counted number for " + (L.ITEMS[entry.item] || "") + ":", entry.counted), 10);
-      if (!Number.isInteger(c) || c < 0) return;
-      var oldDelta = entry.effects[0].delta;
-      var before = entry.counted - oldDelta;
-      replaceEffects(entry, [{ item: entry.item, delta: c - before }],
-        "Count fix " + L.ITEMS[entry.item] + ": " + before + " → " + c, { counted: c })
-        .then(function () { toast("Entry updated."); });
+      openSheet({
+        title: "Edit entry",
+        sub: "Count fix — " + (L.ITEMS[entry.item] || ""),
+        summary: "",
+        input: { label: "Counted number", value: entry.counted, min: 0 },
+        primary: "Save",
+        onConfirm: function (c) {
+          if (!Number.isInteger(c) || c < 0) { toast("Enter a counted number, 0 or more."); return; }
+          var oldDelta = entry.effects[0].delta;
+          var before = entry.counted - oldDelta;
+          replaceEffects(entry, [{ item: entry.item, delta: c - before }],
+            "Count fix " + L.ITEMS[entry.item] + ": " + before + " → " + c, { counted: c })
+            .then(function () { toast("Entry updated."); });
+        }
+      });
     } else if (entry.type === "packed" || entry.type === "hand-packed") {
-      var k = parseInt(window.prompt("Number of kits (multiple of 6):", entry.kits), 10);
-      if (!L.validKits(k) || k === entry.kits) return;
-      var pack = L.computePack(entry.craftId, k);
-      var verb = entry.type === "packed" ? "Packed" : "Hand-packed";
-      var craft = L.craftById(entry.craftId);
-      replaceEffects(entry,
-        pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
-        verb + " " + craft.name + " — " + k + " kits (" + L.sku(entry.craftId, k) + ")",
-        { kits: k })
-        .then(function () { toast("Entry updated."); });
+      var craft0 = L.craftById(entry.craftId);
+      openSheet({
+        title: "Edit entry",
+        sub: craft0.name + " — currently " + entry.kits + " kits (" + L.sku(entry.craftId, entry.kits) + ")",
+        summary: "",
+        input: { label: "Number of kits (multiple of 6)", value: entry.kits, min: 6, step: 6 },
+        primary: "Save",
+        onConfirm: function (k) {
+          if (!L.validKits(k)) { toast("Kits must be a multiple of 6."); return; }
+          if (k === entry.kits) return;
+          var pack = L.computePack(entry.craftId, k);
+          var verb = entry.type === "packed" ? "Packed" : "Hand-packed";
+          var craft = L.craftById(entry.craftId);
+          replaceEffects(entry,
+            pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
+            verb + " " + craft.name + " — " + k + " kits (" + L.sku(entry.craftId, k) + ")",
+            { kits: k })
+            .then(function () { toast("Entry updated."); });
+        }
+      });
     } else {
       toast("This entry type can't be edited — undo it instead.");
     }
@@ -745,6 +829,16 @@
     });
     $("inv-search").addEventListener("input", function (ev) { invQuery = ev.target.value.trim().toLowerCase(); applyInvFilters(); });
     $("btn-lowfilter").addEventListener("click", function () { invLowOnly = !invLowOnly; applyInvFilters(); });
+    $("sheet-primary").addEventListener("click", function () {
+      var cb = sheetCb;
+      if (!cb) { closeSheet(); return; }
+      var val = null;
+      if (!$("sheet-input-wrap").hidden) val = parseInt($("sheet-input").value, 10);
+      closeSheet();
+      cb(val);
+    });
+    $("sheet-cancel").addEventListener("click", closeSheet);
+    $("sheet-backdrop").addEventListener("click", function (ev) { if (ev.target === $("sheet-backdrop")) closeSheet(); });
     $("btn-print-sheet").addEventListener("click", printPackSheet);
     $("btn-complete-pack").addEventListener("click", completePacking);
     $("btn-record-hand").addEventListener("click", recordHand);

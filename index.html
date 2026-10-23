@@ -200,6 +200,20 @@
   </section>
 </main>
 
+<div id="sheet-backdrop" class="sheet-backdrop" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <h3 id="sheet-title"></h3>
+    <p id="sheet-sub" class="sheet-sub"></p>
+    <p id="sheet-summary" class="sheet-summary"></p>
+    <label id="sheet-input-wrap" class="sheet-input-wrap" hidden>
+      <span id="sheet-input-label"></span>
+      <input type="number" id="sheet-input" inputmode="numeric">
+    </label>
+    <button id="sheet-primary" class="btn btn-primary"></button>
+    <button id="sheet-cancel" class="btn">Cancel</button>
+  </div>
+</div>
+
 <div id="print-area"></div>
 
 <script src="logic.js"></script>
