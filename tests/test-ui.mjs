@@ -73,10 +73,21 @@ try {
   eq(await page.$eval("#toast", e => getComputedStyle(e).display), "none", "toast hidden on load (no floating pill)");
   eq(await page.$eval("#toast", e => { e.hidden = false; const d = getComputedStyle(e).display; e.hidden = true; return d; }), "flex", "toast displays when shown");
   eq(await page.$$eval("#pack-crafts .craft-btn", els => els.length), 6, "6 craft buttons");
-  eq(await page.$eval("#pack-sku", e => e.textContent), "CAK-18", "default SKU CAK-18");
+  /* Batch A1: NOTHING pre-selected — no craft, no kits, buttons disabled with the reason inside */
+  eq(await page.$$eval("#pack-crafts .craft-btn.selected", els => els.length), 0, "A1: no craft pre-selected on Packing");
+  eq(await page.$$eval("#hand-crafts .craft-btn.selected", els => els.length), 0, "A1: no craft pre-selected on Hand-packed");
+  eq(await page.$eval("#pack-sku", e => e.textContent), "—", "A1: no SKU until craft+kits chosen");
+  eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Choose a craft|true", "A1/A4: Complete disabled, reason inside button");
+  eq(await page.$eval("#btn-record-hand", e => e.textContent + "|" + e.disabled), "Choose a craft|true", "A1/A4: Record disabled, reason inside button");
+  eq(await page.$$eval("#pack-table tbody tr", els => els.length), 0, "A1: no pack list before choosing");
 
-  /* Pack list is visible immediately (new look: no "open list" step) */
+  /* Choose The Cakery + 18 kits -> the pack list appears */
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+  await sleep(150);
+  eq(await page.$eval("#btn-complete-pack", e => e.textContent), "Choose kits", "A4: after craft, reason becomes Choose kits");
+  await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await sleep(200);
+  eq(await page.$eval("#pack-sku", e => e.textContent), "CAK-18", "SKU CAK-18 after choosing craft+kits");
   const packRows = await page.$$eval("#pack-table tbody tr", trs => trs.map(tr => [...tr.children].map(td => td.textContent.trim()).join("|")));
   eq(packRows.length, 19, "CAK pack list 19 rows");
   eq(packRows.find(r => r.includes("Heart Jewelry Box")), "|Heart Jewelry Box|18|0", "CAK18 heart box row");
@@ -134,12 +145,14 @@ try {
       .filter(x => x.h < 44));
   eq(smallTargets.length, 0, "inventory: no interactive element under 44px (found: " + JSON.stringify(smallTargets.slice(0, 4)) + ")");
 
-  /* Complete CAK-18: button stays disabled until all items checked (or printed-sheet override) */
+  /* Complete CAK-18 (Batch A): reason counts down, printing unlocks, sheet confirms */
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
-  eq(await page.$eval("#btn-complete-pack", e => e.disabled), true, "complete disabled before checking items");
-  /* The whole pack flow is now: craft (already Cakery) -> chip 18 -> Check all -> Completed -> confirm */
-  await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
+  eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Check 19 more|true", "A4: disabled reason counts unchecked items");
+  await page.evaluate(() => { window.print = () => {}; });
+  await page.click("#btn-print-sheet");
+  await sleep(200);
+  eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Complete CAK-18|false", "A4: printing the sheet unlocks Complete for this order");
   await page.click("#btn-check-all");
   await sleep(150);
   eq(await page.$eval("#pack-progress", e => e.textContent), "19 of 19 checked", "check-all progress text");
@@ -151,15 +164,23 @@ try {
       .filter(x => x.h < 44));
   eq(smallPack.length, 0, "pack: no interactive element under 44px (found: " + JSON.stringify(smallPack.slice(0, 4)) + ")");
   await page.click("#btn-complete-pack");
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "The Cakery", "A5: confirm sheet shows craft name");
+  eq(await page.$eval("#sheet-sub", e => e.textContent), "18 kits · CAK-18", "A5: sheet shows kits + SKU");
+  eq(await page.$eval("#sheet-primary", e => e.textContent), "Subtract from inventory", "A5: sheet primary label");
+  await page.click("#sheet-primary");
   await sleep(600);
   eq(remoteData.inventory["scissors"].qty, 194, "CAK-18 deducted 6 scissors (200->194)");
   eq(remoteData.inventory["heart-jewelry-box"].qty, -18, "CAK-18 deducted 18 heart boxes");
   eq(remoteData.history[0].type, "packed", "pack logged");
 
-  /* Undo the pack from History: inventory restored exactly */
+  /* Undo the pack from History (via the confirm sheet): inventory restored exactly */
   await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
   await sleep(200);
   await page.evaluate(() => document.querySelector(".history-entry .btn-undo").click());
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Undo this entry?", "A5: undo uses the confirm sheet, not a pop-up");
+  await page.click("#sheet-primary");
   await sleep(600);
   eq(remoteData.inventory["scissors"].qty, 200, "undo pack restored scissors");
   eq(remoteData.inventory["heart-jewelry-box"].qty, 0, "undo pack restored heart boxes");
@@ -175,7 +196,11 @@ try {
   });
   await sleep(200);
   eq(await page.$eval("#hand-sku", e => e.textContent), "HCB-18", "hand SKU HCB-18");
+  eq(await page.$eval("#btn-record-hand", e => e.textContent + "|" + e.disabled), "Record HCB-18|false", "A3: Record button names the order");
   await page.click("#btn-record-hand");
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Hafrashat Challah", "A5: hand-packed confirm sheet shows craft");
+  await page.click("#sheet-primary");
   await sleep(600);
   eq(remoteData.inventory["heat-gun"].qty, -1, "hand-packed HCB-18 heat gun tier = 1");
   eq(remoteData.inventory["wood-burning-cream"].qty, -1, "hand-packed HCB-18 wood cream tier = 1");
@@ -195,10 +220,14 @@ try {
   eq(remoteData.inventory["scissors"].qty, 190, "count entry set scissors to 190");
   eq(remoteData.history[0].type, "count-fix", "count fix logged");
 
-  /* Edit that count-fix entry: counted 195 (dialog: prompt returns answer, first dialog is confirm-accept) */
-  await page.evaluate(() => { window.prompt = () => "195"; document.querySelector('[data-tab="history"]').click(); });
+  /* Edit that count-fix entry via the sheet's number field: counted 195 */
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
   await sleep(200);
   await page.evaluate(() => document.querySelector(".history-entry .btn-edit").click());
+  await sleep(250);
+  eq(await page.$eval("#sheet-input-label", e => e.textContent), "Counted number", "A5: edit sheet has a proper number field");
+  await page.evaluate(() => { document.querySelector("#sheet-input").value = "195"; });
+  await page.click("#sheet-primary");
   await sleep(600);
   eq(remoteData.inventory["scissors"].qty, 195, "edit count-fix to 195 applied exactly");
 
