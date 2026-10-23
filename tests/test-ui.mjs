@@ -346,7 +346,7 @@ try {
   await page.click("#btn-bulk-add");
   await sleep(250);
   eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 1, "v3 D1: order queued");
-  eq(await page.$eval("#btn-bulk-add", e => e.textContent), "Choose a craft", "v3 D1: picker cleared after Add");
+  eq(await page.$eval("#btn-bulk-add", e => e.textContent), "Pick a craft", "v3 D1: picker cleared after Add");
   eq(await page.$eval("#toast", e => e.textContent.includes("Added CAK-18")), true, "v3 D1: toast confirms the add");
   await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
   await sleep(200);
@@ -590,6 +590,9 @@ try {
   await page.evaluate(() => { document.querySelector('#delivery-entry-list input[data-item="heat-gun"]').value = "900"; });
   await page.click("#btn-apply-delivery");
   await sleep(250);
+  console.log("D5 DIAG title:", await page.$eval("#sheet-title", e => e.textContent));
+  console.log("D5 DIAG sheet-extra:", await page.$eval("#sheet-extra", e => e.textContent));
+  console.log("D5 DIAG heat-gun received in remote history:", JSON.stringify(remoteData.history.filter(e => e.type === "received" && e.item === "heat-gun").map(e => e.amount)));
   eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heat gun +900") && e.textContent.includes("(6× on hand)")), true, "v3 D5: first delivery of 900 on 150 on hand flags (6× on hand)");
   await page.click("#sheet-cancel");
   await sleep(200);
