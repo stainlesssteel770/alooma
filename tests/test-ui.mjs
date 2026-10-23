@@ -203,6 +203,43 @@ try {
       .filter(x => x.h < 44));
   eq(smallTargets.length, 0, "inventory: no interactive element under 44px (found: " + JSON.stringify(smallTargets.slice(0, 4)) + ")");
 
+  /* v3 D5: a FIRST delivery (no earlier one to compare with) flags at >5x on hand.
+     This block must run HERE, before the Batch B stock-up below gives every
+     item a 999 delivery — heat gun still has no delivery history at this
+     point. It is set to 150 by count, checked, then restored to 0. */
+  const hgBase = remoteData.inventory["heat-gun"].qty;
+  const openPanel = async (panel, btn) => page.evaluate((p, b) => { if (document.querySelector(p).hidden) document.querySelector(b).click(); }, panel, btn);
+  const closePanel = async (panel, btn) => page.evaluate((p, b) => { if (!document.querySelector(p).hidden) document.querySelector(b).click(); }, panel, btn);
+  await openPanel("#count-entry", "#btn-enter-counts");
+  await sleep(250);
+  await page.evaluate(v => { document.querySelector('#count-entry-list input[data-item="heat-gun"]').value = String(v); }, 150);
+  await page.click("#btn-apply-counts");
+  await sleep(250);
+  await page.click("#sheet-primary");
+  await sleep(700);
+  eq(remoteData.inventory["heat-gun"].qty, 150, "v3 D5 setup: heat gun counted to 150 with no delivery history");
+  eq(await page.$eval("#save-status", e => e.textContent), "Saved · now", "v3 D7: save line uses the short form");
+  await closePanel("#count-entry", "#btn-cancel-counts");
+  await openPanel("#delivery-entry", "#btn-delivery");
+  await sleep(250);
+  await page.evaluate(() => { document.querySelector('#delivery-entry-list input[data-item="heat-gun"]').value = "900"; });
+  await page.click("#btn-apply-delivery");
+  await sleep(250);
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heat gun +900") && e.textContent.includes("(6× on hand)")), true, "v3 D5: first delivery of 900 on 150 on hand flags (6× on hand)");
+  await page.click("#sheet-cancel");
+  await sleep(200);
+  eq(remoteData.inventory["heat-gun"].qty, 150, "v3 D5: Edit numbers saved nothing");
+  await closePanel("#delivery-entry", "#btn-cancel-delivery");
+  await openPanel("#count-entry", "#btn-enter-counts");
+  await sleep(250);
+  await page.evaluate(v => { document.querySelector('#count-entry-list input[data-item="heat-gun"]').value = String(v); }, hgBase);
+  await page.click("#btn-apply-counts");
+  await sleep(250);
+  await page.click("#sheet-primary");
+  await sleep(700);
+  eq(remoteData.inventory["heat-gun"].qty, hgBase, "v3 D5 cleanup: heat gun restored to " + hgBase);
+  await closePanel("#count-entry", "#btn-cancel-counts");
+
   /* Complete CAK-18 (Batch A): reason counts down, printing unlocks, sheet confirms */
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
@@ -569,44 +606,6 @@ try {
   await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
   await sleep(700);
   eq(remoteData.inventory["scissors"].qty, 245, "v2 A3: UNDO reverses the count batch too");
-
-  /* v3 D5: a FIRST delivery (no earlier one to compare with) flags at >5x on hand.
-     Heat gun is set to 150 by count (no delivery history), then restored. */
-  const hgBase = remoteData.inventory["heat-gun"].qty;
-  const openPanel = async (panel, btn) => page.evaluate((p, b) => { if (document.querySelector(p).hidden) document.querySelector(b).click(); }, panel, btn);
-  const closePanel = async (panel, btn) => page.evaluate((p, b) => { if (!document.querySelector(p).hidden) document.querySelector(b).click(); }, panel, btn);
-  await openPanel("#count-entry", "#btn-enter-counts");
-  await sleep(250);
-  await page.evaluate(v => { document.querySelector('#count-entry-list input[data-item="heat-gun"]').value = String(v); }, 150);
-  await page.click("#btn-apply-counts");
-  await sleep(250);
-  await page.click("#sheet-primary");
-  await sleep(700);
-  eq(remoteData.inventory["heat-gun"].qty, 150, "v3 D5 setup: heat gun counted to 150 with no delivery history");
-  eq(await page.$eval("#save-status", e => e.textContent), "Saved · now", "v3 D7: save line uses the short form");
-  await closePanel("#count-entry", "#btn-cancel-counts");
-  await openPanel("#delivery-entry", "#btn-delivery");
-  await sleep(250);
-  await page.evaluate(() => { document.querySelector('#delivery-entry-list input[data-item="heat-gun"]').value = "900"; });
-  await page.click("#btn-apply-delivery");
-  await sleep(250);
-  console.log("D5 DIAG title:", await page.$eval("#sheet-title", e => e.textContent));
-  console.log("D5 DIAG sheet-extra:", await page.$eval("#sheet-extra", e => e.textContent));
-  console.log("D5 DIAG heat-gun received in remote history:", JSON.stringify(remoteData.history.filter(e => e.type === "received" && e.item === "heat-gun").map(e => e.amount)));
-  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heat gun +900") && e.textContent.includes("(6× on hand)")), true, "v3 D5: first delivery of 900 on 150 on hand flags (6× on hand)");
-  await page.click("#sheet-cancel");
-  await sleep(200);
-  eq(remoteData.inventory["heat-gun"].qty, 150, "v3 D5: Edit numbers saved nothing");
-  await closePanel("#delivery-entry", "#btn-cancel-delivery");
-  await openPanel("#count-entry", "#btn-enter-counts");
-  await sleep(250);
-  await page.evaluate(v => { document.querySelector('#count-entry-list input[data-item="heat-gun"]').value = String(v); }, hgBase);
-  await page.click("#btn-apply-counts");
-  await sleep(250);
-  await page.click("#sheet-primary");
-  await sleep(700);
-  eq(remoteData.inventory["heat-gun"].qty, hgBase, "v3 D5 cleanup: heat gun restored to " + hgBase);
-  await closePanel("#count-entry", "#btn-cancel-counts");
 
   /* ---------- Batch C: default boxes + bin locations ---------- */
   const waitRemote = async (fn, label) => { for (let i = 0; i < 40; i++) { if (fn()) return; await sleep(150); } throw new Error("timeout waiting: " + label); };
