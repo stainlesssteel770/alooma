@@ -108,6 +108,16 @@ try {
   eq(await page.$eval('[data-tab="history"]', e => e.hidden), false, "View-only: History tab stays visible");
   eq(await page.$eval("#tab-inventory", e => e.classList.contains("active")), true, "View-only: app opens on Inventory");
   eq(await page.$$eval("#pack-table tbody tr", els => els.length), 0, "A1: no pack list before choosing");
+  /* v2 A1: calm first screen — mode row truly hidden (CSS respects the
+     attribute), no red kits error before the field is touched, muted help */
+  eq(await page.$eval("#pack-mode", e => getComputedStyle(e).display), "none", "v2 A1: Print / Hand pack truly hidden before a choice");
+  eq(await page.$eval("#pack-error", e => e.textContent), "", "v2 A1: no red kits error on a fresh screen");
+  eq(await page.$eval("#pack-help", e => !e.hidden && e.textContent.includes("Pick a craft")), true, "v2 A1: muted help line shows instead of the error");
+  /* (field set via evaluate: the Packing tab itself is hidden in view-only) */
+  await page.evaluate(() => { const i = document.querySelector("#pack-kits"); i.value = "7"; i.dispatchEvent(new Event("input", { bubbles: true })); });
+  eq(await page.$eval("#pack-error", e => e.textContent.includes("multiples of 6")), true, "v2 A1: kits error appears once the field is touched");
+  eq(await page.$eval("#pack-help", e => e.hidden), true, "v2 A1: help line gives way to the error");
+  await page.evaluate(() => { const i = document.querySelector("#pack-kits"); i.value = ""; i.dispatchEvent(new Event("input", { bubbles: true })); });
 
   /* Connect with a (mock) token — reached by tapping the header badge,
      the view-only door into Settings */
