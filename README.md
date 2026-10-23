@@ -47,10 +47,18 @@ paper ≠ parchment circle, Clay Tray A ≠ B).
 - `node tests/test-logic.js` — quantity logic: CAK-18 deductions match the old site exactly,
   tier rule, tray alternation, pack/receive/undo/edit arithmetic (75 checks).
 - `node tests/test-ui.mjs` — drives the real page and real buttons in headless Chrome with
-  the GitHub API mocked (connect, item-panel receive + warning, check-all pack, undo,
-  hand-pack, count entry, edit, prints, tap-target sizes, disconnect — 39 checks).
+  the GitHub API mocked (Batch A: nothing pre-selected, disabled-button reasons, print
+  unlocks Complete, in-app confirm sheet for Complete/Record/Undo/Edit; plus connect,
+  item-panel receive + warning, count entry, prints, tap-target sizes, disconnect — 56 checks).
+- `node tests/test-offline.mjs` — blocks the data load and verifies the single
+  "Can't reach the stock data" empty state and that Retry recovers (9 checks).
 - `node tests/check-print.mjs` — renders the prints to PDF and verifies the page size is
   exactly 4×6 in and the page count equals the content (no blank labels).
+- `node tests/screenshots.mjs` — captures the main screens at 390px for batch reports.
+
+The same suites run on GitHub's machines: Actions tab → **Tests** → Run workflow
+(manual trigger, read-only, no secrets — every suite uses sample data and a mocked
+API). Screenshots and print PDFs are attached to each run as artifacts.
 
 ## Making an editor token (one time)
 
