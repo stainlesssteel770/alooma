@@ -12,7 +12,7 @@
 
   var state = {
     data: null, sha: null, editor: null, /* {token, owner, repo, login} */
-    packCraft: null, handCraft: null, loadedAt: null, packPrintedKey: null
+    packCraft: null, loadedAt: null, packPrintedKey: null
   };
 
   /* ---------- small helpers ---------- */
@@ -265,6 +265,8 @@
     $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
   }
   var packFoldOverride = false;
+  var packMode = "print"; /* "print" (sheet + checklist) or "hand" (batch record) */
+  var handLines = []; /* [{craftId, kits}] queued hand-packed orders, in-memory only */
   var packSortBin = false; /* Batch C2: sort the pack list + sheet by bin */
   var packBoxOverride = null; /* null = use the box rule; an array = this order only */
   var packSelKey = null;
@@ -304,9 +306,10 @@
       err.textContent = kits ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : "Enter the number of kits — orders are multiples of 6.";
       updatePackProgress();
       renderPackBoxes();
+      renderPackMode();
       return;
     }
-    if (!state.packCraft) { updatePackProgress(); renderPackBoxes(); return; }
+    if (!state.packCraft) { updatePackProgress(); renderPackBoxes(); renderPackMode(); return; }
     var pack = L.computePack(state.packCraft, kits);
     var binsOn = settings().features.bins;
     $("btn-pack-sort").hidden = !binsOn;
@@ -348,6 +351,7 @@
     }
     updatePackProgress();
     renderPackBoxes();
+    renderPackMode();
   }
   function currentPack() {
     if (!state.packCraft) return null;
@@ -378,47 +382,94 @@
     });
   }
 
-  /* ---------- Hand-packed tab ---------- */
-  function renderHand() {
-    craftButtons("hand-crafts", state.handCraft, function (id) { state.handCraft = id; renderHand(); });
-    var kits = parseInt($("hand-kits").value, 10);
-    markChips("hand", kits);
-    var err = $("hand-error"); err.textContent = "";
-    var valid = L.validKits(kits);
-    $("hand-sku").textContent = valid && state.handCraft ? L.sku(state.handCraft, kits) : "—";
-    var tbody = $("hand-table").querySelector("tbody");
-    tbody.innerHTML = "";
-    var hb = $("btn-record-hand");
-    hb.disabled = !(valid && state.handCraft);
-    hb.textContent = !state.handCraft ? "Choose a craft"
-      : !valid ? "Choose kits"
-      : "Record " + L.sku(state.handCraft, kits);
-    if (!valid || !state.handCraft) { err.textContent = kits && state.handCraft ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : ""; return; }
-    L.computePack(state.handCraft, kits).forEach(function (r) {
-      var tr = document.createElement("tr");
-      tr.innerHTML = "<td>" + esc(r.name) + '</td><td class="num">' + r.qty + '</td><td class="num">' + qtyOf(r.item) + "</td>";
-      tbody.appendChild(tr);
-    });
+  /* ---------- Hand pack: batch record on the Packing tab ---------- */
+  /* After craft + kits are chosen, the packer picks a path: Print (the sheet +
+     checklist flow above) or Hand pack (queue orders already packed by hand and
+     record them all in one save). Print is the default view. */
+  function renderPackMode() {
+    var kits = parseInt($("pack-kits").value, 10);
+    var hasSel = !!state.packCraft && L.validKits(kits);
+    var hand = hasSel && packMode === "hand";
+    $("pack-mode").hidden = !hasSel;
+    $("btn-print-sheet").classList.toggle("selected", packMode !== "hand");
+    $("btn-mode-hand").classList.toggle("selected", packMode === "hand");
+    $("pack-list-wrap").hidden = hand;
+    $("hand-batch").hidden = !hand;
+    if (hand) $("pack-warning").hidden = true;
+    renderHandLines();
   }
-  function recordHand() {
+  function renderHandLines() {
+    var wrap = $("hand-lines");
+    wrap.innerHTML = "";
+    if (!handLines.length) {
+      wrap.innerHTML = '<p class="hint">No orders added yet — pick a craft and kit amount above, then tap Add.</p>';
+    }
+    handLines.forEach(function (ln, i) {
+      var craft = L.craftById(ln.craftId);
+      var row = document.createElement("div");
+      row.className = "hand-line";
+      row.innerHTML = "<span>" + esc(craft.name) + " · " + ln.kits + " kits · " + esc(L.sku(ln.craftId, ln.kits)) + "</span>" +
+        '<button type="button" class="btn btn-quiet" data-remove="' + i + '" aria-label="Remove ' + esc(L.sku(ln.craftId, ln.kits)) + '">✕</button>';
+      wrap.appendChild(row);
+    });
+    var add = $("btn-hand-add");
+    var kits = parseInt($("pack-kits").value, 10);
+    add.disabled = !(!!state.packCraft && L.validKits(kits));
+    add.textContent = !state.packCraft ? "Choose a craft"
+      : !L.validKits(kits) ? "Choose kits"
+      : "Add " + L.sku(state.packCraft, kits);
+    var rec = $("btn-record-all");
+    rec.disabled = !handLines.length;
+    rec.textContent = handLines.length
+      ? "Record all · " + handLines.length + (handLines.length === 1 ? " order" : " orders")
+      : "Record all";
+  }
+  function addHandLine() {
     if (!requireEditor()) return;
-    var kits = parseInt($("hand-kits").value, 10);
-    if (!state.handCraft || !L.validKits(kits)) return;
-    var craft = L.craftById(state.handCraft);
-    var pack = L.computePack(craft.id, kits);
+    var cur = currentPack(); if (!cur) return;
+    handLines.push({ craftId: cur.craft.id, kits: cur.kits });
+    packFoldOverride = true; /* reopen the picker so the next order is one pick away */
+    renderPack();
+  }
+  function recordAllHand() {
+    if (!requireEditor()) return;
+    if (!handLines.length) return;
+    var lines = handLines.slice();
+    /* Aggregate the batch for the confirm summary so shortages account for
+       every line, not just one order at a time. */
+    var aggByItem = {}, aggPack = [];
+    lines.forEach(function (ln) {
+      L.computePack(ln.craftId, ln.kits).forEach(function (r) {
+        if (aggByItem[r.item]) aggByItem[r.item].qty += r.qty;
+        else { var c = { item: r.item, name: r.name, qty: r.qty }; aggByItem[r.item] = c; aggPack.push(c); }
+      });
+    });
+    var skus = lines.map(function (ln) { return L.sku(ln.craftId, ln.kits); });
     openSheet({
-      title: craft.name,
-      sub: kits + " kits · " + L.sku(craft.id, kits) + " · hand-packed",
-      summary: packSummary(pack),
+      title: "Hand-packed",
+      sub: lines.length + (lines.length === 1 ? " order: " : " orders: ") +
+        skus.slice(0, 3).join(", ") + (skus.length > 3 ? " +" + (skus.length - 3) + " more" : "") + " · hand-packed",
+      summary: packSummary(aggPack),
       primary: "Subtract from inventory",
       onConfirm: function () {
-        var entry = newEntry(
-          "hand-packed",
-          "Hand-packed " + craft.name + " — " + kits + " kits (" + L.sku(craft.id, kits) + ")",
-          pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
-          { craftId: craft.id, kits: kits }
-        );
-        commitChange(entry, "Hand-packed " + L.sku(craft.id, kits));
+        /* One history entry per order (Undo/Edit keep working per order),
+           applied locally like a delivery, then a SINGLE save for the batch. */
+        lines.slice().reverse().forEach(function (ln) {
+          var craft = L.craftById(ln.craftId);
+          var entry = newEntry(
+            "hand-packed",
+            "Hand-packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
+            L.computePack(ln.craftId, ln.kits).map(function (r) { return { item: r.item, delta: -r.qty }; }),
+            { craftId: ln.craftId, kits: ln.kits }
+          );
+          L.applyEffects(state.data.inventory, entry.effects, +1);
+          state.data.history.unshift(entry);
+        });
+        handLines = [];
+        renderAll();
+        saveData("Hand-packed " + lines.length + " order(s)").then(function () {
+          toast("Recorded " + lines.length + " hand-packed order" + (lines.length === 1 ? "" : "s") + ".");
+        });
       }
     });
   }
@@ -1007,7 +1058,6 @@
     renderBoxSettings();
     renderBinSettings();
     renderPack();
-    renderHand();
     renderInventory();
     renderHistory();
   }
@@ -1028,7 +1078,6 @@
     });
     $("pack-kits").addEventListener("input", function () { packFoldOverride = false; renderPack(); });
     $("btn-pack-change").addEventListener("click", function () { packFoldOverride = true; renderPack(); });
-    $("hand-kits").addEventListener("input", renderHand);
     function wireStepper(inputId, minusId, plusId, renderFn) {
       $(minusId).addEventListener("click", function () {
         var v = parseInt($(inputId).value, 10);
@@ -1042,12 +1091,11 @@
       });
     }
     wireStepper("pack-kits", "pack-minus", "pack-plus", function () { packFoldOverride = false; renderPack(); });
-    wireStepper("hand-kits", "hand-minus", "hand-plus", renderHand);
     document.querySelectorAll(".kits-chip").forEach(function (chip) {
       chip.addEventListener("click", function () {
         var target = chip.getAttribute("data-for");
         $(target + "-kits").value = chip.getAttribute("data-kits");
-        if (target === "pack") { packFoldOverride = false; renderPack(); } else renderHand();
+        packFoldOverride = false; renderPack();
       });
     });
     $("btn-check-all").addEventListener("click", function () {
@@ -1098,9 +1146,17 @@
     });
     $("sheet-cancel").addEventListener("click", closeSheet);
     $("sheet-backdrop").addEventListener("click", function (ev) { if (ev.target === $("sheet-backdrop")) closeSheet(); });
-    $("btn-print-sheet").addEventListener("click", printPackSheet);
+    $("btn-print-sheet").addEventListener("click", function () { packMode = "print"; renderPack(); printPackSheet(); });
+    $("btn-mode-hand").addEventListener("click", function () { packMode = "hand"; renderPack(); });
+    $("btn-hand-add").addEventListener("click", addHandLine);
+    $("btn-record-all").addEventListener("click", recordAllHand);
+    $("hand-lines").addEventListener("click", function (ev) {
+      var b = ev.target.closest("[data-remove]");
+      if (!b) return;
+      handLines.splice(parseInt(b.getAttribute("data-remove"), 10), 1);
+      renderHandLines();
+    });
     $("btn-complete-pack").addEventListener("click", completePacking);
-    $("btn-record-hand").addEventListener("click", recordHand);
     $("btn-print-inventory").addEventListener("click", function () { printInventory("report"); });
     $("btn-print-count").addEventListener("click", function () { printInventory("count"); });
     $("btn-enter-counts").addEventListener("click", function () {
