@@ -261,15 +261,11 @@
      every device sees the same rules. Old data files have no settings
      section — normalizeSettings fills defaults with both features OFF,
      so nothing changes until a feature is switched on in Settings. */
-  var BOX_IDS = ["A", "B", "C"];
+  var BOX_IDS = ["A", "B", "C"]; /* legacy ids — only used to migrate old settings */
   function defaultSettings() {
     return {
       features: { boxes: false, bins: false },
-      boxes: {
-        A: { name: "Box A", size: "" },
-        B: { name: "Box B", size: "" },
-        C: { name: "Box C", size: "" }
-      },
+      boxes: ["Box A", "Box B", "Box C"],
       boxRules: [],
       bins: {}
     };
@@ -280,16 +276,39 @@
     if (!s.features || typeof s.features !== "object") s.features = d.features;
     if (typeof s.features.boxes !== "boolean") s.features.boxes = false;
     if (typeof s.features.bins !== "boolean") s.features.bins = false;
-    if (!s.boxes || typeof s.boxes !== "object") s.boxes = d.boxes;
-    BOX_IDS.forEach(function (b) {
-      if (!s.boxes[b] || typeof s.boxes[b] !== "object") s.boxes[b] = d.boxes[b];
-      if (typeof s.boxes[b].name !== "string" || !s.boxes[b].name) s.boxes[b].name = d.boxes[b].name;
-      if (typeof s.boxes[b].size !== "string") s.boxes[b].size = "";
-    });
+    /* Boxes are a free-form list of names (the user adds as many as he has).
+       Migrate the original fixed shape {A:{name,size},B:...,C:...}: the list
+       becomes the names, and rules that referenced letters get the names. */
+    var idToName = null;
+    if (Array.isArray(s.boxes)) {
+      var clean = [];
+      s.boxes.forEach(function (b) {
+        if (typeof b === "string" && b.trim() && clean.indexOf(b.trim()) < 0) clean.push(b.trim());
+      });
+      s.boxes = clean;
+    } else if (s.boxes && typeof s.boxes === "object") {
+      idToName = {};
+      var names = [];
+      BOX_IDS.forEach(function (b) {
+        var nm = (s.boxes[b] && typeof s.boxes[b].name === "string" && s.boxes[b].name.trim()) || ("Box " + b);
+        idToName[b] = nm;
+        if (names.indexOf(nm) < 0) names.push(nm);
+      });
+      s.boxes = names;
+    } else {
+      s.boxes = d.boxes.slice();
+    }
     if (!Array.isArray(s.boxRules)) s.boxRules = [];
     s.boxRules = s.boxRules.filter(function (r) {
       return r && craftById(r.craftId) && validKits(r.kits) && Array.isArray(r.boxes) && r.boxes.length > 0;
-    });
+    }).map(function (r) {
+      var mapped = [];
+      r.boxes.forEach(function (b) {
+        var nm = idToName && idToName[b] ? idToName[b] : b;
+        if (typeof nm === "string" && s.boxes.indexOf(nm) >= 0 && mapped.indexOf(nm) < 0) mapped.push(nm);
+      });
+      return { craftId: r.craftId, kits: r.kits, boxes: mapped };
+    }).filter(function (r) { return r.boxes.length > 0; });
     if (!s.bins || typeof s.bins !== "object") s.bins = {};
     return s;
   }
@@ -302,9 +321,8 @@
     }
     return null;
   }
-  function boxLabel(settings, boxId) {
-    var b = settings && settings.boxes && settings.boxes[boxId];
-    return b && b.name ? b.name : "Box " + boxId;
+  function boxLabel(settings, boxName) {
+    return typeof boxName === "string" ? boxName : "Box " + boxName;
   }
 
   /* Bin locations (Batch C2): placeholders BIN-01, BIN-02... in inventory
@@ -325,8 +343,8 @@
     }
     return defaultBins()[itemId] || "";
   }
-  function boxesText(settings, boxIds) {
-    return boxIds.map(function (b) { return boxLabel(settings, b); }).join(" + ");
+  function boxesText(settings, boxNames) {
+    return (boxNames || []).join(" + ");
   }
 
   /* Apply a history entry's effects to an inventory object (mutates inv). */
