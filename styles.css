@@ -107,15 +107,13 @@ tr.checked-row td .row-name { text-decoration: line-through; }
 .boxes-edit[hidden] { display: none !important; }
 .toggle-row { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; min-height: 48px; cursor: pointer; }
 .toggle-row input[type="checkbox"] { width: 26px; height: 26px; accent-color: var(--accent); }
-.box-meta-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
-.box-meta-row strong { width: 22px; }
-.box-meta-row input { flex: 1; min-width: 0; height: 46px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 12px; font-size: 16px; }
+.box-add-row { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; }
+.box-add-row input { flex: 1; min-width: 0; height: 48px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 12px; font-size: 16px; }
 .box-rule-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 15.5px; }
 .box-rule-row span { flex: 1; }
 .box-add { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-.box-add select { height: 48px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 10px; font-size: 16px; background: var(--surface); }
-.rule-boxes label { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; margin-right: 8px; min-height: 44px; }
-.rule-boxes input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--accent); }
+.box-add select { height: 48px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 10px; font-size: 16px; background: var(--surface); max-width: 100%; }
+.box-add input[type="number"] { width: 170px; max-width: 100%; height: 48px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 10px; font-size: 16px; }
 .picker-summary { display: flex; align-items: center; gap: 10px; background: #F1F3F6; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 6px 6px 14px; margin: 4px 0 10px; font-size: 16.5px; font-weight: 600; }
 .picker-summary[hidden] { display: none !important; }
 .picker-summary span { flex: 1; }
