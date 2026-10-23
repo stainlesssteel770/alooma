@@ -456,10 +456,10 @@ try {
   await page.select("#rule-craft", "cak");
   await page.type("#rule-kits", "12");
   await page.select("#rule-boxes", "Box A");
-  await page.select("#rule-boxes-2", "Box B");
+  await page.select("#rule-boxes", "Box B");
   await page.click("#btn-rule-add");
   await waitRemote(() => (remoteData.settings.boxRules || []).length === 1, "box rule saved");
-  eq(remoteData.settings.boxRules[0].boxes.join(",") === "Box A,Box B", true, "C1: rule saved (CAK 12 = Box A + Box B, from the two dropdowns)");
+  eq(remoteData.settings.boxRules[0].boxes.join(",") === "Box A,Box B", true, "C1: rule saved (CAK 12 = Box A + Box B, picked from the box menu)");
   /* The kits field validates: 7 is not a multiple of 6, so no rule is added */
   await page.type("#rule-kits", "7");
   await page.click("#btn-rule-add");
@@ -544,9 +544,19 @@ try {
   eq(remoteData.settings.boxes.includes("Mailer box"), true, "Boxes: typed box name saved to the shared list");
   eq(await page.evaluate(() => [...document.querySelectorAll("#rule-boxes option")].map(o => o.value).includes("Mailer box")), true, "Boxes: new box appears in the rule dropdown");
   eq(await page.evaluate(() => document.querySelector("#box-list").textContent.includes("Mailer box")), true, "Boxes: new box shows in the box list");
+  /* A rule can carry ANY number of boxes: build a 3-box rule for TAM-24 */
+  await page.select("#rule-craft", "tam");
+  await page.type("#rule-kits", "24");
+  await page.select("#rule-boxes", "Box A");
+  await page.select("#rule-boxes", "Box B");
+  await page.select("#rule-boxes", "Mailer box");
+  await page.click("#btn-rule-add");
+  await waitRemote(() => (remoteData.settings.boxRules || []).length === 2, "3-box rule saved");
+  eq(remoteData.settings.boxRules[1].boxes.join(","), "Box A,Box B,Mailer box", "Boxes: a rule holds three boxes (any number works)");
   await page.evaluate(() => [...document.querySelectorAll("#box-list .box-rule-row")].find(r => r.textContent.includes("Mailer box")).querySelector("button").click());
   await waitRemote(() => !(remoteData.settings.boxes || []).includes("Mailer box"), "box removed");
   eq(remoteData.settings.boxes.includes("Mailer box"), false, "Boxes: deleted box leaves the shared list");
+  eq(remoteData.settings.boxRules[1].boxes.join(","), "Box A,Box B", "Boxes: deleting a box strips it from rules that used it");
 
   // Both features back OFF: today's screens again
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
