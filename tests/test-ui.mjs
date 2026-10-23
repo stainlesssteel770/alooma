@@ -376,6 +376,8 @@ try {
 
   // Packing: an exact match shows the boxes; 18 kits (no rule) does not
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await page.evaluate(() => document.querySelector("#btn-pack-change").click());
+  await sleep(150);
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
   await waitDom(() => !document.querySelector("#pack-boxes").hidden, "boxes line shows");
