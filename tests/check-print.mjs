@@ -150,13 +150,17 @@ try {
   const pack12Texts = await pageTexts("/tmp/alooma-packsheet12.pdf");
   ok(pack12Texts.every(t => t.trim().length > 30), "pack sheet CAK-12: no blank pages (" + pack12Texts.length + " pages)");
 
-  /* Evidence for Mark's thermal test: a SHORT craft's pack sheet (HCB-12) */
-  await page.click("#btn-pack-change");
+  /* Evidence for Mark's thermal test: a SHORT craft's pack sheet (HCB-12).
+     Programmatic clicks: after the CAK-12 print the panel sits in the
+     picker state, where the real Change button is not clickable. */
+  await page.evaluate(() => { document.querySelector("#btn-pack-change").click(); });
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat Challah")).click());
-  await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
+  await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="12"]').click(); });
   await sleep(300);
   await page.evaluate(() => { document.querySelector("#btn-print-sheet").click(); });
   await sleep(300);
+  const hcbTitle = await page.evaluate(() => { const t = document.querySelector("#print-area .label-title"); return t ? t.textContent : ""; });
+  ok(hcbTitle.includes("Hafrashat Challah"), "evidence: short-craft pack sheet really is Hafrashat Challah");
   await page.pdf({ path: "/tmp/alooma-packsheet-hcb.pdf", preferCSSPageSize: true, printBackground: true });
 
   /* ---- Inventory report ---- */
