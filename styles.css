@@ -292,6 +292,7 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   #print-area tr.low td:first-child { border-left: 5pt solid #000; }
   #print-area .low-tag { font-weight: 800; }
   #print-area .print-foot { position: absolute; bottom: 0; left: 0; right: 0; border-top: 1.5pt solid #000; padding-top: 5pt; font-size: 12.5pt; }
+  #print-area .print-foot .foot-boxes { font-weight: 700; margin-bottom: 2pt; }
 }
 
 /* Merged pack flow (2026-10-23): Print / Hand pack choice + batch hand-pack list */
