@@ -1,0 +1,52 @@
+name: Tests
+
+# Manual trigger only (Actions tab -> Tests -> Run workflow).
+# Read-only, no secrets: every suite mocks the GitHub API and runs on
+# sample data, so runs and logs can stay public with the repo.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Puppeteer (downloads its Chrome)
+        run: npm install --no-save puppeteer
+
+      - name: Logic tests (stock math, recipes, history)
+        run: node tests/test-logic.js
+
+      - name: UI tests (real buttons, editor flows, Batch A safety)
+        run: node tests/test-ui.mjs
+
+      - name: Offline test (data blocked -> single empty state -> Retry)
+        run: node tests/test-offline.mjs
+
+      - name: Print checks (4x6 PDFs, no blank labels)
+        run: node tests/check-print.mjs
+
+      - name: Screenshots at 390px (batch-report evidence)
+        run: node tests/screenshots.mjs
+
+      - name: Upload screenshots and print PDFs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-evidence
+          path: |
+            screenshots/
+            /tmp/alooma-*.pdf
+          if-no-files-found: ignore
+          retention-days: 14
