@@ -41,8 +41,7 @@ remote.inventory[G0.items[1]].threshold = 50; remote.inventory[G0.items[1]].qty 
 remote.inventory[G0.items[2]].threshold = null; remote.inventory[G0.items[2]].qty = 5; /* no level: never low */
 const remoteSha = "sha-print";
 const b64e = s => Buffer.from(s, "utf8").toString("base64");
-const TOKENS = groups.map(g => g.name.split(" ")[0]); /* Blooming, Tambourines, Judaic, Hafrashat, The→?, ... */
-const DISTINCT = ["Blooming", "Tambourines", "Judaic", "Hafrashat", "Cakery", "Miniature", "Shared"];
+const DISTINCT = ["Blooming Mirrors", "Tambourines", "Judaic Clay-Art", "Hafrashat Challah", "The Cakery", "Miniature Interiors", "Shared items"]; /* full title phrases: bare "Miniature" also matches HCB's own item "Miniatures bread bag" */
 
 async function pageTexts(pdf) {
   const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(pdf)) }).promise;
@@ -105,7 +104,7 @@ try {
   await sleep(300);
   const pack = await page.evaluate(() => {
     const pa = document.querySelector("#print-area");
-    const heatRow = [...pa.querySelectorAll("tbody tr")].find(tr => tr.textContent.includes("Heat Gun"));
+    const heatRow = [...pa.querySelectorAll("tbody tr")].find(tr => tr.textContent.includes("Heat gun"));
     return {
       rows: pa.querySelectorAll("tbody tr").length,
       ticks: pa.querySelectorAll(".tick-box").length,
