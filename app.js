@@ -426,6 +426,7 @@
   /* ---------- Inventory tab ---------- */
   var invOpenItem = null, invPanelMode = "receive";
   var invQuery = "", invFilter = "all";
+  var invSortBin = false; /* Batch C2: "By bin" sort toggle */
   function isLow(itemId) {
     var rec = state.data.inventory[itemId];
     return rec && rec.threshold !== null && rec.threshold !== undefined && rec.qty <= rec.threshold;
@@ -453,8 +454,6 @@
     $("btn-filter-all").setAttribute("aria-pressed", invFilter === "all" ? "true" : "false");
     $("btn-lowfilter").setAttribute("aria-pressed", invFilter === "low" ? "true" : "false");
     $("btn-outfilter").setAttribute("aria-pressed", invFilter === "out" ? "true" : "false");
-    $("btn-binfilter").hidden = !settings().features.bins;
-    $("btn-binfilter").setAttribute("aria-pressed", invSortBin ? "true" : "false");
     $("btn-binfilter").hidden = !settings().features.bins;
     $("btn-binfilter").setAttribute("aria-pressed", invSortBin ? "true" : "false");
   }
