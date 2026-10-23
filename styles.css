@@ -91,8 +91,7 @@ body.view-only .editor-note { display: block; }
 tr.checked-row td { color: var(--muted); }
 tr.checked-row td .row-name { text-decoration: line-through; }
 .short { color: var(--red); font-weight: 800; }
-.override-row { display: flex; align-items: center; gap: 10px; font-size: 15px; padding: 10px 2px; cursor: pointer; min-height: 48px; }
-.override-row input { width: 24px; height: 24px; accent-color: var(--accent); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .action-bar { display: flex; gap: 8px; margin-top: 10px; }
 .action-bar .btn { min-height: 54px; font-size: 16.5px; }
 .action-bar .btn-primary { flex: 1; }

@@ -12,7 +12,7 @@
 
   var state = {
     data: null, sha: null, editor: null, /* {token, owner, repo, login} */
-    packCraft: null, handCraft: null, loadedAt: null
+    packCraft: null, handCraft: null, loadedAt: null, packPrintedKey: null
   };
 
   /* ---------- small helpers ---------- */
@@ -188,13 +188,16 @@
     var total = boxes.length;
     $("pack-progress").textContent = total ? checked + " of " + total + " checked" : "";
     $("pack-progress-fill").style.width = total ? Math.round(checked / total * 100) + "%" : "0";
-    var override = $("pack-override").checked;
     var btn = $("btn-complete-pack");
-    btn.disabled = !(total > 0 && (checked === total || override));
     var kitsNow = parseInt($("pack-kits").value, 10);
-    btn.textContent = state.packCraft && L.validKits(kitsNow)
-      ? "Complete " + L.sku(state.packCraft, kitsNow)
-      : "✓ Completed packing";
+    var validSel = !!state.packCraft && L.validKits(kitsNow);
+    var printed = validSel && state.packPrintedKey === state.packCraft + ":" + kitsNow;
+    var ready = total > 0 && (checked === total || printed);
+    btn.disabled = !ready;
+    if (!state.packCraft) btn.textContent = "Choose a craft";
+    else if (!L.validKits(kitsNow)) btn.textContent = "Choose kits";
+    else if (!ready) btn.textContent = "Check " + (total - checked) + " more";
+    else btn.textContent = "Complete " + L.sku(state.packCraft, kitsNow);
     $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
   }
   function renderPack() {
@@ -259,7 +262,7 @@
       cur.pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
       { craftId: craft.id, kits: cur.kits }
     );
-    $("pack-override").checked = false;
+    state.packPrintedKey = null;
     commitChange(entry, "Packed " + L.sku(craft.id, cur.kits));
   }
 
@@ -273,10 +276,11 @@
     $("hand-sku").textContent = valid && state.handCraft ? L.sku(state.handCraft, kits) : "—";
     var tbody = $("hand-table").querySelector("tbody");
     tbody.innerHTML = "";
-    $("btn-record-hand").disabled = !(valid && state.handCraft);
-    $("btn-record-hand").textContent = valid && state.handCraft
-      ? "Record " + L.sku(state.handCraft, kits)
-      : "✓ Record hand-packed";
+    var hb = $("btn-record-hand");
+    hb.disabled = !(valid && state.handCraft);
+    hb.textContent = !state.handCraft ? "Choose a craft"
+      : !valid ? "Choose kits"
+      : "Record " + L.sku(state.handCraft, kits);
     if (!valid || !state.handCraft) { err.textContent = kits && state.handCraft ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : ""; return; }
     L.computePack(state.handCraft, kits).forEach(function (r) {
       var tr = document.createElement("tr");
@@ -553,6 +557,9 @@
   function printPackSheet() {
     var cur = currentPack(); if (!cur) { showError("Pick a craft and a valid number of kits first."); return; }
     clearError();
+    /* Printing the sheet means they're packing from paper: unlock Complete for this exact order. */
+    state.packPrintedKey = cur.craft.id + ":" + cur.kits;
+    updatePackProgress();
     var rows = cur.pack.map(function (r) {
       return "<tr><td>" + esc(r.name) + '</td><td class="qty">' + r.qty + "</td></tr>";
     }).join("");
@@ -736,7 +743,6 @@
       });
       updatePackProgress();
     });
-    $("pack-override").addEventListener("change", updatePackProgress);
     $("inv-search").addEventListener("input", function (ev) { invQuery = ev.target.value.trim().toLowerCase(); applyInvFilters(); });
     $("btn-lowfilter").addEventListener("click", function () { invLowOnly = !invLowOnly; applyInvFilters(); });
     $("btn-print-sheet").addEventListener("click", printPackSheet);
