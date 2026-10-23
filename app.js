@@ -12,7 +12,7 @@
 
   var state = {
     data: null, sha: null, editor: null, /* {token, owner, repo, login} */
-    packCraft: null, loadedAt: null, packPrintedKey: null
+    packCraft: null, bulkCraft: null, loadedAt: null, packPrintedKey: null
   };
 
   /* ---------- small helpers ---------- */
@@ -265,8 +265,8 @@
     $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
   }
   var packFoldOverride = false;
-  var packMode = "print"; /* "print" (sheet + checklist) or "hand" (batch record) */
-  var handLines = []; /* [{craftId, kits}] queued hand-packed orders, in-memory only */
+  var packMode = null; /* null until the packer picks: "print" (sheet) or "hand" (checklist) */
+  var bulkLines = []; /* [{craftId, kits}] queued on the Bulk import tab, in-memory only */
   var packSortBin = false; /* Batch C2: sort the pack list + sheet by bin */
   var packBoxOverride = null; /* null = use the box rule; an array = this order only */
   var packSelKey = null;
@@ -299,7 +299,7 @@
     $("pack-picker-summary").hidden = !folded;
     if (folded) $("pack-summary-text").textContent = L.craftById(state.packCraft).name + " · " + kits + " kits";
     var selKey = state.packCraft + ":" + kits;
-    if (selKey !== packSelKey) { packSelKey = selKey; packBoxOverride = null; $("pack-boxes-edit").hidden = true; }
+    if (selKey !== packSelKey) { packSelKey = selKey; packBoxOverride = null; packMode = null; $("pack-boxes-edit").hidden = true; }
     var tbody = $("pack-table").querySelector("tbody");
     tbody.innerHTML = "";
     if (!valid) {
@@ -382,29 +382,40 @@
     });
   }
 
-  /* ---------- Hand pack: batch record on the Packing tab ---------- */
-  /* After craft + kits are chosen, the packer picks a path: Print (the sheet +
-     checklist flow above) or Hand pack (queue orders already packed by hand and
-     record them all in one save). Print is the default view. */
+  /* ---------- Pack path choice + Bulk import tab ---------- */
+  /* After craft + kits are chosen on Packing, the packer picks a path: Print
+     (print the sheet; Complete appears, unlocked by printing) or Hand pack
+     (the on-screen checklist — the only place it shows). Separately, the Bulk
+     import tab records orders that were already packed by hand: queue any mix
+     of crafts and kit amounts, then record them all in one save. */
   function renderPackMode() {
     var kits = parseInt($("pack-kits").value, 10);
     var hasSel = !!state.packCraft && L.validKits(kits);
-    var hand = hasSel && packMode === "hand";
+    var chosen = hasSel && packMode !== null;
     $("pack-mode").hidden = !hasSel;
-    $("btn-print-sheet").classList.toggle("selected", packMode !== "hand");
+    $("btn-print-sheet").classList.toggle("selected", packMode === "print");
     $("btn-mode-hand").classList.toggle("selected", packMode === "hand");
-    $("pack-list-wrap").hidden = hand;
-    $("hand-batch").hidden = !hand;
-    if (hand) $("pack-warning").hidden = true;
-    renderHandLines();
+    $("pack-order").hidden = !chosen;
+    $("pack-checklist").hidden = packMode !== "hand";
+    if (!chosen) $("pack-warning").hidden = true;
   }
-  function renderHandLines() {
-    var wrap = $("hand-lines");
+  function renderBulk() {
+    craftButtons("bulk-crafts", state.bulkCraft, function (id) { state.bulkCraft = id; renderBulk(); });
+    var kits = parseInt($("bulk-kits").value, 10);
+    markChips("bulk", kits);
+    var err = $("bulk-error"); err.textContent = "";
+    var valid = L.validKits(kits);
+    $("bulk-sku").textContent = valid && state.bulkCraft ? L.sku(state.bulkCraft, kits) : "—";
+    if (state.bulkCraft && kits && !valid) err.textContent = "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…).";
+    renderBulkLines();
+  }
+  function renderBulkLines() {
+    var wrap = $("bulk-lines");
     wrap.innerHTML = "";
-    if (!handLines.length) {
+    if (!bulkLines.length) {
       wrap.innerHTML = '<p class="hint">No orders added yet — pick a craft and kit amount above, then tap Add.</p>';
     }
-    handLines.forEach(function (ln, i) {
+    bulkLines.forEach(function (ln, i) {
       var craft = L.craftById(ln.craftId);
       var row = document.createElement("div");
       row.className = "hand-line";
@@ -412,29 +423,29 @@
         '<button type="button" class="btn btn-quiet" data-remove="' + i + '" aria-label="Remove ' + esc(L.sku(ln.craftId, ln.kits)) + '">✕</button>';
       wrap.appendChild(row);
     });
-    var add = $("btn-hand-add");
-    var kits = parseInt($("pack-kits").value, 10);
-    add.disabled = !(!!state.packCraft && L.validKits(kits));
-    add.textContent = !state.packCraft ? "Choose a craft"
+    var add = $("btn-bulk-add");
+    var kits = parseInt($("bulk-kits").value, 10);
+    add.disabled = !(!!state.bulkCraft && L.validKits(kits));
+    add.textContent = !state.bulkCraft ? "Choose a craft"
       : !L.validKits(kits) ? "Choose kits"
-      : "Add " + L.sku(state.packCraft, kits);
-    var rec = $("btn-record-all");
-    rec.disabled = !handLines.length;
-    rec.textContent = handLines.length
-      ? "Record all · " + handLines.length + (handLines.length === 1 ? " order" : " orders")
+      : "Add " + L.sku(state.bulkCraft, kits);
+    var rec = $("btn-bulk-record");
+    rec.disabled = !bulkLines.length;
+    rec.textContent = bulkLines.length
+      ? "Record all · " + bulkLines.length + (bulkLines.length === 1 ? " order" : " orders")
       : "Record all";
   }
-  function addHandLine() {
+  function addBulkLine() {
     if (!requireEditor()) return;
-    var cur = currentPack(); if (!cur) return;
-    handLines.push({ craftId: cur.craft.id, kits: cur.kits });
-    packFoldOverride = true; /* reopen the picker so the next order is one pick away */
-    renderPack();
+    var kits = parseInt($("bulk-kits").value, 10);
+    if (!state.bulkCraft || !L.validKits(kits)) return;
+    bulkLines.push({ craftId: state.bulkCraft, kits: kits });
+    renderBulk();
   }
-  function recordAllHand() {
+  function recordAllBulk() {
     if (!requireEditor()) return;
-    if (!handLines.length) return;
-    var lines = handLines.slice();
+    if (!bulkLines.length) return;
+    var lines = bulkLines.slice();
     /* Aggregate the batch for the confirm summary so shortages account for
        every line, not just one order at a time. */
     var aggByItem = {}, aggPack = [];
@@ -465,7 +476,7 @@
           L.applyEffects(state.data.inventory, entry.effects, +1);
           state.data.history.unshift(entry);
         });
-        handLines = [];
+        bulkLines = [];
         renderAll();
         saveData("Hand-packed " + lines.length + " order(s)").then(function () {
           toast("Recorded " + lines.length + " hand-packed order" + (lines.length === 1 ? "" : "s") + ".");
@@ -902,6 +913,27 @@
   }
 
   /* ---------- Settings: connect / disconnect / backup ---------- */
+  function activateTab(name) {
+    document.querySelectorAll("#tabs button").forEach(function (x) {
+      var on = x.getAttribute("data-tab") === name;
+      x.classList.toggle("active", on);
+      x.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    document.querySelectorAll(".tab-panel").forEach(function (x) { x.classList.toggle("active", x.id === "tab-" + name); });
+  }
+  /* View-only devices see ONLY Inventory and History (the user's rule). The
+     connect screen stays reachable by tapping the header badge. */
+  function applyTabAccess() {
+    var editor = !!state.editor;
+    document.querySelectorAll("#tabs button").forEach(function (b) {
+      var t = b.getAttribute("data-tab");
+      b.hidden = !editor && t !== "inventory" && t !== "history";
+    });
+    if (!editor) {
+      var active = document.querySelector("#tabs button.active");
+      if (active && active.hidden) activateTab("inventory");
+    }
+  }
   function renderSettings() {
     var status = $("settings-conn-status");
     var badge = $("conn-badge");
@@ -918,10 +950,12 @@
       badge.textContent = "View only";
       badge.className = "badge badge-view";
       document.body.classList.add("view-only");
-      status.innerHTML = "This device is <strong>view-only</strong>. Anyone can view current status — no sign-in needed. To make changes from this device, connect it once with a GitHub token; it will be saved on this device only, and you can disconnect it any time here in Settings.";
+      status.innerHTML = "This device is <strong>view-only</strong>: it can see Inventory and History only. To make changes from this device, connect it once — sign in with GitHub or paste a token; the sign-in is saved on this device only, and you can disconnect it any time here in Settings.";
       $("connect-form").hidden = false;
       $("disconnect-wrap").hidden = true;
     }
+    $("device-login").hidden = !GH_APP_CLIENT_ID;
+    applyTabAccess();
     $("about-repo").textContent = repoCfg().owner + "/" + repoCfg().repo;
     document.querySelectorAll(".editor-note").forEach(function (n) { /* visibility via body.view-only CSS on siblings; notes shown by CSS */ });
   }
@@ -955,11 +989,79 @@
       .catch(function (e) { err.textContent = e.message; });
   }
   function disconnectDevice() {
-    if (!window.confirm("Disconnect the GitHub token from this device?\n\nThe site becomes view-only here. Your data in the repo is not touched.")) return;
+    if (!window.confirm("Disconnect GitHub from this device?\n\nThe site becomes view-only here (Inventory and History only). Your data in the repo is not touched.")) return;
     state.editor = null;
     try { localStorage.removeItem(LS_KEY); } catch (e) {}
     state.sha = null;
     loadData().then(function () { renderAll(); toast("Disconnected — this device is view-only now."); });
+  }
+  /* ---------- GitHub App device sign-in (no token to paste) ---------- */
+  /* Public client ID of the "Alooma Packing" GitHub App (alooma repo only,
+     Contents read/write, device flow on, user tokens non-expiring). Empty =
+     the sign-in block stays hidden and the token path is the only connect. */
+  var GH_APP_CLIENT_ID = "";
+  var devicePoll = null;
+  function stopDeviceLogin() {
+    if (devicePoll) { clearTimeout(devicePoll); devicePoll = null; }
+    $("device-login-wait").hidden = true;
+    $("btn-gh-login").disabled = false;
+  }
+  function startDeviceLogin() {
+    var err = $("connect-error"); err.textContent = "";
+    stopDeviceLogin();
+    fetch("https://github.com/login/device/code", {
+      method: "POST",
+      headers: { "Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ client_id: GH_APP_CLIENT_ID })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.device_code) throw new Error((d && d.error_description) || "GitHub did not return a sign-in code.");
+      $("device-code").textContent = d.user_code;
+      $("device-login-wait").hidden = false;
+      $("btn-gh-login").disabled = true;
+      var interval = (d.interval || 5) * 1000;
+      var deadline = Date.now() + (d.expires_in || 900) * 1000;
+      var poll = function () {
+        if (Date.now() > deadline) { stopDeviceLogin(); err.textContent = "That code expired — tap Connect with GitHub to get a new one."; return; }
+        fetch("https://github.com/login/oauth/access_token", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ client_id: GH_APP_CLIENT_ID, device_code: d.device_code, grant_type: "urn:ietf:params:oauth:grant-type:device_code" })
+        }).then(function (r) { return r.json(); }).then(function (t) {
+          if (t.access_token) { finishDeviceLogin(t.access_token); return; }
+          if (t.error === "authorization_pending") { devicePoll = setTimeout(poll, interval); return; }
+          if (t.error === "slow_down") { interval += 5000; devicePoll = setTimeout(poll, interval); return; }
+          stopDeviceLogin();
+          err.textContent = t.error === "access_denied" ? "The sign-in was denied on GitHub." : (t.error_description || "GitHub sign-in failed (" + t.error + ").");
+        }).catch(function () { devicePoll = setTimeout(poll, interval); });
+      };
+      devicePoll = setTimeout(poll, interval);
+    }).catch(function () {
+      err.textContent = "Couldn't reach GitHub to start the sign-in. If this keeps happening, connect with a token instead (below).";
+    });
+  }
+  function finishDeviceLogin(token) {
+    stopDeviceLogin();
+    var headers = { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + token };
+    fetch("https://api.github.com/user", { headers: headers })
+      .then(function (r) { if (!r.ok) throw new Error("GitHub approved the sign-in but the token was rejected (" + r.status + ")."); return r.json(); })
+      .then(function (u) {
+        return fetch("https://api.github.com/repos/" + DEFAULT_OWNER + "/" + DEFAULT_REPO + "/contents/data.json?ref=main", { headers: headers })
+          .then(function (r) {
+            if (!r.ok) throw new Error("Signed in, but the app can't read " + DEFAULT_OWNER + "/" + DEFAULT_REPO + " (" + r.status + "). The GitHub App must be installed on that repo.");
+            return u;
+          });
+      })
+      .then(function (u) {
+        state.editor = { token: token, owner: DEFAULT_OWNER, repo: DEFAULT_REPO, login: u.login || "", kind: "device" };
+        try { localStorage.setItem(LS_KEY, JSON.stringify(state.editor)); } catch (e) { /* private mode etc. */ }
+        clearError();
+        return loadData();
+      })
+      .then(function () {
+        renderAll();
+        toast("Connected — this device can now edit.");
+      })
+      .catch(function (e) { $("connect-error").textContent = e.message; });
   }
   function exportBackup() {
     var blob = new Blob([JSON.stringify(state.data, null, 2) + "\n"], { type: "application/json" });
@@ -1058,6 +1160,7 @@
     renderBoxSettings();
     renderBinSettings();
     renderPack();
+    renderBulk();
     renderInventory();
     renderHistory();
   }
@@ -1068,14 +1171,9 @@
     } catch (e) { state.editor = null; }
 
     document.querySelectorAll("#tabs button").forEach(function (b) {
-      b.addEventListener("click", function () {
-        document.querySelectorAll("#tabs button").forEach(function (x) { x.classList.remove("active"); x.setAttribute("aria-selected", "false"); });
-        document.querySelectorAll(".tab-panel").forEach(function (x) { x.classList.remove("active"); });
-        b.classList.add("active");
-        b.setAttribute("aria-selected", "true");
-        $("tab-" + b.getAttribute("data-tab")).classList.add("active");
-      });
+      b.addEventListener("click", function () { activateTab(b.getAttribute("data-tab")); });
     });
+    $("conn-badge").addEventListener("click", function () { if (!state.editor) activateTab("settings"); });
     $("pack-kits").addEventListener("input", function () { packFoldOverride = false; renderPack(); });
     $("btn-pack-change").addEventListener("click", function () { packFoldOverride = true; renderPack(); });
     function wireStepper(inputId, minusId, plusId, renderFn) {
@@ -1095,7 +1193,7 @@
       chip.addEventListener("click", function () {
         var target = chip.getAttribute("data-for");
         $(target + "-kits").value = chip.getAttribute("data-kits");
-        packFoldOverride = false; renderPack();
+        if (target === "pack") { packFoldOverride = false; renderPack(); } else renderBulk();
       });
     });
     $("btn-check-all").addEventListener("click", function () {
@@ -1148,14 +1246,18 @@
     $("sheet-backdrop").addEventListener("click", function (ev) { if (ev.target === $("sheet-backdrop")) closeSheet(); });
     $("btn-print-sheet").addEventListener("click", function () { packMode = "print"; renderPack(); printPackSheet(); });
     $("btn-mode-hand").addEventListener("click", function () { packMode = "hand"; renderPack(); });
-    $("btn-hand-add").addEventListener("click", addHandLine);
-    $("btn-record-all").addEventListener("click", recordAllHand);
-    $("hand-lines").addEventListener("click", function (ev) {
+    $("bulk-kits").addEventListener("input", renderBulk);
+    wireStepper("bulk-kits", "bulk-minus", "bulk-plus", renderBulk);
+    $("btn-bulk-add").addEventListener("click", addBulkLine);
+    $("btn-bulk-record").addEventListener("click", recordAllBulk);
+    $("bulk-lines").addEventListener("click", function (ev) {
       var b = ev.target.closest("[data-remove]");
       if (!b) return;
-      handLines.splice(parseInt(b.getAttribute("data-remove"), 10), 1);
-      renderHandLines();
+      bulkLines.splice(parseInt(b.getAttribute("data-remove"), 10), 1);
+      renderBulkLines();
     });
+    $("btn-gh-login").addEventListener("click", startDeviceLogin);
+    $("btn-gh-login-cancel").addEventListener("click", function () { stopDeviceLogin(); $("connect-error").textContent = ""; });
     $("btn-complete-pack").addEventListener("click", completePacking);
     $("btn-print-inventory").addEventListener("click", function () { printInventory("report"); });
     $("btn-print-count").addEventListener("click", function () { printInventory("count"); });
