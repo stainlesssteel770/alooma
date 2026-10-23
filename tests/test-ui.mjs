@@ -667,7 +667,23 @@ try {
     };
   });
   console.log("rule diag:", JSON.stringify(ruleDiag));
+  await page.evaluate(() => document.querySelector("#btn-rule-add").scrollIntoView({ block: "center" }));
+  await sleep(200);
   await page.click("#btn-rule-add");
+  await sleep(400);
+  const ruleDiag2 = await page.evaluate(() => {
+    const b = document.querySelector("#btn-rule-add");
+    const r = b.getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    const toast = document.querySelector("#toast");
+    return {
+      errorAfter: (document.querySelector("#rule-error") || {}).textContent || "",
+      coveredByAfter: top ? (top.id || top.className || top.tagName) : "none",
+      toastHidden: toast ? toast.hidden : "no-toast",
+      toastText: toast ? toast.textContent.slice(0, 60) : ""
+    };
+  });
+  console.log("rule diag2:", JSON.stringify(ruleDiag2), "| remote rules:", (remoteData.settings.boxRules || []).length);
   await waitRemote(() => (remoteData.settings.boxRules || []).length === 2, "3-box rule saved");
   eq(remoteData.settings.boxRules[1].boxes.join(","), "Box A,Box B,Mailer box", "Boxes: a rule holds three boxes (any number works)");
   await page.evaluate(() => [...document.querySelectorAll("#box-list .box-rule-row")].find(r => r.textContent.includes("Mailer box")).querySelector("button").click());
