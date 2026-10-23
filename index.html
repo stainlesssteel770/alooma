@@ -42,7 +42,11 @@
   <!-- PACKING -->
   <section id="tab-pack" class="tab-panel active">
     <h2>Pack an order — one craft at a time</h2>
-    <p class="hint">Pick a craft and the number of kits. An order with several crafts is packed one craft at a time, one sheet per craft.</p>
+    <div id="pack-picker-summary" class="picker-summary" hidden>
+      <span id="pack-summary-text"></span>
+      <button type="button" id="btn-pack-change" class="btn btn-quiet">Change</button>
+    </div>
+    <div id="pack-picker">
     <div class="craft-grid" id="pack-crafts"></div>
     <div class="kits-block">
       <div class="kits-row">
@@ -62,6 +66,7 @@
         <button type="button" class="kits-chip" data-for="pack" data-kits="36">36</button>
       </div>
       <div class="sku-box">Order SKU: <strong id="pack-sku">—</strong></div>
+    </div>
     </div>
     <p id="pack-error" class="field-error"></p>
     <div id="pack-warning" class="warning" hidden></div>
