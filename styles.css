@@ -21,7 +21,7 @@ body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, san
 .app-header .header-text p { margin: 0; color: var(--muted); font-size: 13px; }
 .header-status { text-align: right; display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
 .badge { font-size: 13px; font-weight: 700; padding: 0 12px; border-radius: 999px; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; }
-.header-status { display: flex; align-items: center; gap: 8px; }
+.header-status { display: flex; flex-direction: row; align-items: center; gap: 8px; }
 .badge-view { background: #E8EDF1; color: #37424E; }
 .badge-editor { background: #E9ECEF; color: #333C46; }
 .save-status { font-size: 14px; color: var(--muted); min-height: 1em; }
