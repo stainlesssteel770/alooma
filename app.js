@@ -191,8 +191,9 @@
     var override = $("pack-override").checked;
     var btn = $("btn-complete-pack");
     btn.disabled = !(total > 0 && (checked === total || override));
-    btn.textContent = checked === total && total > 0
-      ? "✓ Completed packing — all items checked"
+    var kitsNow = parseInt($("pack-kits").value, 10);
+    btn.textContent = state.packCraft && L.validKits(kitsNow)
+      ? "Complete " + L.sku(state.packCraft, kitsNow)
       : "✓ Completed packing";
     $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
   }
@@ -273,6 +274,9 @@
     var tbody = $("hand-table").querySelector("tbody");
     tbody.innerHTML = "";
     $("btn-record-hand").disabled = !(valid && state.handCraft);
+    $("btn-record-hand").textContent = valid && state.handCraft
+      ? "Record " + L.sku(state.handCraft, kits)
+      : "✓ Record hand-packed";
     if (!valid || !state.handCraft) { err.textContent = kits && state.handCraft ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : ""; return; }
     L.computePack(state.handCraft, kits).forEach(function (r) {
       var tr = document.createElement("tr");
