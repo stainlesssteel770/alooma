@@ -371,18 +371,8 @@ try {
   await sleep(200);
   eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 2, "Bulk: queued order removed");
   const putsBeforeBatch = putCount;
-  const bulkDiag = await page.evaluate(() => {
-    const b = document.querySelector("#btn-bulk-record");
-    const r = b.getBoundingClientRect();
-    const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    window.__recClicked = false;
-    b.addEventListener("click", () => { window.__recClicked = true; }, { once: true });
-    return { disabled: b.disabled, centerEl: el ? (el.id || String(el.className)) : "none", toastHidden: document.querySelector("#toast").hidden, barY: Math.round(r.top + r.height / 2) };
-  });
-  console.log("BULK DIAG before record click:", JSON.stringify(bulkDiag));
   await page.click("#btn-bulk-record");
   await sleep(250);
-  console.log("BULK DIAG after:", JSON.stringify(await page.evaluate(() => ({ clicked: window.__recClicked, backdropHidden: document.querySelector("#sheet-backdrop").hidden, title: document.querySelector("#sheet-title").textContent }))));
   eq(await page.$eval("#sheet-title", e => e.textContent), "Hand-packed", "Bulk: batch confirm sheet");
   eq(await page.$eval("#sheet-sub", e => e.textContent.includes("BM-6") && e.textContent.includes("TAM-12")), true, "Bulk: sheet names both orders");
   await page.click("#sheet-primary");
