@@ -50,8 +50,6 @@ await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 try {
   const page = await browser.newPage();
-  page.on("console", m => console.log("[page]", m.type(), m.text()));
-  page.on("pageerror", e => console.log("[pageerror]", String(e)));
   await page.setRequestInterception(true);
   const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
   page.on("request", req => {
@@ -123,10 +121,6 @@ try {
   /* Receive: 200 scissors via the new item panel (tap item -> Receive -> qty -> Add) */
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
   await sleep(200);
-  console.log("[probe] inv items:", await page.evaluate(() => document.querySelectorAll(".inv-item").length),
-    "loadFailed:", await page.evaluate(() => document.body.classList.contains("load-failed")),
-    "groups children:", await page.evaluate(() => document.querySelector("#inventory-groups").children.length),
-    "badge:", await page.evaluate(() => document.querySelector("#conn-badge").textContent));
   await page.evaluate(() => {
     document.querySelector('.inv-item[data-item="scissors"] .inv-main').click();
   });
@@ -360,7 +354,7 @@ try {
   check("C off: Sort by bin button hidden", await page.evaluate(() => document.querySelector("#btn-pack-sort").hidden));
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
   check("C off: By bin chip hidden", await page.evaluate(() => document.querySelector("#btn-binfilter").hidden));
-  check("C off: no bin labels on inventory rows", (await page.evaluate(() => document.querySelectorAll("#inv-list .inv-bin").length)) === 0);
+  check("C off: no bin labels on inventory rows", (await page.evaluate(() => document.querySelectorAll("#inventory-groups .inv-bin").length)) === 0);
 
   // Boxes ON in Settings + a rule: The Cakery, 12 kits = Box A + Box B
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
@@ -413,7 +407,7 @@ try {
   check("C2: bins toggle saved to the shared data", true);
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
   check("C2: By bin chip appears with the feature", await page.evaluate(() => !document.querySelector("#btn-binfilter").hidden));
-  check("C2: inventory rows show placeholder bins", (await page.evaluate(() => document.querySelectorAll("#inv-list .inv-bin").length)) >= 60);
+  check("C2: inventory rows show placeholder bins", (await page.evaluate(() => document.querySelectorAll("#inventory-groups .inv-bin").length)) >= 60);
   await page.evaluate(() => invRow(page, "scissors").querySelector(".inv-main").click());
   await sleep(300);
   check("C2: item panel gains a Bin mode", await page.evaluate(() => [...document.querySelectorAll(".inv-panel .seg button")].map(b => b.textContent).includes("Bin")));
