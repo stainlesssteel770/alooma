@@ -267,13 +267,12 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
    craft per page, checklist style — big craft title, ONE subtitle line,
    full black grid, no instructions) ---------- */
 @media print {
-  @page { size: 4in 6in; margin: 0; }
+  @page { size: 4in 6in; margin: 0.13in 0.13in 0.22in; } /* the bottom margin is the thermal cutoff guard — it applies to EVERY page, continuations included */
   body { background: #fff; padding: 0; }
   body > *:not(#print-area) { display: none !important; }
-  #print-area { display: block; padding: 0.13in; font-family: Arial, Helvetica, sans-serif; color: #000; }
+  #print-area { display: block; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #000; }
   #print-area .print-page { break-before: page; position: relative; }
   #print-area .print-page:first-child { break-before: auto; }
-  #print-area .print-page.with-foot { min-height: 5.68in; }
   #print-area table { border-collapse: collapse; width: 100%; }
   #print-area th, #print-area td { font-size: 12.5pt; padding: 4.5pt 6pt; text-align: left; color: #000; border: 1.5pt solid #000; line-height: 1.3; }
   #print-area thead { display: table-header-group; }
@@ -282,7 +281,7 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   #print-area tr.p-title th { border: none; border-bottom: 2.5pt solid #000; padding: 0 0 5pt; }
   #print-area .label-title { font-size: 30pt; font-weight: 800; margin: 0; line-height: 1.1; }
   #print-area .label-sub { font-size: 13.5pt; font-weight: 700; margin: 2pt 0 0; }
-  #print-area td.qty, #print-area th.qty { text-align: center; font-weight: 700; }
+  #print-area td.qty, #print-area th.qty { text-align: center; font-weight: 700; white-space: nowrap; }
   #print-area td.qty.regular { font-weight: 400; }
   #print-area td.counted-cell { width: 0.95in; }
   #print-area td.tick, #print-area th.tick { width: 16pt; text-align: center; }
@@ -291,7 +290,11 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   #print-area tr.low td { font-weight: 700; }
   #print-area tr.low td:first-child { border-left: 5pt solid #000; }
   #print-area .low-tag { font-weight: 800; }
-  #print-area .print-foot { position: absolute; bottom: 0; left: 0; right: 0; border-top: 1.5pt solid #000; padding-top: 5pt; font-size: 12.5pt; }
+  /* The footer is IN FLOW below the table (never absolutely positioned:
+     an abspos footer reserves no space, so it printed through the last
+     rows whenever the table reached it). break-inside keeps the block
+     whole — if it can't fit, it moves to a new page intact. */
+  #print-area .print-foot { margin-top: 8pt; border-top: 1.5pt solid #000; padding-top: 5pt; font-size: 12.5pt; break-inside: avoid; }
   #print-area .print-foot .foot-boxes { font-weight: 700; margin-bottom: 2pt; }
 }
 
