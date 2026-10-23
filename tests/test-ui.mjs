@@ -586,6 +586,15 @@ try {
   await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = ""; s.dispatchEvent(new Event("input", { bubbles: true })); });
   await sleep(150);
   eq(await page.$$eval("#delivery-entry-list .count-row", els => els.filter(e => e.style.display !== "none").length), 62, "v2 A3: clearing the search restores all rows");
+  await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = "SCISSORS"; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(150);
+  eq(await page.$$eval("#delivery-entry-list .count-row", els => els.filter(e => e.style.display !== "none").length), 1, "search is case-insensitive: 'SCISSORS' finds the one delivery row");
+  eq(await page.$$eval("#inventory-groups .inv-item", els => els.filter(e => e.style.display !== "none").length), 1, "search is case-insensitive: 'SCISSORS' filters the inventory list too");
+  await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = "tAcKy GlUe"; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(150);
+  eq(await page.$$eval("#inventory-groups .inv-item", els => els.filter(e => e.style.display !== "none").length), 1, "search is case-insensitive: mixed-case 'tAcKy GlUe' matches 'Tacky Glue'");
+  await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = ""; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(150);
   await page.evaluate(() => { document.querySelector('#delivery-entry-list input[data-item="scissors"]').value = "480"; });
   await page.click("#btn-apply-delivery");
   await sleep(250);
