@@ -32,6 +32,10 @@ remoteData.inventory["tree-mirror"] = { qty: 36, threshold: 40 };
 remoteData.inventory["heart-jewelry-box"] = { qty: 54, threshold: 24 };
 remoteData.inventory["heat-gun"] = { qty: 4, threshold: 2 };
 remoteData.inventory["mi-name-label"] = { qty: 0, threshold: 12 };
+/* v2 batch A shots: parchment at 0 makes CAK-18 short by exactly one item;
+   a past scissors delivery of 50 makes a 480 delivery flag as 10x usual */
+remoteData.inventory["parchment-circle"] = { qty: 0, threshold: null };
+remoteData.history = [{ id: "hseed", ts: "2026-10-22T14:00:00.000Z", type: "received", title: "Received 50 × Scissors", effects: [{ item: "scissors", delta: 50 }], item: "scissors", amount: 50, undone: false }];
 let remoteSha = "sha-1", putCount = 0;
 
 import http from "http";
@@ -87,10 +91,13 @@ try {
   await page.evaluate(() => window.scrollTo(0, 0));
   await shot("pack-selected.jpg");
 
-  /* Confirm sheet (A5): pick the Hand pack path, check all, open Complete */
+  /* Confirm sheet: Hand pack path; v2 A5 check-all asks first, then Complete.
+     v2 A2: this order is short (parchment at 0) so the sheet shows the red block */
   await page.click("#btn-mode-hand");
   await sleep(200);
   await page.click("#btn-check-all");
+  await sleep(200);
+  await page.click("#sheet-primary"); /* Mark all */
   await sleep(200);
   await page.click("#btn-complete-pack");
   await sleep(400);
@@ -128,6 +135,13 @@ try {
   await page.click("#btn-delivery");
   await sleep(300);
   await shot("delivery.jpg");
+  /* v2 A3: the delivery confirm sheet, with the 10x-usual flag on scissors */
+  await page.evaluate(() => { document.querySelector('#delivery-entry-list input[data-item="scissors"]').value = "480"; });
+  await page.click("#btn-apply-delivery");
+  await sleep(400);
+  await shot("delivery-sheet.jpg");
+  await page.click("#sheet-cancel");
+  await sleep(200);
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
   await sleep(500);
   await shot("settings.jpg");
