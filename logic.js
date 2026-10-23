@@ -257,6 +257,59 @@
     return { version: 1, inventory: inv, history: [] };
   }
 
+  /* ---------- Settings (Batch C): lives in data.json under "settings" so
+     every device sees the same rules. Old data files have no settings
+     section — normalizeSettings fills defaults with both features OFF,
+     so nothing changes until a feature is switched on in Settings. */
+  var BOX_IDS = ["A", "B", "C"];
+  function defaultSettings() {
+    return {
+      features: { boxes: false, bins: false },
+      boxes: {
+        A: { name: "Box A", size: "" },
+        B: { name: "Box B", size: "" },
+        C: { name: "Box C", size: "" }
+      },
+      boxRules: [],
+      bins: {}
+    };
+  }
+  function normalizeSettings(s) {
+    var d = defaultSettings();
+    if (!s || typeof s !== "object") return d;
+    if (!s.features || typeof s.features !== "object") s.features = d.features;
+    if (typeof s.features.boxes !== "boolean") s.features.boxes = false;
+    if (typeof s.features.bins !== "boolean") s.features.bins = false;
+    if (!s.boxes || typeof s.boxes !== "object") s.boxes = d.boxes;
+    BOX_IDS.forEach(function (b) {
+      if (!s.boxes[b] || typeof s.boxes[b] !== "object") s.boxes[b] = d.boxes[b];
+      if (typeof s.boxes[b].name !== "string" || !s.boxes[b].name) s.boxes[b].name = d.boxes[b].name;
+      if (typeof s.boxes[b].size !== "string") s.boxes[b].size = "";
+    });
+    if (!Array.isArray(s.boxRules)) s.boxRules = [];
+    s.boxRules = s.boxRules.filter(function (r) {
+      return r && craftById(r.craftId) && validKits(r.kits) && Array.isArray(r.boxes) && r.boxes.length > 0;
+    });
+    if (!s.bins || typeof s.bins !== "object") s.bins = {};
+    return s;
+  }
+  /* Boxes for an exact craft+kits match, or null. Only when the feature is on. */
+  function boxRuleFor(settings, craftId, kits) {
+    if (!settings || !settings.features || !settings.features.boxes) return null;
+    var rules = settings.boxRules || [];
+    for (var i = 0; i < rules.length; i++) {
+      if (rules[i].craftId === craftId && rules[i].kits === kits) return rules[i].boxes.slice();
+    }
+    return null;
+  }
+  function boxLabel(settings, boxId) {
+    var b = settings && settings.boxes && settings.boxes[boxId];
+    return b && b.name ? b.name : "Box " + boxId;
+  }
+  function boxesText(settings, boxIds) {
+    return boxIds.map(function (b) { return boxLabel(settings, b); }).join(" + ");
+  }
+
   /* Apply a history entry's effects to an inventory object (mutates inv). */
   function applyEffects(inv, effects, sign) {
     effects.forEach(function (e) {
@@ -269,7 +322,10 @@
     ITEMS: ITEMS, CRAFTS: CRAFTS, craftById: craftById, validKits: validKits,
     lineQty: lineQty, computePack: computePack, sku: sku,
     itemCrafts: itemCrafts, inventoryGroups: inventoryGroups,
-    emptyData: emptyData, applyEffects: applyEffects
+    emptyData: emptyData, applyEffects: applyEffects,
+    BOX_IDS: BOX_IDS, defaultSettings: defaultSettings,
+    normalizeSettings: normalizeSettings, boxRuleFor: boxRuleFor,
+    boxLabel: boxLabel, boxesText: boxesText
   };
   root.ALOOMA = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
