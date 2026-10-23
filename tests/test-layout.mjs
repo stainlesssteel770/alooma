@@ -274,6 +274,54 @@ try {
   await clickEl("#btn-print-menu"); await sleep(200);
   await check("1280 inventory: print menu open");
 
+  /* Desktop brief item 1: tablet + desktop sizes — same no-overflow sweep,
+     plus the desktop-specific promises: card never touches the edges at
+     768, header contents align with the column, sheets are centred
+     modals, Esc closes layers, toast sits 24px off the bottom */
+  await page.evaluate(() => localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" })));
+  const DSIZES = [[768, 1024], [1280, 800], [1440, 900], [1920, 1080]];
+  for (const [dw, dh] of DSIZES) {
+    await page.setViewport({ width: dw, height: dh });
+    await page.goto("http://127.0.0.1:8911/index.html", { waitUntil: "networkidle0", timeout: 30000 });
+    await sleep(400);
+    await check(dw + " pack");
+    await tab("inventory");
+    await check(dw + " inventory");
+    await tab("settings");
+    await check(dw + " settings");
+    const geo = await page.evaluate(() => {
+      const m = document.querySelector("main").getBoundingClientRect();
+      const b = document.querySelector(".brand").getBoundingClientRect();
+      return { mainLeft: Math.round(m.left), brandLeft: Math.round(b.left), contentLeft: Math.round(m.left) + 19 };
+    });
+    if (dw === 768) ok(geo.mainLeft >= 10, "desktop: at 768 the card keeps side margins (mainLeft=" + geo.mainLeft + ")");
+    if (dw >= 1440) ok(Math.abs(geo.brandLeft - geo.contentLeft) <= 3, "desktop: header aligns with the column at " + dw + " (brand " + geo.brandLeft + " vs content " + geo.contentLeft + ")");
+    if (dw === 1280) {
+      await tab("bulk");
+      await pickCraft("#bulk-crafts", "Blooming");
+      await page.click('.kits-chip[data-for="bulk"][data-kits="6"]');
+      await clickEl("#btn-bulk-add"); await sleep(300);
+      const gap = await page.evaluate(() => { const t = document.querySelector(".toast"); const r = t.getBoundingClientRect(); return Math.round(window.innerHeight - r.bottom); });
+      ok(gap === 24, "desktop: toast bottom gap is 24 (saw " + gap + ")");
+    }
+    if (dw === 1440) {
+      await tab("bulk");
+      await pickCraft("#bulk-crafts", "Blooming");
+      await page.click('.kits-chip[data-for="bulk"][data-kits="6"]');
+      await clickEl("#btn-bulk-add"); await sleep(200);
+      await clickEl("#btn-bulk-record"); await sleep(600);
+      const sc = await page.evaluate(() => { const s = document.querySelector(".sheet").getBoundingClientRect(); return { cx: Math.round(s.left + s.width / 2), cy: Math.round(s.top + s.height / 2) }; });
+      ok(Math.abs(sc.cx - 720) <= 5 && Math.abs(sc.cy - 450) <= 10, "desktop: sheet centred at 1440 (" + sc.cx + "," + sc.cy + ")");
+      await page.keyboard.press("Escape"); await sleep(250);
+      ok(await page.evaluate(() => document.querySelector("#sheet-backdrop").hidden), "desktop: Esc closes the sheet");
+      await tab("inventory");
+      await clickEl("#btn-print-menu"); await sleep(200);
+      ok(await page.evaluate(() => !document.querySelector("#print-menu").hidden), "desktop: print menu opens");
+      await page.keyboard.press("Escape"); await sleep(200);
+      ok(await page.evaluate(() => document.querySelector("#print-menu").hidden), "desktop: Esc closes the print menu");
+    }
+  }
+
   console.log(pass + " passed, " + fail + " failed");
 } finally {
   await browser.close();
