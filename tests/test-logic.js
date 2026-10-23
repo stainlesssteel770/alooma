@@ -95,5 +95,24 @@ const groups = L.inventoryGroups();
 eq(groups.reduce((n, g) => n + g.items.length, 0), 62, "groups cover all 62 items exactly once");
 eq(groups.find(g => g.id === "shared").items, ["scissors", "tacky-glue", "permanent-markers"], "shared group");
 
+/* --- Batch C: settings, box rules, bins --- */
+const ds = L.defaultSettings();
+eq(ds.features, { boxes: false, bins: false }, "default settings: both features OFF");
+eq(L.boxRuleFor(ds, "cak", 12), null, "no rule -> no boxes");
+const s1 = L.normalizeSettings({ features: { boxes: true }, boxRules: [{ craftId: "cak", kits: 12, boxes: ["A", "B"] }] });
+eq(L.boxRuleFor(s1, "cak", 12), ["A", "B"], "box rule: exact craft+kits match");
+eq(L.boxRuleFor(s1, "cak", 18), null, "box rule: different kits -> no match");
+eq(L.boxRuleFor(s1, "bm", 12), null, "box rule: different craft -> no match");
+const sOff = L.normalizeSettings({ features: { boxes: false }, boxRules: [{ craftId: "cak", kits: 12, boxes: ["A"] }] });
+eq(L.boxRuleFor(sOff, "cak", 12), null, "feature off -> no boxes even with a rule");
+eq(L.normalizeSettings(undefined).features.boxes, false, "missing settings -> defaults (old data files)");
+eq(L.normalizeSettings({ boxRules: [{ craftId: "nope", kits: 12, boxes: ["A"] }, { craftId: "cak", kits: 7, boxes: ["A"] }] }).boxRules, [], "junk rules are dropped");
+eq(L.boxesText(s1, ["A", "B"]), "Box A + Box B", "boxes text uses the box names");
+const allBins = L.defaultBins();
+eq(Object.keys(allBins).length, 62, "a placeholder bin for every item");
+eq(allBins["tree-mirror"], "BIN-01", "first inventory item is BIN-01");
+eq(L.binFor({ bins: {} }, "scissors"), allBins["scissors"], "binFor falls back to the placeholder");
+eq(L.binFor({ bins: { scissors: "BIN-99" } }, "scissors"), "BIN-99", "binFor uses the set bin");
+
 console.log(pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
