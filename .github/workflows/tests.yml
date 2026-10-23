@@ -49,6 +49,9 @@ jobs:
       - name: Screenshots at 390px (batch-report evidence)
         run: node tests/screenshots.mjs
 
+      - name: Desktop screenshots (desktop brief — evidence at 768/1280/1440/1920)
+        run: node tests/shots-desktop.mjs
+
       - name: Upload screenshots and print PDFs
         if: always()
         uses: actions/upload-artifact@v4
