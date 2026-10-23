@@ -71,6 +71,15 @@
     <p id="pack-error" class="field-error"></p>
     <div id="pack-warning" class="warning" hidden></div>
     <div id="pack-list-wrap">
+      <div id="pack-boxes" class="boxes-line" hidden>
+        <span>Boxes for this order: <strong id="pack-boxes-text"></strong></span>
+        <button type="button" id="btn-boxes-change" class="btn btn-quiet">Change</button>
+      </div>
+      <div id="pack-boxes-edit" class="boxes-edit" hidden>
+        <span>Use instead:</span>
+        <span id="pack-boxes-chips" class="chips"></span>
+        <button type="button" id="btn-boxes-done" class="btn btn-quiet">Done</button>
+      </div>
       <div class="list-head">
         <h3>Pack list</h3>
         <span id="pack-progress" class="progress-text"></span>
@@ -208,6 +217,24 @@
           <button id="btn-disconnect" class="btn btn-danger">Disconnect token from this device</button>
         </div>
         <p class="hint">Disconnecting removes the saved token from this device only. The site goes back to view-only here; your data in the repo is untouched.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Default boxes</h3>
+      <p class="hint">When an order's craft and kit count exactly match a rule, Packing shows which boxes to use — and prints them on the packing sheet. Off by default; rules are saved in the shared data, so every device sees the same ones.</p>
+      <label class="toggle-row editor-only"><input type="checkbox" id="set-boxes-on"> Show default boxes on Packing</label>
+      <div id="boxes-editor" class="editor-only" hidden>
+        <h4>Box names &amp; sizes</h4>
+        <div id="box-meta"></div>
+        <h4>Rules</h4>
+        <div id="box-rules-list"></div>
+        <div class="box-add">
+          <select id="rule-craft" aria-label="Craft for the new rule"></select>
+          <select id="rule-kits" aria-label="Kit count for the new rule"></select>
+          <span id="rule-boxes" class="rule-boxes"></span>
+          <button type="button" id="btn-rule-add" class="btn">Add rule</button>
+        </div>
       </div>
     </div>
 
