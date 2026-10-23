@@ -542,6 +542,49 @@
     renderAll();
     saveData("Count entry: " + done + " item(s) fixed").then(function () { toast("Counts applied: " + done + " item(s) updated."); });
   }
+  /* Batch B4: receive a whole delivery on one form — one save, one History entry per item */
+  function renderDeliveryEntry() {
+    var list = $("delivery-entry-list"); list.innerHTML = "";
+    L.inventoryGroups().forEach(function (g) {
+      var head = document.createElement("div");
+      head.innerHTML = "<strong>" + esc(g.name) + "</strong>";
+      list.appendChild(head);
+      g.items.forEach(function (itemId) {
+        var row = document.createElement("div"); row.className = "count-row";
+        row.innerHTML = "<span>" + esc(L.ITEMS[itemId]) + " (on hand: " + qtyOf(itemId) + ')</span>' +
+          '<input type="number" min="0" step="1" data-item="' + itemId + '" placeholder="Arrived">';
+        list.appendChild(row);
+      });
+    });
+  }
+  function applyDelivery() {
+    if (!requireEditor()) return;
+    var inputs = $("delivery-entry-list").querySelectorAll("input[data-item]");
+    var received = [];
+    inputs.forEach(function (inp) {
+      if (inp.value === "") return;
+      var v = parseInt(inp.value, 10);
+      if (!Number.isInteger(v) || v <= 0) return;
+      received.push({ item: inp.getAttribute("data-item"), amount: v });
+    });
+    if (!received.length) { toast("Type how many of each item arrived first — nothing to save yet."); return; }
+    received.forEach(function (r) {
+      var entry = newEntry(
+        "received",
+        "Received " + r.amount + " × " + L.ITEMS[r.item],
+        [{ item: r.item, delta: r.amount }],
+        { item: r.item, amount: r.amount }
+      );
+      /* apply locally without a save per item; one save at the end */
+      L.applyEffects(state.data.inventory, entry.effects, +1);
+      state.data.history.unshift(entry);
+    });
+    $("delivery-entry").hidden = true;
+    renderAll();
+    saveData("Delivery: " + received.length + " item(s) received").then(function () {
+      toast("Delivery saved: " + received.length + " item(s) received.");
+    });
+  }
 
   /* ---------- History tab ---------- */
   var TYPE_LABEL = { "received": "Received", "packed": "Packed", "hand-packed": "Hand-packed", "count-fix": "Count fix", "import": "Backup import" };
@@ -911,6 +954,12 @@
     setInterval(refreshSyncStatus, 30000);
     $("btn-apply-counts").addEventListener("click", applyCounts);
     $("btn-cancel-counts").addEventListener("click", function () { $("count-entry").hidden = true; });
+    $("btn-delivery").addEventListener("click", function () {
+      var p = $("delivery-entry"); p.hidden = !p.hidden;
+      if (!p.hidden) renderDeliveryEntry();
+    });
+    $("btn-apply-delivery").addEventListener("click", applyDelivery);
+    $("btn-cancel-delivery").addEventListener("click", function () { $("delivery-entry").hidden = true; });
     $("btn-connect").addEventListener("click", connectDevice);
     $("btn-disconnect").addEventListener("click", disconnectDevice);
     $("btn-export").addEventListener("click", exportBackup);
