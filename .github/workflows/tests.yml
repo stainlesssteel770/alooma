@@ -38,6 +38,9 @@ jobs:
       - name: Offline test (data blocked -> single empty state -> Retry)
         run: node tests/test-offline.mjs
 
+      - name: Offline queue tests (v3 E4 — offline actions re-applied on reconnect)
+        run: node tests/test-offline-queue.mjs
+
       - name: Accessibility scan (axe)
         run: node tests/test-a11y.mjs
       - name: Print checks (4x6 PDFs, no blank labels)
