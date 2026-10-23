@@ -6,8 +6,15 @@ import { createRequire } from "module";
 import { spawn } from "child_process";
 import fs from "fs";
 const require = createRequire(import.meta.url);
-const puppeteer = require("/home/hatch/workspace/steady/tests/node_modules/puppeteer-core");
-const EXE = "/home/hatch/.cache/puppeteer/chrome-headless-shell/linux-155.0.8059.84/chrome-headless-shell-linux64/chrome-headless-shell";
+/* Portable browser loading: full `puppeteer` if installed (CI installs it);
+   otherwise the sandbox's puppeteer-core + chrome-headless-shell.
+   Override with PUPPETEER_CORE_PATH / CHROME_PATH. */
+let puppeteer, EXE;
+try { puppeteer = require("puppeteer"); }
+catch (e) {
+  puppeteer = require(process.env.PUPPETEER_CORE_PATH || "/home/hatch/workspace/steady/tests/node_modules/puppeteer-core");
+  EXE = process.env.CHROME_PATH || "/home/hatch/.cache/puppeteer/chrome-headless-shell/linux-155.0.8059.84/chrome-headless-shell-linux64/chrome-headless-shell";
+}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const server = spawn("python3", ["-m", "http.server", "8908", "--bind", "127.0.0.1"], { cwd: "/home/hatch/workspace/alooma-repo", stdio: "ignore" });
 await sleep(700);
