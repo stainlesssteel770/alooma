@@ -1094,8 +1094,10 @@
   /* ---------- Settings: default boxes (Batch C1, free-form list) ---------- */
   /* Boxes are a simple list of names the user adds himself (any count, no
      sizes). A rule = craft (dropdown) + kit count (typed, multiples of 6
-     only) + one box from a dropdown, plus an optional second box for
-     bigger orders that ship in two different boxes. */
+     only) + ANY number of boxes: each pick from the box dropdown adds one
+     to the rule (shown as chips), so bigger orders can default to two,
+     three, four boxes. */
+  var rulePickedBoxes = []; /* boxes chosen so far for the rule being built */
   function renderBoxSettings() {
     var s = settings();
     $("set-boxes-on").checked = !!s.features.boxes;
@@ -1143,26 +1145,38 @@
         craftSel.appendChild(o);
       });
     }
-    /* The box dropdown mirrors the user's box list (selection kept if possible) */
+    /* The box dropdown mirrors the user's box list; picking a box adds it
+       to the rule being built (see the change wiring) */
     var boxSel = $("rule-boxes");
-    var prev = boxSel.value;
     boxSel.innerHTML = "";
+    var ph = document.createElement("option"); ph.value = ""; ph.textContent = "Choose a box…";
+    boxSel.appendChild(ph);
     s.boxes.forEach(function (name) {
       var o = document.createElement("option"); o.value = name; o.textContent = name;
       boxSel.appendChild(o);
     });
-    if (s.boxes.indexOf(prev) >= 0) boxSel.value = prev;
-    /* Optional second box: bigger orders often ship in two different boxes */
-    var boxSel2 = $("rule-boxes-2");
-    var prev2 = boxSel2.value;
-    boxSel2.innerHTML = "";
-    var noneOpt = document.createElement("option"); noneOpt.value = ""; noneOpt.textContent = "Second box (optional)";
-    boxSel2.appendChild(noneOpt);
-    s.boxes.forEach(function (name) {
-      var o2 = document.createElement("option"); o2.value = name; o2.textContent = name;
-      boxSel2.appendChild(o2);
+    boxSel.value = "";
+    renderRulePicked();
+  }
+  function renderRulePicked() {
+    var wrap = $("rule-boxes-picked");
+    wrap.innerHTML = "";
+    if (!rulePickedBoxes.length) {
+      wrap.innerHTML = '<span class="hint">No boxes picked for this rule yet — choose from the box menu.</span>';
+      return;
+    }
+    rulePickedBoxes.forEach(function (name, i) {
+      var chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "kits-chip selected";
+      chip.textContent = name + " ✕";
+      chip.setAttribute("aria-label", "Remove " + name + " from this rule");
+      chip.addEventListener("click", function () {
+        rulePickedBoxes.splice(i, 1);
+        renderRulePicked();
+      });
+      wrap.appendChild(chip);
     });
-    if (s.boxes.indexOf(prev2) >= 0) boxSel2.value = prev2;
   }
   function addBoxFromField() {
     if (!requireEditor()) return;
@@ -1307,19 +1321,23 @@
       settings().features.boxes = $("set-boxes-on").checked;
       saveData("Default boxes " + (settings().features.boxes ? "on" : "off")).then(function () { renderAll(); });
     });
+    $("rule-boxes").addEventListener("change", function () {
+      var name = $("rule-boxes").value;
+      if (name && rulePickedBoxes.indexOf(name) < 0) rulePickedBoxes.push(name);
+      $("rule-boxes").value = "";
+      renderRulePicked();
+    });
     $("btn-rule-add").addEventListener("click", function () {
       if (!requireEditor()) return;
       var err = $("rule-error"); err.textContent = "";
       var craftId = $("rule-craft").value;
       var kits = parseInt($("rule-kits").value, 10);
-      var box = $("rule-boxes").value;
-      var box2 = $("rule-boxes-2").value;
-      if (!box) { err.textContent = "Add a box first (above) — then it appears in the box menu."; return; }
       if (!L.validKits(kits)) { err.textContent = "Kit count must be a multiple of 6 — 6, 12, 18, 24…"; return; }
-      var ruleBoxes = [box];
-      if (box2 && box2 !== box) ruleBoxes.push(box2);
+      if (!rulePickedBoxes.length) { err.textContent = "Pick at least one box from the box menu first."; return; }
+      var ruleBoxes = rulePickedBoxes.slice();
       settings().boxRules = settings().boxRules.filter(function (r) { return !(r.craftId === craftId && r.kits === kits); });
       settings().boxRules.push({ craftId: craftId, kits: kits, boxes: ruleBoxes });
+      rulePickedBoxes = [];
       $("rule-kits").value = "";
       saveData("Box rule added").then(function () { toast("Rule added."); renderAll(); });
     });
