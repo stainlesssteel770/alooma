@@ -32,6 +32,7 @@ jobs:
         run: node tests/test-ui.mjs
 
       - name: Layout audit (real geometry at 360/390px — nothing clipped or off-screen)
+        if: always()
         run: node tests/test-layout.mjs
 
       - name: Offline test (data blocked -> single empty state -> Retry)
