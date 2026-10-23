@@ -730,15 +730,15 @@
     state.packPrintedKey = cur.craft.id + ":" + cur.kits;
     updatePackProgress();
     var rows = cur.pack.map(function (r) {
-      return "<tr><td>" + esc(r.name) + '</td><td class="qty">' + r.qty + "</td></tr>";
+      return '<tr><td class="tick"><span class="tick-box"></span></td><td>' + esc(r.name) + '</td><td class="qty">' + r.qty + "</td></tr>";
     }).join("");
     printHtml(
       "<table><thead>" +
-      '<tr><th colspan="2"><div class="label-title">' + esc(cur.craft.name) + "</div>" +
+      '<tr><th colspan="3"><div class="label-title">' + esc(cur.craft.name) + "</div>" +
       '<div class="label-sub">SKU ' + esc(L.sku(cur.craft.id, cur.kits)) + " · " + cur.kits + " kits · " +
       new Date().toLocaleDateString() + "</div>" +
       '<div class="order-id">Order ID: ____________________</div></th></tr>' +
-      "<tr><th>Item</th><th class='qty'>Qty</th></tr></thead>" +
+      "<tr><th class='tick'></th><th>Item</th><th class='qty'>Qty</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>"
     );
   }
