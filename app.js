@@ -155,6 +155,11 @@
       if (!state.data.inventory[id]) state.data.inventory[id] = { qty: 0, threshold: null };
     });
     if (!Array.isArray(state.data.history)) state.data.history = [];
+    state.data.settings = L.normalizeSettings(state.data.settings);
+  }
+  function settings() {
+    if (!state.data.settings) state.data.settings = L.defaultSettings();
+    return state.data.settings;
   }
   function saveData(message) {
     if (!state.editor) return Promise.reject(new Error("view-only"));
@@ -260,6 +265,23 @@
     $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
   }
   var packFoldOverride = false;
+  var packBoxOverride = null; /* null = use the box rule; an array = this order only */
+  var packSelKey = null;
+  function currentBoxes() {
+    var cur = currentPack(); if (!cur || !settings().features.boxes) return null;
+    if (packBoxOverride !== null) return packBoxOverride.slice();
+    return L.boxRuleFor(settings(), cur.craft.id, cur.kits);
+  }
+  function renderPackBoxes() {
+    var cur = currentPack();
+    var on = !!cur && settings().features.boxes;
+    var rule = on ? L.boxRuleFor(settings(), cur.craft.id, cur.kits) : null;
+    var show = on && (rule !== null || packBoxOverride !== null);
+    $("pack-boxes").hidden = !show;
+    if (!show) { $("pack-boxes-edit").hidden = true; return; }
+    var boxes = packBoxOverride !== null ? packBoxOverride : rule;
+    $("pack-boxes-text").textContent = boxes.length ? L.boxesText(settings(), boxes) : "None";
+  }
   function renderPack() {
     craftButtons("pack-crafts", state.packCraft, function (id) { state.packCraft = id; packFoldOverride = false; renderPack(); });
     var kits = parseInt($("pack-kits").value, 10);
@@ -273,14 +295,17 @@
     $("pack-picker").hidden = folded;
     $("pack-picker-summary").hidden = !folded;
     if (folded) $("pack-summary-text").textContent = L.craftById(state.packCraft).name + " · " + kits + " kits";
+    var selKey = state.packCraft + ":" + kits;
+    if (selKey !== packSelKey) { packSelKey = selKey; packBoxOverride = null; $("pack-boxes-edit").hidden = true; }
     var tbody = $("pack-table").querySelector("tbody");
     tbody.innerHTML = "";
     if (!valid) {
       err.textContent = kits ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : "Enter the number of kits — orders are multiples of 6.";
       updatePackProgress();
+      renderPackBoxes();
       return;
     }
-    if (!state.packCraft) { updatePackProgress(); return; }
+    if (!state.packCraft) { updatePackProgress(); renderPackBoxes(); return; }
     var pack = L.computePack(state.packCraft, kits);
     var shortages = [];
     pack.forEach(function (r, idx) {
@@ -311,6 +336,7 @@
       warn.hidden = false;
     }
     updatePackProgress();
+    renderPackBoxes();
   }
   function currentPack() {
     if (!state.packCraft) return null;
@@ -322,10 +348,11 @@
     if (!requireEditor()) return;
     var cur = currentPack(); if (!cur) return;
     var craft = cur.craft;
+    var boxes = currentBoxes();
     openSheet({
       title: craft.name,
       sub: cur.kits + " kits · " + L.sku(craft.id, cur.kits),
-      summary: packSummary(cur.pack),
+      summary: packSummary(cur.pack) + (boxes && boxes.length ? " · Boxes: " + L.boxesText(settings(), boxes) : ""),
       primary: "Subtract from inventory",
       onConfirm: function () {
         var entry = newEntry(
@@ -732,11 +759,13 @@
     var rows = cur.pack.map(function (r) {
       return '<tr><td class="tick"><span class="tick-box"></span></td><td>' + esc(r.name) + '</td><td class="qty">' + r.qty + "</td></tr>";
     }).join("");
+    var boxes = currentBoxes();
     printHtml(
       "<table><thead>" +
       '<tr><th colspan="3"><div class="label-title">' + esc(cur.craft.name) + "</div>" +
       '<div class="label-sub">SKU ' + esc(L.sku(cur.craft.id, cur.kits)) + " · " + cur.kits + " kits · " +
       new Date().toLocaleDateString() + "</div>" +
+      (boxes && boxes.length ? '<div class="label-sub"><strong>BOXES: ' + esc(boxes.join(" + ")) + "</strong></div>" : "") +
       '<div class="order-id">Order ID: ____________________</div></th></tr>' +
       "<tr><th class='tick'></th><th>Item</th><th class='qty'>Qty</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>"
@@ -857,9 +886,68 @@
     reader.readAsText(file);
   }
 
+  /* ---------- Settings: default boxes (Batch C1) ---------- */
+  function renderBoxSettings() {
+    var s = settings();
+    $("set-boxes-on").checked = !!s.features.boxes;
+    $("boxes-editor").hidden = !s.features.boxes;
+    var meta = $("box-meta"); meta.innerHTML = "";
+    L.BOX_IDS.forEach(function (b) {
+      var row = document.createElement("div"); row.className = "box-meta-row";
+      row.innerHTML = "<strong>" + b + "</strong>" +
+        '<input type="text" data-box-name="' + b + '" value="' + esc(s.boxes[b].name) + '" aria-label="Name for box ' + b + '">' +
+        '<input type="text" data-box-size="' + b + '" value="' + esc(s.boxes[b].size) + '" placeholder="Size (optional)" aria-label="Size for box ' + b + '">';
+      meta.appendChild(row);
+    });
+    meta.querySelectorAll("input").forEach(function (inp) {
+      inp.addEventListener("change", function () {
+        if (!requireEditor()) return;
+        var bn = inp.getAttribute("data-box-name"), bs = inp.getAttribute("data-box-size");
+        if (bn) settings().boxes[bn].name = inp.value.trim() || ("Box " + bn);
+        if (bs) settings().boxes[bs].size = inp.value.trim();
+        saveData("Box details updated").then(function () { toast("Box details saved."); renderAll(); });
+      });
+    });
+    var list = $("box-rules-list"); list.innerHTML = "";
+    if (!s.boxRules.length) list.innerHTML = '<p class="hint">No rules yet.</p>';
+    s.boxRules.forEach(function (r, idx) {
+      var craft = L.craftById(r.craftId);
+      var row = document.createElement("div"); row.className = "box-rule-row";
+      row.innerHTML = "<span>" + esc(craft ? craft.name : r.craftId) + " · " + r.kits + " kits = " + esc(L.boxesText(s, r.boxes)) + "</span>";
+      var del = document.createElement("button");
+      del.type = "button"; del.className = "btn btn-quiet"; del.textContent = "Delete";
+      del.addEventListener("click", function () {
+        if (!requireEditor()) return;
+        settings().boxRules.splice(idx, 1);
+        saveData("Box rule removed").then(function () { toast("Rule removed."); renderAll(); });
+      });
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+    var craftSel = $("rule-craft");
+    if (!craftSel.options.length) {
+      L.CRAFTS.forEach(function (c) {
+        var o = document.createElement("option"); o.value = c.id; o.textContent = c.name;
+        craftSel.appendChild(o);
+      });
+      var kitsSel = $("rule-kits");
+      [6, 12, 18, 24, 30, 36].forEach(function (k) {
+        var o = document.createElement("option"); o.value = k; o.textContent = k + " kits";
+        kitsSel.appendChild(o);
+      });
+      var rb = $("rule-boxes");
+      L.BOX_IDS.forEach(function (b) {
+        var lab = document.createElement("label");
+        lab.innerHTML = '<input type="checkbox" value="' + b + '"> ' + b;
+        rb.appendChild(lab);
+      });
+    }
+  }
+
   /* ---------- wiring ---------- */
   function renderAll() {
     renderSettings();
+    renderBoxSettings();
     renderPack();
     renderHand();
     renderInventory();
@@ -963,6 +1051,43 @@
     });
     $("btn-apply-delivery").addEventListener("click", applyDelivery);
     $("btn-cancel-delivery").addEventListener("click", function () { $("delivery-entry").hidden = true; });
+    $("set-boxes-on").addEventListener("change", function () {
+      if (!requireEditor()) { renderBoxSettings(); return; }
+      settings().features.boxes = $("set-boxes-on").checked;
+      saveData("Default boxes " + (settings().features.boxes ? "on" : "off")).then(function () { renderAll(); });
+    });
+    $("btn-rule-add").addEventListener("click", function () {
+      if (!requireEditor()) return;
+      var craftId = $("rule-craft").value;
+      var kits = parseInt($("rule-kits").value, 10);
+      var boxes = Array.prototype.map.call(document.querySelectorAll("#rule-boxes input:checked"), function (i) { return i.value; });
+      if (!boxes.length) { toast("Tick at least one box for the rule."); return; }
+      settings().boxRules = settings().boxRules.filter(function (r) { return !(r.craftId === craftId && r.kits === kits); });
+      settings().boxRules.push({ craftId: craftId, kits: kits, boxes: boxes });
+      saveData("Box rule added").then(function () { toast("Rule added."); renderAll(); });
+    });
+    $("btn-boxes-change").addEventListener("click", function () {
+      var cur = currentBoxes() || [];
+      var chips = $("pack-boxes-chips"); chips.innerHTML = "";
+      L.BOX_IDS.forEach(function (b) {
+        var chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "kits-chip" + (cur.indexOf(b) >= 0 ? " selected" : "");
+        chip.textContent = b;
+        chip.setAttribute("data-box", b);
+        chip.addEventListener("click", function () { chip.classList.toggle("selected"); });
+        chips.appendChild(chip);
+      });
+      $("pack-boxes-edit").hidden = false;
+    });
+    $("btn-boxes-done").addEventListener("click", function () {
+      packBoxOverride = Array.prototype.map.call(
+        document.querySelectorAll("#pack-boxes-chips .kits-chip.selected"),
+        function (c) { return c.getAttribute("data-box"); }
+      );
+      $("pack-boxes-edit").hidden = true;
+      renderPackBoxes();
+    });
     $("btn-connect").addEventListener("click", connectDevice);
     $("btn-disconnect").addEventListener("click", disconnectDevice);
     $("btn-export").addEventListener("click", exportBackup);
