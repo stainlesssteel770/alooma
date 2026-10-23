@@ -142,7 +142,7 @@ tr.checked-row td .row-name { text-decoration: line-through; }
 .inv-filters .chip-btn[aria-pressed="true"] { background: #E8EEF8; color: #1B4382; border: 2px solid #2457A6; }
 .inv-actions { align-items: flex-start; }
 .print-menu-wrap { position: relative; display: inline-block; margin-left: auto; }
-.print-menu { position: absolute; left: auto; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 30px rgba(0,0,0,.16); padding: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 30; min-width: 240px; max-width: calc(100vw - 32px); }
+.print-menu { position: fixed; left: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 30px rgba(0,0,0,.16); padding: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 90; min-width: 240px; max-width: calc(100vw - 32px); }
 #btn-reorder { flex: 1; }
 .inv-actions { flex-wrap: nowrap; }
 body.view-only .inv-actions { display: none; }
