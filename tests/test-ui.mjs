@@ -217,7 +217,12 @@ try {
   await sleep(250);
   eq(await page.$eval("#sheet-title", e => e.textContent), "The Cakery", "A5: confirm sheet shows craft name");
   eq(await page.$eval("#sheet-sub", e => e.textContent), "18 kits · CAK-18", "A5: sheet shows kits + SKU");
-  eq(await page.$eval("#sheet-primary", e => e.textContent), "Subtract from inventory", "A5: sheet primary label");
+  /* v2 A2: this order IS short (most CAK items sit at 0 here) — the sheet must shout it */
+  eq(await page.$eval("#sheet-extra", e => !e.hidden && e.textContent.includes("items short")), true, "v2 A2: red short block shows on a short order");
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heart Jewelry Box: need 18, have 0. Its count will go to -18.")), true, "v2 A2: block names the shortage and where its count lands");
+  eq(/^Subtract anyway \(\d+ short\)$/.test(await page.$eval("#sheet-primary", e => e.textContent)), true, "v2 A2: primary becomes Subtract anyway (N short)");
+  eq(await page.$eval("#sheet-primary", e => e.classList.contains("danger")), true, "v2 A2: primary is the danger outline style");
+  eq(await page.$eval("#sheet-cancel", e => e.textContent + "|" + e.classList.contains("btn-primary")), "Go back|true", "v2 A2: Go back becomes the filled button");
   await page.click("#sheet-primary");
   await sleep(600);
   eq(remoteData.inventory["scissors"].qty, 194, "CAK-18 deducted 6 scissors (200->194)");
@@ -577,6 +582,59 @@ try {
   await sleep(300);
   eq(await page.evaluate(() => document.querySelector("#pack-boxes").hidden), true, "C off again: boxes line hidden");
   eq((await page.evaluate(() => document.querySelectorAll("#pack-table .row-bin").length)) === 0, true, "C off again: no bin labels on pack rows");
+
+  /* v2 A2: a FULL order keeps the plain sheet; a 1-short order gets the red block.
+     Seed HCB's seven items to 100 in the mock repo and reload (editor persists). */
+  ["wood-board", "tray-set", "miniatures-bread-bag", "wood-burning-cream", "hc-placemat", "hc-instructions", "heat-gun"].forEach(id => { remoteData.inventory[id].qty = 100; });
+  await page.reload({ waitUntil: "networkidle0" });
+  await sleep(400);
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(200);
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat")).click());
+  await page.click('.kits-chip[data-for="pack"][data-kits="6"]');
+  await sleep(200);
+  await page.click("#btn-mode-hand");
+  await page.click("#btn-check-all");
+  await sleep(200);
+  await page.click("#sheet-primary"); /* v2 A5: confirm the check-all */
+  await sleep(200);
+  await page.click("#btn-complete-pack");
+  await sleep(250);
+  eq(await page.$eval("#sheet-extra", e => e.hidden), true, "v2 A2: full order — no short block");
+  eq(await page.$eval("#sheet-primary", e => e.textContent), "Subtract from inventory", "v2 A2: full order keeps the plain primary");
+  eq(await page.$eval("#sheet-cancel", e => e.textContent + "|" + e.classList.contains("btn-primary")), "Cancel|false", "v2 A2: full order keeps the plain cancel");
+  await page.click("#sheet-primary");
+  await waitRemote(() => remoteData.inventory["wood-board"].qty === 94, "HCB-6 packed from full stock");
+  /* Zero the heat gun (99 on hand after the pack) through the count sheet */
+  await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
+  await sleep(200);
+  await page.click("#btn-enter-counts");
+  await sleep(200);
+  await page.evaluate(() => { document.querySelector('#count-entry-list input[data-item="heat-gun"]').value = "0"; });
+  await page.click("#btn-apply-counts");
+  await sleep(250);
+  await page.click("#sheet-primary"); /* v2 A3: confirm the count */
+  await waitRemote(() => remoteData.inventory["heat-gun"].qty === 0, "heat gun counted to 0");
+  /* Same order again: now exactly one item is short */
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(200);
+  await page.click("#btn-check-all");
+  await sleep(200);
+  await page.click("#sheet-primary");
+  await sleep(200);
+  await page.click("#btn-complete-pack");
+  await sleep(250);
+  eq(await page.$eval("#sheet-extra", e => !e.hidden && e.textContent.includes("1 item short")), true, "v2 A2: one-short order shows the block");
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heat gun: need 1, have 0. Its count will go to -1.")), true, "v2 A2: block line names item, need, have, and the landing count");
+  eq(await page.$eval("#sheet-primary", e => e.textContent), "Subtract anyway (1 short)", "v2 A2: primary label for one short");
+  const histBeforeA2 = remoteData.history.length;
+  await page.click("#sheet-cancel"); /* Go back */
+  await sleep(300);
+  eq(remoteData.history.length, histBeforeA2, "v2 A2: Go back subtracts nothing");
+  await page.click("#btn-complete-pack");
+  await sleep(250);
+  await page.click("#sheet-primary"); /* Subtract anyway */
+  await waitRemote(() => remoteData.inventory["heat-gun"].qty === -1, "short pack applied anyway");
 
   /* Disconnect: back to view-only, token gone from this device */
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
