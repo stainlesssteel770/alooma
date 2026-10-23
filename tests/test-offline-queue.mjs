@@ -30,7 +30,7 @@ async function waitFor(fn, label) {
   fail++; console.log("FAIL timeout waiting: " + label);
 }
 
-let online = true, shaN = 1, putCount = 0;
+let online = true, shaN = 1, putCount = 0, serverClosed = false;
 const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
 remote.history = [];
 Object.keys(remote.inventory).forEach(k => { remote.inventory[k].qty = 0; remote.inventory[k].threshold = null; });
@@ -158,17 +158,28 @@ try {
   /* ---- Service worker + snapshot: the app opens with no signal ---- */
   await waitFor(async () => page.evaluate(() => navigator.serviceWorker.getRegistration().then(r => !!r).catch(() => false)), "service worker registered");
   eq(await page.evaluate(() => caches.keys().then(k => k.includes("alooma-shell-v1"))), true, "E4: app shell is cached");
+  console.log("E4 DIAG before offline reload: status =", await page.$eval("#save-status", e => e.textContent),
+    "| snapshot saved:", await page.evaluate(() => !!localStorage.getItem("alooma.snapshot.v1")));
+  /* No signal means the local server is gone too — kill it so even the
+     Pages-copy fallback has nowhere to answer from; only the service
+     worker's cache and the on-device snapshot remain */
+  await new Promise(r => server.close(r));
+  serverClosed = true;
   await page.setOfflineMode(true);
   await page.reload({ waitUntil: "load", timeout: 30000 });
   await sleep(1200);
+  console.log("E4 DIAG after offline reload: status =", await page.$eval("#save-status", e => e.textContent).catch(() => "<none>"),
+    "| active tab =", await page.evaluate(() => { const b = document.querySelector("#tabs button.active"); return b ? b.getAttribute("data-tab") : "<none>"; }).catch(() => "<err>"));
   eq(await page.evaluate(() => document.body.classList.contains("load-failed")), false, "E4: offline reopen does NOT hit the empty state");
-  eq(await page.$eval("#tab-inventory", e => getComputedStyle(e).display !== "none" || e.classList.contains("active")), true, "E4: inventory renders offline from the snapshot");
+  await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
+  await sleep(300);
+  eq(await page.$eval('.inv-item[data-item="scissors"] .inv-qty, .inv-item[data-item="scissors"]', e => e.textContent.includes("190")), true, "E4: inventory renders offline from the snapshot (scissors 190, not the file's 0)");
   eq(await page.$eval("#save-status", e => e.textContent.includes("Offline")), true, "E4: header says Offline on the snapshot");
   await page.setOfflineMode(false);
 
   console.log(pass + " passed, " + fail + " failed");
 } finally {
   await browser.close();
-  server.close();
+  if (!serverClosed) server.close();
 }
 process.exit(fail ? 1 : 0);
