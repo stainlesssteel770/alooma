@@ -134,6 +134,7 @@
       <button type="button" id="btn-outfilter" class="btn chip-btn" aria-pressed="false">Out · <span id="out-count">0</span></button>
     </div>
     <div class="btn-row inv-actions">
+      <button id="btn-delivery" class="btn btn-primary editor-only">📥 Receive delivery</button>
       <button id="btn-enter-counts" class="btn editor-only">✎ Count</button>
       <span class="print-menu-wrap">
         <button type="button" id="btn-print-menu" class="btn" aria-haspopup="true" aria-expanded="false">🖨 Print ▾</button>
@@ -151,6 +152,15 @@
       <div class="btn-row">
         <button id="btn-apply-counts" class="btn btn-primary">Apply counts</button>
         <button id="btn-cancel-counts" class="btn">Cancel</button>
+      </div>
+    </div>
+    <div id="delivery-entry" class="count-entry" hidden>
+      <h3>Receive a delivery</h3>
+      <p class="hint">Type how many of each item arrived, leave the rest blank, then save once. Each item received gets its own entry in History.</p>
+      <div id="delivery-entry-list"></div>
+      <div class="btn-row">
+        <button id="btn-apply-delivery" class="btn btn-primary">Save delivery</button>
+        <button id="btn-cancel-delivery" class="btn">Cancel</button>
       </div>
     </div>
     <div id="inventory-groups"></div>
