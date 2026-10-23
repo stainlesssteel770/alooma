@@ -265,6 +265,7 @@
     $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
   }
   var packFoldOverride = false;
+  var packSortBin = false; /* Batch C2: sort the pack list + sheet by bin */
   var packBoxOverride = null; /* null = use the box rule; an array = this order only */
   var packSelKey = null;
   function currentBoxes() {
@@ -307,14 +308,24 @@
     }
     if (!state.packCraft) { updatePackProgress(); renderPackBoxes(); return; }
     var pack = L.computePack(state.packCraft, kits);
+    var binsOn = settings().features.bins;
+    $("btn-pack-sort").hidden = !binsOn;
+    $("btn-pack-sort").textContent = packSortBin && binsOn ? "Sorted by bin ✓" : "Sort by bin";
+    var rowsPack = pack.slice();
+    if (packSortBin && binsOn) {
+      rowsPack.sort(function (a, b) {
+        var ba = L.binFor(settings(), a.item), bb = L.binFor(settings(), b.item);
+        return ba < bb ? -1 : ba > bb ? 1 : 0;
+      });
+    }
     var shortages = [];
-    pack.forEach(function (r, idx) {
+    rowsPack.forEach(function (r, idx) {
       var onHand = qtyOf(r.item);
       if (onHand < r.qty) shortages.push(r.name + " (need " + r.qty + ", have " + onHand + ")");
       var tr = document.createElement("tr");
       tr.innerHTML =
         '<td><input type="checkbox" data-idx="' + idx + '" aria-label="Packed: ' + esc(r.name) + '"></td>' +
-        '<td><span class="row-name">' + esc(r.name) + "</span></td>" +
+        '<td><span class="row-name">' + esc(r.name) + "</span>" + (binsOn ? ' <span class="row-bin">' + esc(L.binFor(settings(), r.item)) + "</span>" : "") + "</td>" +
         '<td class="num">' + r.qty + "</td>" +
         '<td class="num' + (onHand < r.qty ? " short" : "") + '">' + onHand + "</td>";
       var cb = tr.querySelector("input");
@@ -442,13 +453,24 @@
     $("btn-filter-all").setAttribute("aria-pressed", invFilter === "all" ? "true" : "false");
     $("btn-lowfilter").setAttribute("aria-pressed", invFilter === "low" ? "true" : "false");
     $("btn-outfilter").setAttribute("aria-pressed", invFilter === "out" ? "true" : "false");
+    $("btn-binfilter").hidden = !settings().features.bins;
+    $("btn-binfilter").setAttribute("aria-pressed", invSortBin ? "true" : "false");
+    $("btn-binfilter").hidden = !settings().features.bins;
+    $("btn-binfilter").setAttribute("aria-pressed", invSortBin ? "true" : "false");
   }
   function renderInventory() {
     var wrap = $("inventory-groups"); wrap.innerHTML = "";
     L.inventoryGroups().forEach(function (g) {
       var div = document.createElement("div"); div.className = "inv-group";
       var html = "<h3><span>" + esc(g.name) + '</span><span class="inv-onhand">On hand</span></h3>';
-      g.items.forEach(function (itemId) {
+      var items = g.items.slice();
+      if (invSortBin && settings().features.bins) {
+        items.sort(function (a, b) {
+          var ba = L.binFor(settings(), a), bb = L.binFor(settings(), b);
+          return ba < bb ? -1 : ba > bb ? 1 : 0;
+        });
+      }
+      items.forEach(function (itemId) {
         var rec = state.data.inventory[itemId];
         var badge = "";
         if (rec.qty === 0 && rec.threshold !== null && rec.threshold !== undefined) badge = '<span class="low-badge out-badge">Out of stock</span>';
@@ -456,26 +478,29 @@
         html +=
           '<div class="inv-item" data-item="' + itemId + '">' +
           '<button type="button" class="inv-main" aria-expanded="' + (invOpenItem === itemId) + '">' +
-          '<span class="inv-name">' + esc(L.ITEMS[itemId]) + "</span>" + badge +
+          '<span class="inv-name">' + esc(L.ITEMS[itemId]) + "</span>" + badge + (settings().features.bins ? '<span class="inv-bin">' + esc(L.binFor(settings(), itemId)) + "</span>" : "") +
           '<span class="inv-qty">' + rec.qty + "</span>" +
           '<span class="inv-chev" aria-hidden="true">' + (invOpenItem === itemId ? "▾" : "▸") + "</span>" +
           "</button>";
         if (invOpenItem === itemId) {
           var modes = [["receive", "Receive"], ["set", "Set count"], ["warning", "Warning"]];
+          if (settings().features.bins) modes.push(["bin", "Bin"]);
           var seg = modes.map(function (m) {
             return '<button type="button" data-mode="' + m[0] + '"' + (invPanelMode === m[0] ? ' class="on"' : "") + ">" + m[1] + "</button>";
           }).join("");
           var placeholder = invPanelMode === "receive" ? "How many arrived?"
             : invPanelMode === "set" ? "Actual count (now " + rec.qty + ")"
+            : invPanelMode === "bin" ? "Bin label (now " + L.binFor(settings(), itemId) + ")"
             : "Warn at or below (blank = off)";
-          var prefill = invPanelMode === "warning" && rec.threshold !== null && rec.threshold !== undefined ? rec.threshold : "";
+          var prefill = invPanelMode === "warning" && rec.threshold !== null && rec.threshold !== undefined ? rec.threshold
+            : invPanelMode === "bin" ? (settings().bins[itemId] || "") : "";
           var goLabel = invPanelMode === "receive" ? "Add" : invPanelMode === "set" ? "Set" : "Save";
           html +=
             '<div class="inv-panel editor-only">' +
             '<div class="seg" role="group" aria-label="Action for ' + esc(L.ITEMS[itemId]) + '">' + seg + "</div>" +
-            '<div class="inrow"><input type="number" class="inv-panel-input" min="0" step="1" inputmode="numeric" placeholder="' + placeholder + '" value="' + prefill + '">' +
+            '<div class="inrow"><input type="' + (invPanelMode === "bin" ? "text" : "number") + '" class="inv-panel-input" min="0" step="1" inputmode="' + (invPanelMode === "bin" ? "text" : "numeric") + '" placeholder="' + placeholder + '" value="' + prefill + '">' +
             '<button type="button" class="go inv-panel-go">' + goLabel + "</button></div>" +
-            '<div class="panel-note">On hand now: ' + rec.qty + (rec.threshold !== null && rec.threshold !== undefined ? " · low-stock warning at or below " + rec.threshold : " · no low-stock warning") + "</div>" +
+            '<div class="panel-note">On hand now: ' + rec.qty + (rec.threshold !== null && rec.threshold !== undefined ? " · low-stock warning at or below " + rec.threshold : " · no low-stock warning") + (settings().features.bins ? " · Bin " + esc(L.binFor(settings(), itemId)) : "") + "</div>" +
             "</div>";
         }
         html += "</div>";
@@ -516,6 +541,13 @@
             newEntry("count-fix", "Count fix " + name + ": " + cur + " → " + v, [{ item: itemId, delta: v - cur }], { item: itemId, counted: v }),
             "Count fix " + name + " to " + v
           );
+        } else if (invPanelMode === "bin") {
+          var binVal = raw.trim();
+          clearError();
+          if (binVal) settings().bins[itemId] = binVal; else delete settings().bins[itemId];
+          renderAll();
+          saveData("Bin " + name + " -> " + L.binFor(settings(), itemId))
+            .then(function () { toast("Bin for " + name + ": " + L.binFor(settings(), itemId)); });
         } else {
           if (raw !== "" && (!Number.isInteger(v) || v < 0)) { showError("Low-stock warning for " + name + " must be 0 or more, or blank for off."); return; }
           clearError();
@@ -756,18 +788,28 @@
     /* Printing the sheet means they're packing from paper: unlock Complete for this exact order. */
     state.packPrintedKey = cur.craft.id + ":" + cur.kits;
     updatePackProgress();
-    var rows = cur.pack.map(function (r) {
-      return '<tr><td class="tick"><span class="tick-box"></span></td><td>' + esc(r.name) + '</td><td class="qty">' + r.qty + "</td></tr>";
+    var binsOn = settings().features.bins;
+    var sheetPack = cur.pack.slice();
+    if (packSortBin && binsOn) {
+      sheetPack.sort(function (a, b) {
+        var ba = L.binFor(settings(), a.item), bb = L.binFor(settings(), b.item);
+        return ba < bb ? -1 : ba > bb ? 1 : 0;
+      });
+    }
+    var rows = sheetPack.map(function (r) {
+      return '<tr><td class="tick"><span class="tick-box"></span></td><td>' + esc(r.name) + "</td>" +
+        (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), r.item)) + "</td>" : "") +
+        '<td class="qty">' + r.qty + "</td></tr>";
     }).join("");
     var boxes = currentBoxes();
     printHtml(
       "<table><thead>" +
-      '<tr><th colspan="3"><div class="label-title">' + esc(cur.craft.name) + "</div>" +
+      '<tr><th colspan="' + (binsOn ? 4 : 3) + '"><div class="label-title">' + esc(cur.craft.name) + "</div>" +
       '<div class="label-sub">SKU ' + esc(L.sku(cur.craft.id, cur.kits)) + " · " + cur.kits + " kits · " +
       new Date().toLocaleDateString() + "</div>" +
       (boxes && boxes.length ? '<div class="label-sub"><strong>BOXES: ' + esc(boxes.join(" + ")) + "</strong></div>" : "") +
       '<div class="order-id">Order ID: ____________________</div></th></tr>' +
-      "<tr><th class='tick'></th><th>Item</th><th class='qty'>Qty</th></tr></thead>" +
+      "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Qty</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>"
     );
   }
@@ -788,11 +830,21 @@
     if (mode === "count") {
       head = '<div class="label-title">Alooma — Count Sheet</div><div class="label-sub">' +
         new Date().toLocaleString() + " · Write the counted number, then type it back in under Inventory → Enter counted numbers</div>";
+      var binsOn = settings().features.bins;
       groupsHtml = L.inventoryGroups().map(function (g) {
-        var rows = g.items.map(function (itemId) {
-          return "<tr><td>" + esc(L.ITEMS[itemId]) + '</td><td class="qty">' + qtyOf(itemId) + '</td><td class="counted-blank">&nbsp;</td></tr>';
+        var cItems = g.items.slice();
+        if (binsOn && invSortBin) {
+          cItems.sort(function (a, b) {
+            var ba = L.binFor(settings(), a), bb = L.binFor(settings(), b);
+            return ba < bb ? -1 : ba > bb ? 1 : 0;
+          });
+        }
+        var rows = cItems.map(function (itemId) {
+          return "<tr><td>" + esc(L.ITEMS[itemId]) + "</td>" +
+            (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), itemId)) + "</td>" : "") +
+            '<td class="qty">' + qtyOf(itemId) + '</td><td class="counted-blank">&nbsp;</td></tr>';
         }).join("");
-        return '<div class="group-head">' + esc(g.name) + "</div><table><tr><th>Item</th><th class='qty'>Should be</th><th>Counted</th></tr>" + rows + "</table>";
+        return '<div class="group-head">' + esc(g.name) + "</div><table><tr><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Should be</th><th>Counted</th></tr>" + rows + "</table>";
       }).join("");
     }
     printHtml(head + groupsHtml);
@@ -944,10 +996,16 @@
     }
   }
 
+  /* ---------- Settings: bin locations (Batch C2) ---------- */
+  function renderBinSettings() {
+    $("set-bins-on").checked = !!settings().features.bins;
+  }
+
   /* ---------- wiring ---------- */
   function renderAll() {
     renderSettings();
     renderBoxSettings();
+    renderBinSettings();
     renderPack();
     renderHand();
     renderInventory();
@@ -1005,6 +1063,14 @@
     $("btn-filter-all").addEventListener("click", function () { invFilter = "all"; applyInvFilters(); });
     $("btn-lowfilter").addEventListener("click", function () { invFilter = "low"; applyInvFilters(); });
     $("btn-outfilter").addEventListener("click", function () { invFilter = "out"; applyInvFilters(); });
+    $("btn-binfilter").addEventListener("click", function () { invSortBin = !invSortBin; renderInventory(); });
+    $("btn-pack-sort").addEventListener("click", function () { packSortBin = !packSortBin; renderPack(); });
+    $("set-bins-on").addEventListener("change", function () {
+      if (!requireEditor()) { renderBinSettings(); return; }
+      settings().features.bins = $("set-bins-on").checked;
+      if (!settings().features.bins) { invSortBin = false; packSortBin = false; }
+      saveData("Bin locations " + (settings().features.bins ? "on" : "off")).then(function () { renderAll(); });
+    });
     $("btn-print-menu").addEventListener("click", function () {
       var menu = $("print-menu");
       var open = menu.hidden;
