@@ -280,6 +280,11 @@ try {
   eq(await page.$eval("#pack-picker", e => e.hidden), true, "B1: full picker hidden once folded");
   const firstRowTop = await page.evaluate(() => Math.round(document.querySelector("#pack-table tbody tr").getBoundingClientRect().top + window.scrollY));
   console.log("B1 measured: first pack row top =", firstRowTop, "px");
+  const diagTops = await page.evaluate(() => {
+    const t = s => { const e = document.querySelector(s); if (!e) return s + ":missing"; const r = e.getBoundingClientRect(); return s + " top=" + Math.round(r.top + window.scrollY) + " h=" + Math.round(r.height) + " disp=" + getComputedStyle(e).display; };
+    return [t("#tab-pack"), t("#pack-picker-summary"), t("#pack-picker"), t("#pack-warning"), t(".list-head"), t("#pack-table thead"), t(".app-header"), t("main")].join(" | ");
+  });
+  console.log("B1 diag:", diagTops);
   eq(firstRowTop < 460, true, "B1: first pack row near the top (was ~857px before B1)");
   await page.click("#btn-pack-change");
   await sleep(200);
@@ -335,7 +340,7 @@ try {
   eq(await page.evaluate(() => localStorage.getItem("alooma.editor.v1")), null, "token removed from device on disconnect");
 
   /* Export produces the current data */
-  eq(remoteData.inventory["scissors"].qty, 195, "final remote scissors = 195 (receive 200, count 190, edit 195)");
+  eq(remoteData.inventory["scissors"].qty, 245, "final remote scissors = 245 (receive 200, count 190, edit 195, delivery +50)");
 
   console.log(pass + " passed, " + fail + " failed; mock-repo PUTs: " + putCount);
 } finally {
