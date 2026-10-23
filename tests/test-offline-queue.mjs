@@ -158,18 +158,17 @@ try {
   /* ---- Service worker + snapshot: the app opens with no signal ---- */
   await waitFor(async () => page.evaluate(() => navigator.serviceWorker.getRegistration().then(r => !!r).catch(() => false)), "service worker registered");
   eq(await page.evaluate(() => caches.keys().then(k => k.includes("alooma-shell-v1"))), true, "E4: app shell is cached");
-  console.log("E4 DIAG before offline reload: status =", await page.$eval("#save-status", e => e.textContent),
-    "| snapshot saved:", await page.evaluate(() => !!localStorage.getItem("alooma.snapshot.v1")));
-  /* No signal means the local server is gone too — kill it so even the
-     Pages-copy fallback has nowhere to answer from; only the service
-     worker's cache and the on-device snapshot remain */
+  /* No signal, for real: the mock stops answering (online = false) AND the
+     local server dies, so even the Pages-copy fallback has nowhere to
+     answer from — only the service worker's cache and the on-device
+     snapshot remain. (setOfflineMode alone does not stop interception-
+     answered requests, which is why the mock flag matters here.) */
+  online = false;
   await new Promise(r => server.close(r));
   serverClosed = true;
   await page.setOfflineMode(true);
   await page.reload({ waitUntil: "load", timeout: 30000 });
   await sleep(1200);
-  console.log("E4 DIAG after offline reload: status =", await page.$eval("#save-status", e => e.textContent).catch(() => "<none>"),
-    "| active tab =", await page.evaluate(() => { const b = document.querySelector("#tabs button.active"); return b ? b.getAttribute("data-tab") : "<none>"; }).catch(() => "<err>"));
   eq(await page.evaluate(() => document.body.classList.contains("load-failed")), false, "E4: offline reopen does NOT hit the empty state");
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
   await sleep(300);
