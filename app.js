@@ -12,8 +12,29 @@
 
   var state = {
     data: null, sha: null, editor: null, /* {token, owner, repo, login} */
-    packCraft: null, bulkCraft: null, loadedAt: null, packPrintedKey: null
+    packCraft: null, bulkCraft: null, loadedAt: null, packPrintedKey: null,
+    offline: false, savedData: null, localBase: null
   };
+
+  /* ---------- v3 E4: offline action queue + data snapshot ----------
+     Saves are captured as ACTIONS (stock deltas, exact-count sets, history
+     entries, settings keys) diffed against the last state this device
+     knows it saved. Offline, actions queue on the device; on reconnect
+     they are re-applied on top of the latest remote data, so both sides
+     are kept. A queued exact count whose item also changed remotely is
+     the ONLY case that stops and asks. Nothing ever overwrites the whole
+     file silently. */
+  var QUEUE_KEY = "alooma.queue.v1", SNAP_KEY = "alooma.snapshot.v1";
+  var saveQueue = [];
+  try { var q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); if (Array.isArray(q)) saveQueue = q; } catch (e) {}
+  function clone(o) { return o == null ? o : JSON.parse(JSON.stringify(o)); }
+  function persistQueue() { try { localStorage.setItem(QUEUE_KEY, JSON.stringify(saveQueue)); } catch (e) {} }
+  function persistSnapshot() {
+    try { localStorage.setItem(SNAP_KEY, JSON.stringify({ data: state.data, sha: state.sha, savedData: state.savedData, at: new Date().toISOString() })); } catch (e) {}
+  }
+  function readSnapshot() {
+    try { var s = JSON.parse(localStorage.getItem(SNAP_KEY) || "null"); return s && s.data ? s : null; } catch (e) { return null; }
+  }
 
   /* ---------- small helpers ---------- */
   function $(id) { return document.getElementById(id); }
@@ -75,7 +96,7 @@
     if (head) head.style.display = headVisible ? "" : "none";
   }
   /* ---------- in-app confirm sheet (no window.confirm / window.prompt) ---------- */
-  var sheetCb = null;
+  var sheetCb = null, sheetCancelCb = null;
   function openSheet(opts) {
     $("sheet-title").textContent = opts.title || "";
     $("sheet-sub").textContent = opts.sub || "";
@@ -99,9 +120,11 @@
       inp.step = opts.input.step || 1;
     } else { wrap.hidden = true; }
     sheetCb = opts.onConfirm;
+    sheetCancelCb = opts.onCancel || null;
     $("sheet-backdrop").hidden = false;
   }
-  function closeSheet() { $("sheet-backdrop").hidden = true; sheetCb = null; }
+  function closeSheet() { $("sheet-backdrop").hidden = true; sheetCb = null; sheetCancelCb = null; }
+  function dismissSheet() { var cb = sheetCancelCb; closeSheet(); if (cb) cb(); }
   function packSummary(pack) {
     var shorts = [];
     pack.forEach(function (r) {
@@ -172,9 +195,31 @@
         document.body.classList.remove("load-failed");
         $("load-failed").hidden = true;
         state.syncKind = "Loaded";
+        /* v3 E4: this loaded state is the base the next save diffs against */
+        state.offline = false;
+        state.savedData = clone(state.data);
+        state.localBase = clone(state.data);
+        persistSnapshot();
         refreshSyncStatus();
       })
       .catch(function () {
+        /* v3 E4: no signal but this device has saved before — open on the
+           last saved copy and queue any edits as actions */
+        var snap = readSnapshot();
+        if (snap) {
+          state.data = snap.data;
+          state.sha = snap.sha || null;
+          state.savedData = snap.savedData || null;
+          state.localBase = clone(snap.data);
+          state.offline = true;
+          state.loadedAt = snap.at ? new Date(snap.at) : new Date();
+          normalizeData();
+          state.loadFailed = false;
+          document.body.classList.remove("load-failed");
+          $("load-failed").hidden = true;
+          refreshSyncStatus();
+          return;
+        }
         /* A failed load must never look like zero stock: show one empty
            state, no quantities, and every screen/action stays hidden. */
         state.loadFailed = true;
@@ -192,6 +237,12 @@
     return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
   function refreshSyncStatus() {
+    var n = saveQueue.length;
+    if (n) {
+      updateSaveStatus((state.offline ? "Offline" : "Waiting to save") + " · " + n + (n === 1 ? " change" : " changes") + " waiting");
+      return;
+    }
+    if (state.offline) { updateSaveStatus("Offline · last saved copy"); return; }
     if (state.loadedAt) updateSaveStatus((state.syncKind || "Loaded") + " · " + relAgo(state.loadedAt));
   }
   function normalizeData() {
@@ -207,40 +258,183 @@
     if (!state.data.settings) state.data.settings = L.defaultSettings();
     return state.data.settings;
   }
-  function saveData(message) {
-    if (!state.editor) return Promise.reject(new Error("view-only"));
+  /* ---------- v3 E4: save engine (actions, queue, merge) ---------- */
+  function diffAction(message, from, to) {
+    if (!from || !to) return null;
+    var deltas = {}, sets = {}, fields = {}, entries = [], replaced = [], removed = [], setKeys = {};
+    var fromHist = {}, toHist = {};
+    (from.history || []).forEach(function (e) { fromHist[e.id] = e; });
+    (to.history || []).forEach(function (e) {
+      toHist[e.id] = e;
+      if (!fromHist[e.id]) entries.push(e);
+      else if (JSON.stringify(fromHist[e.id]) !== JSON.stringify(e)) replaced.push(e);
+    });
+    (from.history || []).forEach(function (e) { if (!toHist[e.id]) removed.push(e.id); });
+    /* An item whose change came with a count-fix entry is an exact SET,
+       not a delta — sets are the only conflict-sensitive op */
+    var counted = {};
+    entries.forEach(function (e) {
+      if (e.type !== "count-fix") return;
+      if (e.item) counted[e.item] = true;
+      (e.effects || []).forEach(function (ef) { counted[ef.item] = true; });
+    });
+    Object.keys(L.ITEMS).forEach(function (id) {
+      var a = from.inventory[id] || { qty: 0, threshold: null };
+      var b = to.inventory[id] || { qty: 0, threshold: null };
+      if (a.qty !== b.qty) {
+        if (counted[id]) sets[id] = { to: b.qty, base: a.qty };
+        else deltas[id] = b.qty - a.qty;
+      }
+      var at = a.threshold != null ? a.threshold : null, bt = b.threshold != null ? b.threshold : null;
+      if (at !== bt) fields[id] = { threshold: bt };
+    });
+    ["features", "boxes", "boxRules", "bins"].forEach(function (k) {
+      if (JSON.stringify((from.settings || {})[k]) !== JSON.stringify((to.settings || {})[k])) setKeys[k] = clone((to.settings || {})[k]);
+    });
+    var empty = !Object.keys(deltas).length && !Object.keys(sets).length && !Object.keys(fields).length &&
+      !entries.length && !replaced.length && !removed.length && !Object.keys(setKeys).length;
+    if (empty) return null;
+    return { id: "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts: new Date().toISOString(),
+      message: message, deltas: deltas, sets: sets, fields: fields, entries: entries, replaced: replaced, removed: removed, settings: setKeys };
+  }
+  function putData(data, sha, message) {
     var c = repoCfg();
-    updateSaveStatus("Saving…");
-    var body = {
-      message: message,
-      content: b64encode(JSON.stringify(state.data, null, 2) + "\n"),
-      branch: "main"
-    };
-    if (state.sha) body.sha = state.sha;
+    var body = { message: message, content: b64encode(JSON.stringify(data, null, 2) + "\n"), branch: "main" };
+    if (sha) body.sha = sha;
     return fetch("https://api.github.com/repos/" + c.owner + "/" + c.repo + "/contents/data.json", {
       method: "PUT", headers: ghHeaders(), body: JSON.stringify(body)
     }).then(function (r) {
-      if (r.status === 409 || r.status === 422) {
-        /* Someone/something committed in between: refresh the sha and retry once. */
-        return fetch(apiDataUrl(), { headers: ghHeaders(), cache: "no-store" })
-          .then(function (rr) { return rr.json(); })
-          .then(function (j) {
-            body.sha = j.sha;
-            return fetch("https://api.github.com/repos/" + c.owner + "/" + c.repo + "/contents/data.json", {
-              method: "PUT", headers: ghHeaders(), body: JSON.stringify(body)
-            });
-          });
-      }
-      return r;
-    }).then(function (r) {
-      if (!r.ok) throw new Error("save " + r.status);
+      if (!r.ok) { var e = new Error("save " + r.status); e.status = r.status; throw e; }
       return r.json();
-    }).then(function (j) {
-      state.sha = j.content && j.content.sha ? j.content.sha : state.sha;
+    }).then(function (j) { return j.content && j.content.sha ? j.content.sha : sha; });
+  }
+  function getRemote() {
+    return fetch(apiDataUrl(), { headers: ghHeaders(), cache: "no-store" })
+      .then(function (r) { if (!r.ok) { var e = new Error("api " + r.status); e.status = r.status; throw e; } return r.json(); })
+      .then(function (j) { return { data: JSON.parse(b64decode(j.content)), sha: j.sha }; });
+  }
+  function askCountConflict(itemId, mine, theirs) {
+    return new Promise(function (resolve) {
+      openSheet({
+        title: "Count conflict — " + L.ITEMS[itemId],
+        summary: "You counted " + mine + ". While you were offline, " + L.ITEMS[itemId] + " changed on GitHub — it is now " + theirs + ". Which number should stand?",
+        primary: "Use my count (" + mine + ")",
+        cancelLabel: "Keep " + theirs,
+        onConfirm: function () { resolve(true); },
+        onCancel: function () { resolve(false); }
+      });
+    });
+  }
+  function applyOneAction(d, a) {
+    Object.keys(a.deltas || {}).forEach(function (id) { if (d.inventory[id]) d.inventory[id].qty += a.deltas[id]; });
+    Object.keys(a.fields || {}).forEach(function (id) { if (d.inventory[id]) d.inventory[id].threshold = a.fields[id].threshold; });
+    Object.keys(a.settings || {}).forEach(function (k) { if (!d.settings) d.settings = L.defaultSettings(); d.settings[k] = clone(a.settings[k]); });
+    (a.entries || []).forEach(function (e) {
+      if (!d.history.some(function (h) { return h.id === e.id; })) d.history.unshift(clone(e));
+    });
+    (a.replaced || []).forEach(function (e) {
+      var i = d.history.findIndex(function (h) { return h.id === e.id; });
+      if (i >= 0) d.history[i] = clone(e);
+    });
+    (a.removed || []).forEach(function (id) {
+      d.history = d.history.filter(function (h) { return h.id !== id; });
+    });
+    var chain = Promise.resolve();
+    Object.keys(a.sets || {}).forEach(function (id) {
+      chain = chain.then(function () {
+        var s = a.sets[id];
+        if (!d.inventory[id]) return;
+        var cur = d.inventory[id].qty;
+        if (cur === s.base) { d.inventory[id].qty = s.to; return; }
+        /* The item also changed remotely — the one case that asks */
+        return askCountConflict(id, s.to, cur).then(function (mine) {
+          if (mine) d.inventory[id].qty = s.to;
+        });
+      });
+    });
+    return chain;
+  }
+  function applyActionsTo(data, actions) {
+    var d = clone(data);
+    if (!d.inventory) d.inventory = {};
+    Object.keys(L.ITEMS).forEach(function (id) { if (!d.inventory[id]) d.inventory[id] = { qty: 0, threshold: null }; });
+    if (!Array.isArray(d.history)) d.history = [];
+    var chain = Promise.resolve();
+    actions.forEach(function (a) { chain = chain.then(function () { return applyOneAction(d, a); }); });
+    return chain.then(function () { d.settings = L.normalizeSettings(d.settings); return d; });
+  }
+  function mergeAndSave(actions, message) {
+    return getRemote().then(function (remote) {
+      return applyActionsTo(remote.data, actions).then(function (merged) {
+        return putData(merged, remote.sha, message).then(function (newSha) {
+          state.data = merged;
+          normalizeData();
+          state.localBase = clone(state.data);
+          state.savedData = clone(state.data);
+          state.sha = newSha;
+          state.loadedAt = new Date();
+          state.syncKind = "Saved";
+          renderAll();
+          persistSnapshot();
+          refreshSyncStatus();
+        });
+      });
+    });
+  }
+  function enqueueAction(action) {
+    saveQueue.push(action);
+    persistQueue();
+    refreshSyncStatus();
+  }
+  var flushing = false;
+  function flushQueue() {
+    if (flushing || !saveQueue.length || !state.editor || state.loadFailed) return Promise.resolve();
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return Promise.resolve();
+    flushing = true;
+    var actions = saveQueue.slice();
+    var message = actions.length === 1 ? actions[0].message : "Sync of " + actions.length + " offline changes";
+    return mergeAndSave(actions, message).then(function () {
+      saveQueue = saveQueue.slice(actions.length);
+      persistQueue();
+      state.offline = false;
+      refreshSyncStatus();
+      toast(actions.length === 1 ? "Back online — your offline change is saved." : "Back online — " + actions.length + " offline changes saved.");
+    }).catch(function (e) {
+      if (e && e.name === "TypeError") state.offline = true;
+      refreshSyncStatus();
+    }).then(function () { flushing = false; });
+  }
+  function saveData(message) {
+    if (!state.editor) return Promise.reject(new Error("view-only"));
+    var action = diffAction(message, state.localBase, state.data);
+    if (!action) { state.localBase = clone(state.data); return Promise.resolve(); }
+    if (state.offline || (typeof navigator !== "undefined" && navigator.onLine === false)) {
+      state.localBase = clone(state.data);
+      enqueueAction(action);
+      return Promise.resolve();
+    }
+    updateSaveStatus("Saving…");
+    return putData(state.data, state.sha, message).then(function (newSha) {
+      state.sha = newSha;
+      state.savedData = clone(state.data);
+      state.localBase = clone(state.data);
       state.loadedAt = new Date();
       state.syncKind = "Saved";
+      persistSnapshot();
       refreshSyncStatus();
     }).catch(function (e) {
+      if (e && (e.status === 409 || e.status === 422)) {
+        /* v3 E4: the file moved under us — reload and re-apply this change
+           on top instead of overwriting the other save */
+        return mergeAndSave([action], message).then(function () { state.localBase = clone(state.data); });
+      }
+      if (e && e.name === "TypeError") {
+        /* The network dropped mid-save: keep the change as a queued action */
+        state.offline = true;
+        state.localBase = clone(state.data);
+        enqueueAction(action);
+        return;
+      }
       updateSaveStatus("NOT saved — check connection");
       showError("Your change was made on this screen but could NOT be saved to GitHub (" + e.message + "). Do not rely on it until it saves — reload the page to see the true saved status, then try again.");
       throw e;
@@ -251,7 +445,7 @@
     el.textContent = txt || "";
     /* v3 D7: at 360 the line only takes header room when it matters —
        a save just landed, is in flight, or failed */
-    el.classList.toggle("fresh", /^(Saved|Saving|NOT saved|Couldn)/.test(txt || ""));
+    el.classList.toggle("fresh", /^(Saved|Saving|NOT saved|Couldn|Offline|Waiting)/.test(txt || ""));
   }
 
   /* ---------- mutations (editor only) ---------- */
@@ -1544,8 +1738,8 @@
       closeSheet();
       cb(val);
     });
-    $("sheet-cancel").addEventListener("click", closeSheet);
-    $("sheet-backdrop").addEventListener("click", function (ev) { if (ev.target === $("sheet-backdrop")) closeSheet(); });
+    $("sheet-cancel").addEventListener("click", dismissSheet);
+    $("sheet-backdrop").addEventListener("click", function (ev) { if (ev.target === $("sheet-backdrop")) dismissSheet(); });
     $("btn-print-sheet").addEventListener("click", function () { packMode = "print"; renderPack(); printPackSheet(); });
     $("btn-mode-hand").addEventListener("click", function () { packMode = "hand"; renderPack(); });
     $("bulk-kits").addEventListener("input", renderBulk);
@@ -1645,7 +1839,13 @@
     /* render the static shells first so the page is usable while data loads */
     if (!state.data) state.data = L.emptyData();
     renderAll();
-    loadData().then(renderAll);
+    loadData().then(function () { renderAll(); flushQueue(); });
+    /* v3 E4: connectivity changes drive the queue */
+    window.addEventListener("online", function () { state.offline = false; refreshSyncStatus(); flushQueue(); });
+    window.addEventListener("offline", function () { state.offline = true; refreshSyncStatus(); });
+    if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    }
   }
   document.addEventListener("DOMContentLoaded", init);
 })();
