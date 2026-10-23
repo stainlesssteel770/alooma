@@ -322,6 +322,44 @@ try {
     }
   }
 
+  /* Mark's desktop repro (2026-10-23): view-only, click Print, and the
+     options menu "wouldn't show up properly" — it was clipped inside the
+     scrolling chip row (overflow-x: auto clips the y axis too), where D6
+     puts the button for view-only devices. Hit-testing is the honest
+     check: getBoundingClientRect reports the full box even when clipped,
+     while elementFromPoint only lands on an item that is really visible.
+     The menu is position:fixed now, placed from the button at open time. */
+  await page.evaluate(() => localStorage.removeItem("alooma.editor.v1"));
+  for (const [vw2, vh2] of [[390, 844], [1440, 900]]) {
+    await page.setViewport({ width: vw2, height: vh2 });
+    await page.goto("http://127.0.0.1:8911/index.html", { waitUntil: "networkidle0", timeout: 30000 });
+    await sleep(400);
+    await tab("inventory");
+    await page.click("#btn-print-menu");
+    await sleep(250);
+    const hit = await page.evaluate(() => {
+      const menu = document.querySelector("#print-menu");
+      if (menu.hidden) return { open: false, items: 0, hits: [] };
+      const items = [...menu.querySelectorAll("button")];
+      const hits = items.map(b => {
+        const r = b.getBoundingClientRect();
+        const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return el === b || b.contains(el);
+      });
+      return { open: true, items: items.length, hits };
+    });
+    ok(hit.open && hit.items >= 2 && hit.hits.every(Boolean), "print menu fully visible + hittable, view-only at " + vw2 + " (open=" + hit.open + ", hits=" + JSON.stringify(hit.hits) + ")");
+    /* …and printing itself is a viewer right: both reports must build */
+    await page.evaluate(() => document.querySelector("#btn-print-inventory").click());
+    await sleep(300);
+    ok(await page.evaluate(() => document.querySelector("#print-area").textContent.includes("Tree Mirror")), "view-only at " + vw2 + ": Inventory report builds");
+    await page.click("#btn-print-menu"); await sleep(250);
+    await page.evaluate(() => document.querySelector("#btn-print-count").click());
+    await sleep(300);
+    ok(await page.evaluate(() => document.querySelector("#print-area").textContent.includes("Counted")), "view-only at " + vw2 + ": Count sheet builds");
+    await page.click("#btn-print-menu"); await sleep(150);
+  }
+
   console.log(pass + " passed, " + fail + " failed");
 } finally {
   await browser.close();
