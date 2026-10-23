@@ -5,7 +5,6 @@
 import { createRequire } from "module";
 import fs from "fs";
 import path from "path";
-import fs from "fs";
 const require = createRequire(import.meta.url);
 /* Portable browser loading: full `puppeteer` if installed (CI installs it);
    otherwise the sandbox's puppeteer-core + chrome-headless-shell.
