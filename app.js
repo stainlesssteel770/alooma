@@ -167,7 +167,8 @@
     L.CRAFTS.forEach(function (c) {
       var b = document.createElement("button");
       b.className = "craft-btn" + (c.id === selectedId ? " selected" : "");
-      b.innerHTML = esc(c.name) + "<small>" + esc(c.code) + " · " + c.items.length + " items</small>";
+      b.innerHTML = (c.id === selectedId ? '<span class="craft-check" aria-hidden="true">✓</span>' : "") +
+        esc(c.name) + "<small>" + esc(c.code) + " · " + c.items.length + " items</small>";
       b.addEventListener("click", function () { onPick(c.id); });
       box.appendChild(b);
     });

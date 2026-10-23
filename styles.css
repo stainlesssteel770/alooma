@@ -39,7 +39,9 @@ h3 { margin: 16px 0 8px; font-size: 17px; }
 .craft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-bottom: 16px; }
 .craft-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 12px; font-size: 16px; font-weight: 600; cursor: pointer; text-align: left; min-height: 56px; color: var(--ink); }
 .craft-btn small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; margin-top: 2px; }
-.craft-btn.selected { border-color: var(--accent); background: #EDF5EF; }
+.craft-btn.selected { border-color: #2457A6; background: #2457A6; color: #fff; }
+.craft-btn.selected small { color: #D7E3F6; }
+.craft-check { float: right; font-weight: 800; font-size: 18px; line-height: 1; }
 
 /* kits stepper + chips */
 .kits-block { margin-bottom: 8px; }
@@ -51,7 +53,7 @@ h3 { margin: 16px 0 8px; font-size: 17px; }
 .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .kits-chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 9px 18px; font-size: 15.5px; font-weight: 600; cursor: pointer; min-height: 44px; color: var(--ink); }
-.kits-chip.selected { background: var(--ink); color: #fff; border-color: var(--ink); }
+.kits-chip.selected { background: #2457A6; color: #fff; border-color: #2457A6; }
 .sku-box { font-size: 16.5px; margin-top: 10px; }
 .field-error { color: var(--red); font-weight: 600; min-height: 1.2em; font-size: 15px; }
 .field-error:empty { min-height: 0; margin: 0; }
