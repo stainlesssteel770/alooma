@@ -1726,17 +1726,25 @@
        view-only devices, where the button lives in the chip row, the
        open menu was clipped to a sliver of the row and never showed.
        Fixed positioning escapes any clipping ancestor, for both roles. */
+    var printMenuOpenedAt = 0;
     function positionPrintMenu() {
       var btn = $("btn-print-menu").getBoundingClientRect();
       var menu = $("print-menu");
       menu.style.top = (btn.bottom + 6) + "px";
       menu.style.right = Math.max(8, window.innerWidth - btn.right) + "px";
+      printMenuOpenedAt = Date.now();
     }
-    window.addEventListener("resize", function () {
+    function closePrintMenu() {
       if (!$("print-menu").hidden) { $("print-menu").hidden = true; $("btn-print-menu").setAttribute("aria-expanded", "false"); }
-    });
+    }
+    window.addEventListener("resize", closePrintMenu);
+    /* A scroll closes the menu (it would hang detached from its button) —
+       but scroll events are delivered a frame late, and the click that
+       opens the menu scrolls it into view first at phone widths; without
+       the grace period that late event instantly closed the just-opened
+       menu (diagnosed by hit-test in the layout suite). */
     window.addEventListener("scroll", function () {
-      if (!$("print-menu").hidden) { $("print-menu").hidden = true; $("btn-print-menu").setAttribute("aria-expanded", "false"); }
+      if (Date.now() - printMenuOpenedAt > 350) closePrintMenu();
     }, true);
     $("print-menu").addEventListener("click", function () {
       $("print-menu").hidden = true;
@@ -1759,15 +1767,16 @@
       }
     });
     /* An action toast's UNDO button is clickable, so it can sit on top of
-       another control and swallow its click (at 800x600 it landed on the
-       Bulk Record button and the batch sheet never opened). A press
-       anywhere outside the toast dismisses it first, so the press reaches
-       the control it was aimed at. Plain toasts have no button and never
-       block, so they are left alone; Undo also lives on every History
-       entry, so dismissing the toast loses nothing. */
+       another control and swallow its click (at 800x600 it covered the
+       Bulk Record button's centre and the batch sheet never opened —
+       diagnosed by hit-test in the UI suite). The toast therefore yields
+       to the user's next real action: a press on any other control
+       dismisses it first. Plain toasts have no button and never block;
+       Undo also lives on every History entry, so nothing is lost. */
     document.addEventListener("pointerdown", function (ev) {
       var t = $("toast");
-      if (t && !t.hidden && t.querySelector("button") && !t.contains(ev.target)) t.hidden = true;
+      if (t && !t.hidden && t.querySelector("button") && !t.contains(ev.target) &&
+          ev.target.closest("button, input, select, textarea, a, [role='button']")) t.hidden = true;
     }, true);
     $("sheet-primary").addEventListener("click", function () {
       var cb = sheetCb;
