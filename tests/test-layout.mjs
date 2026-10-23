@@ -236,8 +236,11 @@ try {
     const invTop = await page.evaluate(() => { const el = document.querySelector(".inv-item"); return el ? Math.round(el.getBoundingClientRect().top + window.scrollY) : -1; });
     console.log("v2 B2 first inventory row top at", width, "=", invTop);
     /* The brief's 300 target didn't reconcile with its own changes (489 -> 363);
-       the user's pick 2026-10-23: drop the Inventory title too and accept ~331. */
-    ok(invTop > 0 && invTop <= 340, "v2 B2: first inventory row at/above the agreed 340 at " + width + "px (saw " + invTop + ")");
+       the user's pick 2026-10-23: drop the Inventory title too and accept ~331.
+       v3 E2 then added the Reorder button row above the list (user-approved
+       in the v3 brief), which costs its ~58px: bound is 340 + 58, and the
+       measured value is reported in every batch report. */
+    ok(invTop > 0 && invTop <= 398, "v2 B2 + v3 E2: first inventory row at/above 398 at " + width + "px (saw " + invTop + ")");
     /* v3 D2 + D6: the editor action row is exactly 48 and Print is back in it */
     const actH = await page.evaluate(() => Math.round(document.querySelector(".inv-actions").getBoundingClientRect().height));
     ok(actH === 48, "v3 D2: inventory action row is 48px at " + width + " (saw " + actH + ")");
