@@ -379,10 +379,10 @@
         return ba < bb ? -1 : ba > bb ? 1 : 0;
       });
     }
-    var shortages = [], shortNames = [];
+    var shortages = [];
     rowsPack.forEach(function (r, idx) {
       var onHand = qtyOf(r.item);
-      if (onHand < r.qty) { shortages.push(r.name + " (need " + r.qty + ", have " + onHand + ")"); shortNames.push(r.name); }
+      if (onHand < r.qty) shortages.push({ name: r.name, have: onHand, need: r.qty, short: r.qty - onHand });
       var tr = document.createElement("tr");
       tr.innerHTML =
         '<td><input type="checkbox" data-idx="' + idx + '" aria-label="Packed: ' + esc(r.name) + '"></td>' +
@@ -400,14 +400,16 @@
       tbody.appendChild(tr);
     });
     if (shortages.length) {
-      /* v2 B1: the warning collapses to one tappable line — "2 short · A · B" */
-      var lineText = shortages.length + " short · " + shortNames.slice(0, 2).join(" · ") + (shortages.length > 2 ? " · +" + (shortages.length - 2) + " more" : "");
-      var shown = shortages.slice(0, 3).map(esc).join(" · ");
-      var more = shortages.length > 3 ? " · +" + (shortages.length - 3) + " more" : "";
-      var full = shortages.length > 3 ? "<details><summary>Show all " + shortages.length + " shortages</summary>" + shortages.map(esc).join(" · ") + "</details>" : "";
+      /* v3 E1: the toggle carries the total; expanding lists every short
+         item on its own line — have / need / short — biggest shortage first */
+      shortages.sort(function (a, b) { return b.short - a.short; });
+      var lineText = "⚠ " + shortages.length + (shortages.length === 1 ? " item short" : " items short");
+      var items = shortages.map(function (s) {
+        return "<li>" + esc(s.name) + ": have " + s.have + ", need " + s.need + ", short " + s.short + "</li>";
+      }).join("");
       warn.innerHTML = '<button type="button" class="warn-toggle" aria-expanded="false">' + esc(lineText) + '</button>' +
-        '<div class="warn-full" hidden><strong>Not enough on hand for:</strong> ' + shown + more + full +
-        "<br>You can still record this — counts will go below zero so the shortage stays visible.</div>";
+        '<div class="warn-full" hidden><ul class="short-list">' + items + "</ul>" +
+        "<p>You can still record this — counts will go below zero so the shortage stays visible.</p></div>";
       var wt = warn.querySelector(".warn-toggle"), wf = warn.querySelector(".warn-full");
       wt.addEventListener("click", function () {
         var open = wf.hidden;
@@ -434,6 +436,7 @@
     /* v2 A2: a short order must look different — red block naming each
        shortage and where its count lands, danger primary, filled Go back */
     var shorts = cur.pack.filter(function (r) { return qtyOf(r.item) < r.qty; });
+    shorts.sort(function (a, b) { return (b.qty - qtyOf(b.item)) - (a.qty - qtyOf(a.item)); });
     var sheetOpts = {
       title: craft.name,
       sub: cur.kits + " kits · " + L.sku(craft.id, cur.kits),
@@ -451,8 +454,8 @@
       }
     };
     if (shorts.length) {
-      sheetOpts.extraHtml = '<div class="sheet-short"><p class="sheet-short-title">' + shorts.length + (shorts.length === 1 ? " item short" : " items short") + "</p><ul>" +
-        shorts.map(function (r) { var have = qtyOf(r.item); return "<li>" + esc(r.name) + ": need " + r.qty + ", have " + have + ". Its count will go to " + (have - r.qty) + ".</li>"; }).join("") + "</ul></div>";
+      sheetOpts.extraHtml = '<div class="sheet-short"><p class="sheet-short-title">⚠ ' + shorts.length + (shorts.length === 1 ? " item short" : " items short") + "</p><ul>" +
+        shorts.map(function (r) { var have = qtyOf(r.item); return "<li>" + esc(r.name) + ": have " + have + ", need " + r.qty + ", short " + (r.qty - have) + "</li>"; }).join("") + "</ul></div>";
       sheetOpts.primary = "Subtract anyway (" + shorts.length + " short)";
       sheetOpts.primaryDanger = true;
       sheetOpts.cancelLabel = "Go back";
@@ -625,6 +628,7 @@
     $("btn-binfilter").setAttribute("aria-pressed", invSortBin ? "true" : "false");
   }
   function renderInventory() {
+    updateReorderButton();
     var wrap = $("inventory-groups"); wrap.innerHTML = "";
     L.inventoryGroups().forEach(function (g) {
       var div = document.createElement("div"); div.className = "inv-group";
@@ -1067,6 +1071,63 @@
     printHtml(head + groupsHtml);
   }
 
+  /* ---------- v3 E2: reorder list ---------- */
+  function reorderItems() {
+    var out = [];
+    L.inventoryGroups().forEach(function (g) {
+      g.items.forEach(function (itemId) {
+        var rec = state.data.inventory[itemId];
+        if (rec && rec.threshold !== null && rec.threshold !== undefined && rec.qty <= rec.threshold) {
+          out.push({ item: itemId, name: L.ITEMS[itemId], group: g.name, qty: rec.qty, level: rec.threshold, order: Math.max(0, rec.threshold * 2 - rec.qty) });
+        }
+      });
+    });
+    return out;
+  }
+  function updateReorderButton() {
+    var b = $("btn-reorder");
+    if (!b) return;
+    var n = reorderItems().length;
+    b.textContent = "Reorder · " + n;
+    b.disabled = n === 0;
+  }
+  function renderReorderPanel() {
+    var list = $("reorder-list"); list.innerHTML = "";
+    var items = reorderItems();
+    if (!items.length) {
+      list.innerHTML = '<p class="hint">Nothing is at or under its warning level right now.</p>';
+      return;
+    }
+    items.forEach(function (r) {
+      var row = document.createElement("div"); row.className = "count-row";
+      row.innerHTML = "<span>" + esc(r.name) + " (on hand: " + r.qty + " · warning at " + r.level + ')</span>' +
+        '<input type="number" min="0" step="1" data-item="' + r.item + '" value="' + r.order + '" aria-label="Order quantity for ' + esc(r.name) + '">';
+      list.appendChild(row);
+    });
+  }
+  function printReorder() {
+    var qtys = {};
+    $("reorder-list").querySelectorAll("input[data-item]").forEach(function (inp) {
+      var v = parseInt(inp.value, 10);
+      qtys[inp.getAttribute("data-item")] = Number.isInteger(v) && v >= 0 ? v : 0;
+    });
+    var groups = {}, order = [];
+    reorderItems().forEach(function (r) {
+      if (!groups[r.group]) { groups[r.group] = []; order.push(r.group); }
+      groups[r.group].push(r);
+    });
+    var html = '<div class="label-title">Alooma — Reorder List</div>' +
+      '<div class="label-sub">' + new Date().toLocaleString() + "</div>" +
+      '<div class="label-sub">Order qty = 2 × warning level − on hand, unless edited before printing.</div>';
+    order.forEach(function (g) {
+      var rows = groups[g].map(function (r) {
+        return "<tr><td>" + esc(r.name) + '</td><td class="qty">' + r.qty + '</td><td class="qty">' + r.level + '</td><td class="qty">' + (qtys[r.item] != null ? qtys[r.item] : r.order) + "</td></tr>";
+      }).join("");
+      html += '<div class="group-head">' + esc(g) + '</div><table><tr><th>Item</th><th>On hand</th><th>Warning level</th><th>Order qty</th></tr>' + rows + "</table>";
+    });
+    printHtml(html);
+  }
+
   /* ---------- Settings: connect / disconnect / backup ---------- */
   function activateTab(name) {
     document.querySelectorAll("#tabs button").forEach(function (x) {
@@ -1075,6 +1136,7 @@
       x.setAttribute("aria-selected", on ? "true" : "false");
     });
     document.querySelectorAll(".tab-panel").forEach(function (x) { x.classList.toggle("active", x.id === "tab-" + name); });
+    if (name === "settings") renderBackupNote();
   }
   /* View-only devices see ONLY Inventory and History (the user's rule). The
      connect screen stays reachable by tapping the header badge. */
@@ -1116,6 +1178,7 @@
     if (pwrap && ptarget && pwrap.parentElement !== ptarget) ptarget.appendChild(pwrap);
     $("device-login").hidden = !GH_APP_CLIENT_ID;
     applyTabAccess();
+    renderBackupNote();
     $("about-repo").textContent = repoCfg().owner + "/" + repoCfg().repo;
     document.querySelectorAll(".editor-note").forEach(function (n) { /* visibility via body.view-only CSS on siblings; notes shown by CSS */ });
   }
@@ -1237,6 +1300,21 @@
     a.download = "alooma-backup-" + new Date().toISOString().slice(0, 10) + ".json";
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    /* v3 E3: remember on this device when the last backup was taken */
+    try { localStorage.setItem("alooma.lastBackup.v1", new Date().toISOString()); } catch (e) {}
+    renderBackupNote();
+  }
+  function renderBackupNote() {
+    var el = $("last-backup");
+    if (!el) return;
+    var raw = null;
+    try { raw = localStorage.getItem("alooma.lastBackup.v1"); } catch (e) {}
+    var d = raw ? new Date(raw) : null;
+    el.textContent = "Last backup (this device): " + (d && !isNaN(d.getTime())
+      ? d.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })
+      : "never");
+    var stale = $("backup-stale");
+    if (stale) stale.hidden = !!d && !isNaN(d.getTime()) && (Date.now() - d.getTime()) < 7 * 24 * 3600 * 1000;
   }
   function importBackup(file) {
     if (!requireEditor()) return;
@@ -1485,6 +1563,12 @@
     $("btn-complete-pack").addEventListener("click", completePacking);
     $("btn-print-inventory").addEventListener("click", function () { printInventory("report"); });
     $("btn-print-count").addEventListener("click", function () { printInventory("count"); });
+    $("btn-reorder").addEventListener("click", function () {
+      var p = $("reorder-panel"); p.hidden = !p.hidden;
+      if (!p.hidden) renderReorderPanel();
+    });
+    $("btn-close-reorder").addEventListener("click", function () { $("reorder-panel").hidden = true; });
+    $("btn-print-reorder").addEventListener("click", printReorder);
     $("btn-enter-counts").addEventListener("click", function () {
       var p = $("count-entry"); p.hidden = !p.hidden;
       if (!p.hidden) renderCountEntry();
