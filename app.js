@@ -1091,30 +1091,36 @@
     reader.readAsText(file);
   }
 
-  /* ---------- Settings: default boxes (Batch C1) ---------- */
+  /* ---------- Settings: default boxes (Batch C1, free-form list) ---------- */
+  /* Boxes are a simple list of names the user adds himself (any count, no
+     sizes). A rule = craft (dropdown) + kit count (typed, multiples of 6
+     only) + one box (dropdown of his boxes). */
   function renderBoxSettings() {
     var s = settings();
     $("set-boxes-on").checked = !!s.features.boxes;
     $("boxes-editor").hidden = !s.features.boxes;
-    var meta = $("box-meta"); meta.innerHTML = "";
-    L.BOX_IDS.forEach(function (b) {
-      var row = document.createElement("div"); row.className = "box-meta-row";
-      row.innerHTML = "<strong>" + b + "</strong>" +
-        '<input type="text" data-box-name="' + b + '" value="' + esc(s.boxes[b].name) + '" aria-label="Name for box ' + b + '">' +
-        '<input type="text" data-box-size="' + b + '" value="' + esc(s.boxes[b].size) + '" placeholder="Size (optional)" aria-label="Size for box ' + b + '">';
-      meta.appendChild(row);
-    });
-    meta.querySelectorAll("input").forEach(function (inp) {
-      inp.addEventListener("change", function () {
+    var list = $("box-list"); list.innerHTML = "";
+    if (!s.boxes.length) list.innerHTML = '<p class="hint">No boxes yet — add your first box below.</p>';
+    s.boxes.forEach(function (name) {
+      var row = document.createElement("div"); row.className = "box-rule-row";
+      row.innerHTML = "<span>" + esc(name) + "</span>";
+      var del = document.createElement("button");
+      del.type = "button"; del.className = "btn btn-quiet"; del.textContent = "Delete";
+      del.setAttribute("aria-label", "Delete box " + name);
+      del.addEventListener("click", function () {
         if (!requireEditor()) return;
-        var bn = inp.getAttribute("data-box-name"), bs = inp.getAttribute("data-box-size");
-        if (bn) settings().boxes[bn].name = inp.value.trim() || ("Box " + bn);
-        if (bs) settings().boxes[bs].size = inp.value.trim();
-        saveData("Box details updated").then(function () { toast("Box details saved."); renderAll(); });
+        settings().boxes = settings().boxes.filter(function (b) { return b !== name; });
+        /* A deleted box disappears from any rules that used it */
+        settings().boxRules = settings().boxRules.map(function (r) {
+          return { craftId: r.craftId, kits: r.kits, boxes: r.boxes.filter(function (b) { return b !== name; }) };
+        }).filter(function (r) { return r.boxes.length > 0; });
+        saveData("Box removed: " + name).then(function () { toast("Box removed."); renderAll(); });
       });
+      row.appendChild(del);
+      list.appendChild(row);
     });
-    var list = $("box-rules-list"); list.innerHTML = "";
-    if (!s.boxRules.length) list.innerHTML = '<p class="hint">No rules yet.</p>';
+    var rulesList = $("box-rules-list"); rulesList.innerHTML = "";
+    if (!s.boxRules.length) rulesList.innerHTML = '<p class="hint">No rules yet.</p>';
     s.boxRules.forEach(function (r, idx) {
       var craft = L.craftById(r.craftId);
       var row = document.createElement("div"); row.className = "box-rule-row";
@@ -1127,7 +1133,7 @@
         saveData("Box rule removed").then(function () { toast("Rule removed."); renderAll(); });
       });
       row.appendChild(del);
-      list.appendChild(row);
+      rulesList.appendChild(row);
     });
     var craftSel = $("rule-craft");
     if (!craftSel.options.length) {
@@ -1135,18 +1141,27 @@
         var o = document.createElement("option"); o.value = c.id; o.textContent = c.name;
         craftSel.appendChild(o);
       });
-      var kitsSel = $("rule-kits");
-      [6, 12, 18, 24, 30, 36].forEach(function (k) {
-        var o = document.createElement("option"); o.value = k; o.textContent = k + " kits";
-        kitsSel.appendChild(o);
-      });
-      var rb = $("rule-boxes");
-      L.BOX_IDS.forEach(function (b) {
-        var lab = document.createElement("label");
-        lab.innerHTML = '<input type="checkbox" value="' + b + '"> ' + b;
-        rb.appendChild(lab);
-      });
     }
+    /* The box dropdown mirrors the user's box list (selection kept if possible) */
+    var boxSel = $("rule-boxes");
+    var prev = boxSel.value;
+    boxSel.innerHTML = "";
+    s.boxes.forEach(function (name) {
+      var o = document.createElement("option"); o.value = name; o.textContent = name;
+      boxSel.appendChild(o);
+    });
+    if (s.boxes.indexOf(prev) >= 0) boxSel.value = prev;
+  }
+  function addBoxFromField() {
+    if (!requireEditor()) return;
+    var inp = $("new-box-name");
+    var name = inp.value.trim();
+    if (!name) { toast("Type a box name first."); return; }
+    var dupe = settings().boxes.some(function (b) { return b.toLowerCase() === name.toLowerCase(); });
+    if (dupe) { toast("That box is already in the list."); return; }
+    settings().boxes.push(name);
+    inp.value = "";
+    saveData("Box added: " + name).then(function () { toast("Box added."); renderAll(); });
   }
 
   /* ---------- Settings: bin locations (Batch C2) ---------- */
@@ -1282,18 +1297,25 @@
     });
     $("btn-rule-add").addEventListener("click", function () {
       if (!requireEditor()) return;
+      var err = $("rule-error"); err.textContent = "";
       var craftId = $("rule-craft").value;
       var kits = parseInt($("rule-kits").value, 10);
-      var boxes = Array.prototype.map.call(document.querySelectorAll("#rule-boxes input:checked"), function (i) { return i.value; });
-      if (!boxes.length) { toast("Tick at least one box for the rule."); return; }
+      var box = $("rule-boxes").value;
+      if (!box) { err.textContent = "Add a box first (above) — then it appears in the box menu."; return; }
+      if (!L.validKits(kits)) { err.textContent = "Kit count must be a multiple of 6 — 6, 12, 18, 24…"; return; }
       settings().boxRules = settings().boxRules.filter(function (r) { return !(r.craftId === craftId && r.kits === kits); });
-      settings().boxRules.push({ craftId: craftId, kits: kits, boxes: boxes });
+      settings().boxRules.push({ craftId: craftId, kits: kits, boxes: [box] });
+      $("rule-kits").value = "";
       saveData("Box rule added").then(function () { toast("Rule added."); renderAll(); });
+    });
+    $("btn-box-add").addEventListener("click", addBoxFromField);
+    $("new-box-name").addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") { ev.preventDefault(); addBoxFromField(); }
     });
     $("btn-boxes-change").addEventListener("click", function () {
       var cur = currentBoxes() || [];
       var chips = $("pack-boxes-chips"); chips.innerHTML = "";
-      L.BOX_IDS.forEach(function (b) {
+      settings().boxes.forEach(function (b) {
         var chip = document.createElement("button");
         chip.type = "button";
         chip.className = "kits-chip" + (cur.indexOf(b) >= 0 ? " selected" : "");
