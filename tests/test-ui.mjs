@@ -330,6 +330,11 @@ try {
     inp.value = "190";
     document.querySelector("#btn-apply-counts").click();
   });
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Set 1 count?", "v2 A3: counts open a confirm sheet before saving");
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Scissors: 195 → 190")), true, "v2 A3: count sheet lists old → new");
+  eq(await page.$eval("#sheet-cancel", e => e.textContent), "Edit numbers", "v2 A3: count sheet cancel returns to the numbers");
+  await page.click("#sheet-primary");
   await sleep(600);
   eq(remoteData.inventory["scissors"].qty, 190, "count entry set scissors to 190");
   eq(remoteData.history[0].type, "count-fix", "count fix logged");
@@ -384,6 +389,9 @@ try {
     });
   });
   await page.click("#btn-apply-delivery");
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Add 60 items to stock?", "v2 A3: a delivery opens a confirm sheet before saving");
+  await page.click("#sheet-primary");
   await sleep(700);
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
@@ -441,12 +449,61 @@ try {
     document.querySelector('#delivery-entry-list input[data-item="wood-board"]').value = "18";
   });
   await page.click("#btn-apply-delivery");
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Add 2 items to stock?", "v2 A3: two-item delivery sheet");
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Scissors +50")), true, "v2 A3: delivery sheet lists each amount");
+  await page.click("#sheet-primary");
   await sleep(700);
   eq(remoteData.inventory["scissors"].qty, 245, "B4: delivery added 50 scissors (195->245)");
   eq(remoteData.inventory["wood-board"].qty, 0, "B4: delivery added 18 wood boards (-18->0)");
   eq(remoteData.history[0].type, "received", "B4: newest History entry is a delivery receive");
   eq(remoteData.history[1].type, "received", "B4: second History entry is the other delivered item");
   eq(putCount, putsBefore + 1, "B4: the whole delivery saved with ONE repo write");
+
+  /* v2 A3: search filters the delivery form; outlier flag; Edit numbers
+     saves nothing; the saved batch has one UNDO that reverses it all */
+  await page.click("#btn-delivery");
+  await sleep(250);
+  await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = "scissors"; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(150);
+  eq(await page.$$eval("#delivery-entry-list .count-row", els => els.filter(e => e.style.display !== "none").length), 1, "v2 A3: search filters the delivery list");
+  await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = ""; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(150);
+  eq(await page.$$eval("#delivery-entry-list .count-row", els => els.filter(e => e.style.display !== "none").length), 62, "v2 A3: clearing the search restores all rows");
+  await page.evaluate(() => { document.querySelector('#delivery-entry-list input[data-item="scissors"]').value = "480"; });
+  await page.click("#btn-apply-delivery");
+  await sleep(250);
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Scissors +480")), true, "v2 A3: delivery sheet lists the big amount");
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("(10× usual)")), true, "v2 A3: 480 after a last delivery of 50 flags as 10× usual");
+  const putsBeforeA3 = putCount;
+  await page.click("#sheet-cancel"); /* Edit numbers */
+  await sleep(200);
+  eq(putCount, putsBeforeA3, "v2 A3: Edit numbers saves nothing");
+  eq(remoteData.inventory["scissors"].qty, 245, "v2 A3: stock untouched after Edit numbers");
+  await page.click("#btn-apply-delivery");
+  await sleep(250);
+  await page.click("#sheet-primary"); /* Add to stock */
+  await sleep(700);
+  eq(remoteData.inventory["scissors"].qty, 725, "v2 A3: confirmed delivery applied (245 + 480)");
+  eq(await page.$eval("#toast", e => e.textContent.includes("UNDO")), true, "v2 A3: saved delivery offers UNDO");
+  await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
+  await sleep(700);
+  eq(remoteData.inventory["scissors"].qty, 245, "v2 A3: UNDO reverses the whole delivery batch");
+
+  /* v2 A3: count flag — a count differing from on-hand by >50% is flagged;
+     the batch UNDO reverses counts too */
+  await page.click("#btn-enter-counts");
+  await sleep(250);
+  await page.evaluate(() => { document.querySelector('#count-entry-list input[data-item="scissors"]').value = "100"; });
+  await page.click("#btn-apply-counts");
+  await sleep(250);
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Scissors: 245 → 100") && e.textContent.includes("-59%")), true, "v2 A3: a -59% count is flagged in the sheet");
+  await page.click("#sheet-primary");
+  await sleep(700);
+  eq(remoteData.inventory["scissors"].qty, 100, "v2 A3: confirmed count applied");
+  await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
+  await sleep(700);
+  eq(remoteData.inventory["scissors"].qty, 245, "v2 A3: UNDO reverses the count batch too");
 
   /* ---------- Batch C: default boxes + bin locations ---------- */
   const waitRemote = async (fn, label) => { for (let i = 0; i < 40; i++) { if (fn()) return; await sleep(150); } throw new Error("timeout waiting: " + label); };
