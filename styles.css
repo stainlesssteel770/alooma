@@ -138,9 +138,10 @@ tr.checked-row td .row-name { text-decoration: line-through; }
 .row-bin { color: var(--muted); font-size: 13.5px; font-weight: 700; white-space: nowrap; }
 .inv-item { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 8px; background: var(--surface); }
 .inv-main { display: flex; align-items: center; gap: 10px; padding: 12px 14px; min-height: 60px; cursor: pointer; width: 100%; background: none; border: none; text-align: left; font: inherit; color: inherit; }
-.inv-name { font-weight: 550; font-size: 16.5px; }
-.inv-qty { margin-left: auto; font-size: 22px; font-weight: 800; }
-.inv-chev { color: var(--muted); font-size: 14px; }
+.inv-name { font-weight: 550; font-size: 16.5px; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.inv-qty { margin-left: auto; font-size: 22px; font-weight: 800; flex: none; }
+.inv-chev { color: var(--muted); font-size: 14px; flex: none; }
+.inv-bin { flex: none; }
 .low-badge { background: var(--amber-bg); color: var(--amber); font-weight: 700; font-size: 13px; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
 .out-badge { background: var(--red-bg); color: var(--red); }
 .inv-panel { border-top: 1.5px solid var(--accent); padding: 12px 14px 14px; }
