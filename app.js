@@ -120,8 +120,33 @@
           .then(function (r) { if (!r.ok) throw new Error("pages " + r.status); return r.json(); })
           .then(function (d) { state.data = d; state.loadedAt = new Date(); });
       })
-      .then(function () { normalizeData(); updateSaveStatus("Loaded " + state.loadedAt.toLocaleTimeString()); })
-      .catch(function () { showError("Could not load the current data. Check your connection and reload the page."); });
+      .then(function () {
+        normalizeData();
+        state.loadFailed = false;
+        document.body.classList.remove("load-failed");
+        $("load-failed").hidden = true;
+        state.syncKind = "Loaded";
+        refreshSyncStatus();
+      })
+      .catch(function () {
+        /* A failed load must never look like zero stock: show one empty
+           state, no quantities, and every screen/action stays hidden. */
+        state.loadFailed = true;
+        document.body.classList.add("load-failed");
+        $("load-failed").hidden = false;
+        updateSaveStatus("Couldn't load data");
+      });
+  }
+  function relAgo(d) {
+    if (!d) return "";
+    var s = Math.max(0, (Date.now() - d.getTime()) / 1000);
+    if (s < 45) return "just now";
+    var m = Math.round(s / 60);
+    if (m < 60) return m + " min ago";
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+  function refreshSyncStatus() {
+    if (state.loadedAt) updateSaveStatus((state.syncKind || "Loaded") + " · " + relAgo(state.loadedAt));
   }
   function normalizeData() {
     if (!state.data || typeof state.data !== "object") state.data = L.emptyData();
@@ -162,7 +187,8 @@
     }).then(function (j) {
       state.sha = j.content && j.content.sha ? j.content.sha : state.sha;
       state.loadedAt = new Date();
-      updateSaveStatus("Saved ✓ " + state.loadedAt.toLocaleTimeString());
+      state.syncKind = "Saved";
+      refreshSyncStatus();
     }).catch(function (e) {
       updateSaveStatus("NOT saved — check connection");
       showError("Your change was made on this screen but could NOT be saved to GitHub (" + e.message + "). Do not rely on it until it saves — reload the page to see the true saved status, then try again.");
@@ -848,6 +874,8 @@
       var p = $("count-entry"); p.hidden = !p.hidden;
       if (!p.hidden) renderCountEntry();
     });
+    $("btn-retry-load").addEventListener("click", function () { loadData().then(renderAll); });
+    setInterval(refreshSyncStatus, 30000);
     $("btn-apply-counts").addEventListener("click", applyCounts);
     $("btn-cancel-counts").addEventListener("click", function () { $("count-entry").hidden = true; });
     $("btn-connect").addEventListener("click", connectDevice);

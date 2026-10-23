@@ -34,6 +34,11 @@
 <div id="toast" class="toast" hidden></div>
 
 <main>
+  <div id="load-failed" class="load-failed" hidden>
+    <h2>Can't reach the stock data. Nothing shown.</h2>
+    <p class="hint">No quantities are displayed, so nothing here can be mistaken for real stock.</p>
+    <button id="btn-retry-load" class="btn btn-primary">Retry</button>
+  </div>
   <!-- PACKING -->
   <section id="tab-pack" class="tab-panel active">
     <h2>Pack an order — one craft at a time</h2>

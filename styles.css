@@ -29,6 +29,9 @@ body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, san
 .tabs button.active { background: var(--surface); color: var(--accent); border-color: var(--accent); }
 .tab-ic { margin-right: 6px; }
 main { max-width: 920px; margin: 10px auto 24px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 26px; }
+.load-failed { text-align: center; padding: 48px 16px; }
+.load-failed .btn { min-height: 54px; padding: 12px 34px; font-size: 17px; }
+body.load-failed main > section { display: none !important; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 h2 { margin: 2px 0 6px; font-size: 20px; }
