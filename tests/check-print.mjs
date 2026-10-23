@@ -39,6 +39,8 @@ const G0 = groups[0];
 remote.inventory[G0.items[0]].threshold = 50; remote.inventory[G0.items[0]].qty = 17;  /* LOW */
 remote.inventory[G0.items[1]].threshold = 50; remote.inventory[G0.items[1]].qty = 63;  /* not low */
 remote.inventory[G0.items[2]].threshold = null; remote.inventory[G0.items[2]].qty = 5; /* no level: never low */
+remote.settings.features.boxes = true; /* currentBoxes() is null unless the feature is on */
+remote.settings.boxes = ["Big Box", "Small Box"]; /* the settings sanitizer keeps only rule boxes that exist here */
 remote.settings.boxRules = [{ craftId: "cak", kits: 36, boxes: ["Big Box", "Small Box"] }]; /* CAK-36 order carries boxes */
 const remoteSha = "sha-print";
 const b64e = s => Buffer.from(s, "utf8").toString("base64");
