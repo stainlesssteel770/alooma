@@ -270,6 +270,7 @@
   var packSortBin = false; /* Batch C2: sort the pack list + sheet by bin */
   var packBoxOverride = null; /* null = use the box rule; an array = this order only */
   var packSelKey = null;
+  var packKitsTouched = false; /* v2 A1: the kits error shows only after the field is touched */
   function currentBoxes() {
     var cur = currentPack(); if (!cur || !settings().features.boxes) return null;
     if (packBoxOverride !== null) return packBoxOverride.slice();
@@ -292,6 +293,11 @@
     var err = $("pack-error"), warn = $("pack-warning");
     err.textContent = ""; warn.hidden = true;
     var valid = L.validKits(kits);
+    /* v2 A1: calm first screen — the red kits error appears only once the
+       kits field has been touched; until then a muted help line shows. */
+    var showKitsErr = !valid && packKitsTouched;
+    if (showKitsErr) err.textContent = kits ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : "Enter the number of kits — orders are multiples of 6.";
+    $("pack-help").hidden = (state.packCraft && valid) || showKitsErr;
     $("pack-sku").textContent = valid && state.packCraft ? L.sku(state.packCraft, kits) : "—";
     /* Batch B1: once craft + kits are chosen, fold the picker into one summary line */
     var folded = !packFoldOverride && !!state.packCraft && valid;
@@ -303,13 +309,13 @@
     var tbody = $("pack-table").querySelector("tbody");
     tbody.innerHTML = "";
     if (!valid) {
-      err.textContent = kits ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : "Enter the number of kits — orders are multiples of 6.";
       updatePackProgress();
       renderPackBoxes();
       renderPackMode();
       return;
     }
     if (!state.packCraft) { updatePackProgress(); renderPackBoxes(); renderPackMode(); return; }
+    clearError(); /* v2 A1: a stale banner (e.g. from a Print tap) clears once the selection is valid */
     var pack = L.computePack(state.packCraft, kits);
     var binsOn = settings().features.bins;
     $("btn-pack-sort").hidden = !binsOn;
@@ -1215,7 +1221,7 @@
       b.addEventListener("click", function () { activateTab(b.getAttribute("data-tab")); });
     });
     $("conn-badge").addEventListener("click", function () { if (!state.editor) activateTab("settings"); });
-    $("pack-kits").addEventListener("input", function () { packFoldOverride = false; renderPack(); });
+    $("pack-kits").addEventListener("input", function () { packKitsTouched = true; packFoldOverride = false; renderPack(); });
     $("btn-pack-change").addEventListener("click", function () { packFoldOverride = true; renderPack(); });
     function wireStepper(inputId, minusId, plusId, renderFn) {
       $(minusId).addEventListener("click", function () {
@@ -1229,12 +1235,12 @@
         renderFn();
       });
     }
-    wireStepper("pack-kits", "pack-minus", "pack-plus", function () { packFoldOverride = false; renderPack(); });
+    wireStepper("pack-kits", "pack-minus", "pack-plus", function () { packKitsTouched = true; packFoldOverride = false; renderPack(); });
     document.querySelectorAll(".kits-chip").forEach(function (chip) {
       chip.addEventListener("click", function () {
         var target = chip.getAttribute("data-for");
         $(target + "-kits").value = chip.getAttribute("data-kits");
-        if (target === "pack") { packFoldOverride = false; renderPack(); } else renderBulk();
+        if (target === "pack") { packKitsTouched = true; packFoldOverride = false; renderPack(); } else renderBulk();
       });
     });
     $("btn-check-all").addEventListener("click", function () {
