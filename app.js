@@ -384,33 +384,40 @@
 
   /* ---------- Inventory tab ---------- */
   var invOpenItem = null, invPanelMode = "receive";
-  var invQuery = "", invLowOnly = false;
+  var invQuery = "", invFilter = "all";
   function isLow(itemId) {
     var rec = state.data.inventory[itemId];
     return rec && rec.threshold !== null && rec.threshold !== undefined && rec.qty <= rec.threshold;
   }
   function applyInvFilters() {
-    var lowCount = 0;
+    var lowCount = 0, outCount = 0, total = 0;
     document.querySelectorAll(".inv-item").forEach(function (row) {
       var itemId = row.getAttribute("data-item");
+      var rec = state.data.inventory[itemId];
       var low = isLow(itemId);
       if (low) lowCount++;
+      if (rec && rec.qty === 0) outCount++;
+      total++;
       var matchName = !invQuery || L.ITEMS[itemId].toLowerCase().indexOf(invQuery) >= 0;
-      var matchLow = !invLowOnly || low;
-      row.style.display = matchName && matchLow ? "" : "none";
+      var matchMode = invFilter === "all" || (invFilter === "low" && low) || (invFilter === "out" && rec && rec.qty === 0);
+      row.style.display = matchName && matchMode ? "" : "none";
     });
     document.querySelectorAll("#inventory-groups .inv-group").forEach(function (g) {
       var any = Array.prototype.some.call(g.querySelectorAll(".inv-item"), function (r) { return r.style.display !== "none"; });
       g.style.display = any ? "" : "none";
     });
+    $("all-count").textContent = total;
     $("low-count").textContent = lowCount;
-    $("btn-lowfilter").setAttribute("aria-pressed", invLowOnly ? "true" : "false");
+    $("out-count").textContent = outCount;
+    $("btn-filter-all").setAttribute("aria-pressed", invFilter === "all" ? "true" : "false");
+    $("btn-lowfilter").setAttribute("aria-pressed", invFilter === "low" ? "true" : "false");
+    $("btn-outfilter").setAttribute("aria-pressed", invFilter === "out" ? "true" : "false");
   }
   function renderInventory() {
     var wrap = $("inventory-groups"); wrap.innerHTML = "";
     L.inventoryGroups().forEach(function (g) {
       var div = document.createElement("div"); div.className = "inv-group";
-      var html = "<h3>" + esc(g.name) + "</h3>";
+      var html = "<h3><span>" + esc(g.name) + '</span><span class="inv-onhand">On hand</span></h3>';
       g.items.forEach(function (itemId) {
         var rec = state.data.inventory[itemId];
         var badge = "";
@@ -861,7 +868,26 @@
       updatePackProgress();
     });
     $("inv-search").addEventListener("input", function (ev) { invQuery = ev.target.value.trim().toLowerCase(); applyInvFilters(); });
-    $("btn-lowfilter").addEventListener("click", function () { invLowOnly = !invLowOnly; applyInvFilters(); });
+    $("btn-filter-all").addEventListener("click", function () { invFilter = "all"; applyInvFilters(); });
+    $("btn-lowfilter").addEventListener("click", function () { invFilter = "low"; applyInvFilters(); });
+    $("btn-outfilter").addEventListener("click", function () { invFilter = "out"; applyInvFilters(); });
+    $("btn-print-menu").addEventListener("click", function () {
+      var menu = $("print-menu");
+      var open = menu.hidden;
+      menu.hidden = !open;
+      $("btn-print-menu").setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    $("print-menu").addEventListener("click", function () {
+      $("print-menu").hidden = true;
+      $("btn-print-menu").setAttribute("aria-expanded", "false");
+    });
+    document.addEventListener("click", function (ev) {
+      var wrap = document.querySelector(".print-menu-wrap");
+      if (wrap && !wrap.contains(ev.target)) {
+        $("print-menu").hidden = true;
+        $("btn-print-menu").setAttribute("aria-expanded", "false");
+      }
+    });
     $("sheet-primary").addEventListener("click", function () {
       var cb = sheetCb;
       if (!cb) { closeSheet(); return; }
