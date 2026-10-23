@@ -147,6 +147,21 @@ try {
     /* Packing states */
     await tab("pack");
     await check(width + " pack: empty");
+    if (width === 360) {
+      /* v2 B3: at 360x780 the craft cards AND the kit chips are on screen together */
+      await page.setViewport({ width: 360, height: 780 });
+      await sleep(250);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const fit = await page.evaluate(() => {
+        const chips = document.querySelector("#pack-chips").getBoundingClientRect();
+        const cards = document.querySelector("#pack-crafts").getBoundingClientRect();
+        return { chipsBottom: Math.round(chips.bottom), cardsBottom: Math.round(cards.bottom) };
+      });
+      console.log("v2 B3 at 360x780: cards bottom", fit.cardsBottom, "| chips bottom", fit.chipsBottom);
+      ok(fit.cardsBottom <= 780 && fit.chipsBottom <= 780, "v2 B3: craft cards + kit chips fit at 360x780 (chips bottom " + fit.chipsBottom + ")");
+      await page.setViewport({ width: 360, height: 844 });
+      await sleep(150);
+    }
     await pickCraft("#pack-crafts", "The Cakery");
     await clickEl('.kits-chip[data-for="pack"][data-kits="12"]');
     await sleep(250);
@@ -182,6 +197,11 @@ try {
     await clickEl('.kits-chip[data-for="bulk"][data-kits="36"]');
     await clickEl("#btn-bulk-add"); await sleep(250);
     await check(width + " bulk: two queued orders");
+    /* v2 B4: the queued-order remove button is a real 44px target and the Record bar sticks */
+    const rmSize = await page.evaluate(() => { const b = document.querySelector("#bulk-lines [data-remove]"); const r = b.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; });
+    ok(rmSize.w >= 44 && rmSize.h >= 44, "v2 B4: queued-order remove button is at least 44px (" + rmSize.w + "x" + rmSize.h + ")");
+    const bulkSticky = await page.evaluate(() => getComputedStyle(document.querySelector("#tab-bulk .action-bar")).position);
+    ok(bulkSticky === "sticky", "v2 B4: Bulk Record bar is sticky (position=" + bulkSticky + ")");
     await clickEl("#btn-bulk-record"); await sleep(300);
     await check(width + " bulk: confirm sheet open");
     await page.evaluate(() => document.querySelector("#sheet-cancel").click()); await sleep(250);
