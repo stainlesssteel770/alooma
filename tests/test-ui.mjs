@@ -28,7 +28,14 @@ function eq(a, e, label) {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* In-memory "GitHub repo": starts as the shipped data.json */
+/* The repo's data.json is the user's LIVE warehouse data (since 2026-10-23 he
+   uses the app for real), so reset it to a known blank state: the suites
+   assert exact quantities and feature-off defaults and must not depend on
+   whatever state his real usage left in the file. */
 let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+Object.keys(remoteData.inventory).forEach(k => { remoteData.inventory[k] = { qty: 0, threshold: null }; });
+remoteData.history = [];
+delete remoteData.settings;
 let remoteSha = "sha-1";
 let putCount = 0;
 const b64e = s => Buffer.from(s, "utf8").toString("base64");
