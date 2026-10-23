@@ -91,10 +91,10 @@ try {
   eq(await page.$$eval("#pack-crafts .craft-btn", els => els.length), 6, "6 craft buttons");
   /* Batch A1: NOTHING pre-selected — no craft, no kits, buttons disabled with the reason inside */
   eq(await page.$$eval("#pack-crafts .craft-btn.selected", els => els.length), 0, "A1: no craft pre-selected on Packing");
-  eq(await page.$$eval("#hand-crafts .craft-btn.selected", els => els.length), 0, "A1: no craft pre-selected on Hand-packed");
+  eq(await page.$eval("#pack-mode", e => e.hidden), true, "Merge: no Print / Hand pack choice before craft+kits");
   eq(await page.$eval("#pack-sku", e => e.textContent), "—", "A1: no SKU until craft+kits chosen");
   eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Choose a craft|true", "A1/A4: Complete disabled, reason inside button");
-  eq(await page.$eval("#btn-record-hand", e => e.textContent + "|" + e.disabled), "Choose a craft|true", "A1/A4: Record disabled, reason inside button");
+  eq(await page.$eval("#btn-record-all", e => e.disabled), true, "Merge: Record all disabled until a hand-pack line is added");
   eq(await page.$$eval("#pack-table tbody tr", els => els.length), 0, "A1: no pack list before choosing");
 
   /* Choose The Cakery + 18 kits -> the pack list appears */
@@ -202,25 +202,60 @@ try {
   eq(remoteData.inventory["heart-jewelry-box"].qty, 0, "undo pack restored heart boxes");
   eq(remoteData.history.find(h => h.type === "packed").undone, true, "entry marked undone");
 
-  /* Hand-packed HCB 18: heat gun 1 (tier: up to and including 18 = 1), wood board 18 */
-  await page.evaluate(() => document.querySelector('[data-tab="hand"]').click());
+  /* Hand-packed HCB 18 through the merged batch flow (was its own tab):
+     queue two lines, remove one, record the rest in ONE save.
+     Heat gun 1 (tier: up to and including 18 = 1), wood board 18. */
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
-  await page.evaluate(() => {
-    [...document.querySelectorAll("#hand-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat")).click();
-    document.querySelector("#hand-kits").value = "18";
-    document.querySelector("#hand-kits").dispatchEvent(new Event("input", { bubbles: true }));
-  });
+  await page.evaluate(() => document.querySelector("#btn-pack-change").click());
+  await sleep(150);
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat")).click());
   await sleep(200);
-  eq(await page.$eval("#hand-sku", e => e.textContent), "HCB-18", "hand SKU HCB-18");
-  eq(await page.$eval("#btn-record-hand", e => e.textContent + "|" + e.disabled), "Record HCB-18|false", "A3: Record button names the order");
-  await page.click("#btn-record-hand");
+  eq(await page.$eval("#pack-sku", e => e.textContent), "HCB-18", "Merge: the pack picker drives hand-packing too (HCB-18)");
+  eq(await page.$eval("#pack-mode", e => e.hidden), false, "Merge: Print / Hand pack choice appears once craft+kits are chosen");
+  await page.click("#btn-mode-hand");
+  await sleep(200);
+  eq(await page.$eval("#hand-batch", e => e.hidden), false, "Merge: Hand pack shows the batch panel");
+  eq(await page.$eval("#pack-list-wrap", e => e.hidden), true, "Merge: pack list hidden in Hand pack mode");
+  eq(await page.$eval("#btn-hand-add", e => e.textContent + "|" + e.disabled), "Add HCB-18|false", "Merge: Add button names the current order");
+  await page.click("#btn-hand-add");
+  await sleep(200);
+  eq(await page.$$eval("#hand-lines .hand-line", els => els.length), 1, "Merge: first line queued");
+  /* The picker reopens after Add: queue a second order (Cakery 6), then remove it */
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+  await sleep(150);
+  await page.evaluate(() => document.querySelector("#btn-pack-change").click());
+  await sleep(150);
+  await page.click('.kits-chip[data-for="pack"][data-kits="6"]');
+  await sleep(200);
+  await page.click("#btn-hand-add");
+  await sleep(200);
+  eq(await page.$$eval("#hand-lines .hand-line", els => els.length), 2, "Merge: second line queued");
+  eq(await page.$eval("#btn-record-all", e => e.textContent + "|" + e.disabled), "Record all · 2 orders|false", "Merge: Record all counts the queued orders");
+  await page.evaluate(() => document.querySelector('#hand-lines [data-remove="1"]').click());
+  await sleep(200);
+  eq(await page.$$eval("#hand-lines .hand-line", els => els.length), 1, "Merge: queued line removed");
+  const putsBeforeBatch = putCount;
+  await page.click("#btn-record-all");
   await sleep(250);
-  eq(await page.$eval("#sheet-title", e => e.textContent), "Hafrashat Challah", "A5: hand-packed confirm sheet shows craft");
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Hand-packed", "Merge: batch confirm sheet");
+  eq(await page.$eval("#sheet-sub", e => e.textContent.includes("HCB-18")), true, "Merge: sheet names the recorded order");
   await page.click("#sheet-primary");
   await sleep(600);
+  eq(putCount, putsBeforeBatch + 1, "Merge: the whole batch saved in ONE commit");
   eq(remoteData.inventory["heat-gun"].qty, -1, "hand-packed HCB-18 heat gun tier = 1");
   eq(remoteData.inventory["wood-burning-cream"].qty, -1, "hand-packed HCB-18 wood cream tier = 1");
   eq(remoteData.inventory["wood-board"].qty, -18, "hand-packed HCB-18 wood board 18");
+  eq(remoteData.history[0].type, "hand-packed", "Merge: batch line logged as a hand-packed entry");
+  eq(await page.$$eval("#hand-lines .hand-line", els => els.length), 0, "Merge: queue cleared after recording");
+  /* Leave the tab as the old flow did: print path, Cakery 18 selected */
+  await page.evaluate(() => document.querySelector("#btn-pack-change").click());
+  await sleep(150);
+  await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
+  await sleep(150);
+  await page.click("#btn-print-sheet");
+  await sleep(200);
+  eq(await page.$eval("#pack-list-wrap", e => e.hidden), false, "Merge: Print switches back to the pack list");
 
   /* Count fix via Enter counts: scissors counted 190 */
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
