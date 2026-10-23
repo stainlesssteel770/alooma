@@ -42,7 +42,15 @@
     $("sheet-title").textContent = opts.title || "";
     $("sheet-sub").textContent = opts.sub || "";
     $("sheet-summary").textContent = opts.summary || "";
-    $("sheet-primary").textContent = opts.primary || "Confirm";
+    var extra = $("sheet-extra");
+    if (opts.extraHtml) { extra.innerHTML = opts.extraHtml; extra.hidden = false; }
+    else { extra.innerHTML = ""; extra.hidden = true; }
+    var prim = $("sheet-primary");
+    prim.textContent = opts.primary || "Confirm";
+    prim.classList.toggle("danger", !!opts.primaryDanger);
+    var cancelBtn = $("sheet-cancel");
+    cancelBtn.textContent = opts.cancelLabel || "Cancel";
+    cancelBtn.classList.toggle("btn-primary", !!opts.cancelFilled);
     var wrap = $("sheet-input-wrap");
     if (opts.input) {
       wrap.hidden = false;
@@ -370,7 +378,10 @@
     var cur = currentPack(); if (!cur) return;
     var craft = cur.craft;
     var boxes = currentBoxes();
-    openSheet({
+    /* v2 A2: a short order must look different — red block naming each
+       shortage and where its count lands, danger primary, filled Go back */
+    var shorts = cur.pack.filter(function (r) { return qtyOf(r.item) < r.qty; });
+    var sheetOpts = {
       title: craft.name,
       sub: cur.kits + " kits · " + L.sku(craft.id, cur.kits),
       summary: packSummary(cur.pack) + (boxes && boxes.length ? " · Boxes: " + L.boxesText(settings(), boxes) : ""),
@@ -385,7 +396,16 @@
         state.packPrintedKey = null;
         commitChange(entry, "Packed " + L.sku(craft.id, cur.kits));
       }
-    });
+    };
+    if (shorts.length) {
+      sheetOpts.extraHtml = '<div class="sheet-short"><p class="sheet-short-title">' + shorts.length + (shorts.length === 1 ? " item short" : " items short") + "</p><ul>" +
+        shorts.map(function (r) { var have = qtyOf(r.item); return "<li>" + esc(r.name) + ": need " + r.qty + ", have " + have + ". Its count will go to " + (have - r.qty) + ".</li>"; }).join("") + "</ul></div>";
+      sheetOpts.primary = "Subtract anyway (" + shorts.length + " short)";
+      sheetOpts.primaryDanger = true;
+      sheetOpts.cancelLabel = "Go back";
+      sheetOpts.cancelFilled = true;
+    }
+    openSheet(sheetOpts);
   }
 
   /* ---------- Pack path choice + Bulk import tab ---------- */
