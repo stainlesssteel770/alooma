@@ -339,6 +339,43 @@ try {
   eq(remoteData.history[1].type, "hand-packed", "Bulk: second batch entry logged as hand-packed");
   eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 0, "Bulk: queue cleared after recording");
 
+  /* v3 D1: after Add the picker clears; re-adding the same order asks first */
+  await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+  await page.click('.kits-chip[data-for="bulk"][data-kits="18"]');
+  await sleep(200);
+  await page.click("#btn-bulk-add");
+  await sleep(250);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 1, "v3 D1: order queued");
+  eq(await page.$eval("#btn-bulk-add", e => e.textContent), "Choose a craft", "v3 D1: picker cleared after Add");
+  eq(await page.$eval("#toast", e => e.textContent.includes("Added CAK-18")), true, "v3 D1: toast confirms the add");
+  await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
+  await sleep(200);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 0, "v3 D1: toast Undo un-queues the line");
+  await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+  await page.click('.kits-chip[data-for="bulk"][data-kits="18"]');
+  await sleep(200);
+  await page.click("#btn-bulk-add");
+  await sleep(250);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 1, "v3 D1: order queued again");
+  await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+  await page.click('.kits-chip[data-for="bulk"][data-kits="18"]');
+  await sleep(200);
+  await page.click("#btn-bulk-add");
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "CAK-18 is already in the list.", "v3 D1: the same order again asks first");
+  await page.click("#sheet-cancel");
+  await sleep(200);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 1, "v3 D1: Keep one leaves exactly one line");
+  await page.click("#btn-bulk-add");
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "CAK-18 is already in the list.", "v3 D1: asking again on the next attempt");
+  await page.click("#sheet-primary");
+  await sleep(200);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 2, "v3 D1: Add another queues the second line");
+  await page.evaluate(() => { document.querySelector('#bulk-lines [data-remove="1"]').click(); document.querySelector('#bulk-lines [data-remove="0"]').click(); });
+  await sleep(200);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 0, "v3 D1: queue tidied back to empty");
+
   /* Count fix via Enter counts: scissors counted 190 */
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
   await sleep(200);
@@ -455,6 +492,7 @@ try {
     return { zero: zero.length, badged: zero.filter(r => r.querySelector(".out-badge")).length };
   });
   eq(c5.badged, c5.zero, "v2 C5: every item at 0 wears the Out badge, threshold or not (" + c5.zero + " at 0)");
+  eq(await page.$eval("#btn-delivery", e => e.textContent.trim() + "|" + e.getAttribute("aria-label")), "Receive|Receive delivery", "v3 D2: button reads Receive; full name kept for screen readers");
   await page.click("#btn-lowfilter");
   await sleep(200);
   const visLow = await page.$$eval(".inv-item", els => els.filter(e => e.style.display !== "none").length);
@@ -531,6 +569,41 @@ try {
   await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
   await sleep(700);
   eq(remoteData.inventory["scissors"].qty, 245, "v2 A3: UNDO reverses the count batch too");
+
+  /* v3 D5: a FIRST delivery (no earlier one to compare with) flags at >5x on hand.
+     Heat gun is set to 150 by count (no delivery history), then restored. */
+  const hgBase = remoteData.inventory["heat-gun"].qty;
+  const openPanel = async (panel, btn) => page.evaluate((p, b) => { if (document.querySelector(p).hidden) document.querySelector(b).click(); }, panel, btn);
+  const closePanel = async (panel, btn) => page.evaluate((p, b) => { if (!document.querySelector(p).hidden) document.querySelector(b).click(); }, panel, btn);
+  await openPanel("#count-entry", "#btn-enter-counts");
+  await sleep(250);
+  await page.evaluate(v => { document.querySelector('#count-entry-list input[data-item="heat-gun"]').value = String(v); }, 150);
+  await page.click("#btn-apply-counts");
+  await sleep(250);
+  await page.click("#sheet-primary");
+  await sleep(700);
+  eq(remoteData.inventory["heat-gun"].qty, 150, "v3 D5 setup: heat gun counted to 150 with no delivery history");
+  eq(await page.$eval("#save-status", e => e.textContent), "Saved · now", "v3 D7: save line uses the short form");
+  await closePanel("#count-entry", "#btn-cancel-counts");
+  await openPanel("#delivery-entry", "#btn-delivery");
+  await sleep(250);
+  await page.evaluate(() => { document.querySelector('#delivery-entry-list input[data-item="heat-gun"]').value = "900"; });
+  await page.click("#btn-apply-delivery");
+  await sleep(250);
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heat gun +900") && e.textContent.includes("(6× on hand)")), true, "v3 D5: first delivery of 900 on 150 on hand flags (6× on hand)");
+  await page.click("#sheet-cancel");
+  await sleep(200);
+  eq(remoteData.inventory["heat-gun"].qty, 150, "v3 D5: Edit numbers saved nothing");
+  await closePanel("#delivery-entry", "#btn-cancel-delivery");
+  await openPanel("#count-entry", "#btn-enter-counts");
+  await sleep(250);
+  await page.evaluate(v => { document.querySelector('#count-entry-list input[data-item="heat-gun"]').value = String(v); }, hgBase);
+  await page.click("#btn-apply-counts");
+  await sleep(250);
+  await page.click("#sheet-primary");
+  await sleep(700);
+  eq(remoteData.inventory["heat-gun"].qty, hgBase, "v3 D5 cleanup: heat gun restored to " + hgBase);
+  await closePanel("#count-entry", "#btn-cancel-counts");
 
   /* ---------- Batch C: default boxes + bin locations ---------- */
   const waitRemote = async (fn, label) => { for (let i = 0; i < 40; i++) { if (fn()) return; await sleep(150); } throw new Error("timeout waiting: " + label); };
