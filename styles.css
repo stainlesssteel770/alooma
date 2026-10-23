@@ -73,7 +73,7 @@ h3 { margin: 16px 0 8px; font-size: 17px; }
 .btn:hover { background: #F1F3F0; }
 .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .btn-primary:hover { background: var(--accent-dark); }
-.btn-primary[disabled] { background: #B9C6D4; border-color: #B9C6D4; cursor: not-allowed; }
+.btn-primary:disabled { background: #E8EEF8; color: #1B4382; border: 1.5px dashed #2457A6; opacity: 1; cursor: not-allowed; }
 .btn-secondary { background: var(--surface); }
 .btn-quiet { border: none; background: none; color: var(--accent); min-height: 44px; padding: 8px; }
 .btn-danger { background: var(--surface); border-color: #E3B6B1; color: var(--red); }
