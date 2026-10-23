@@ -254,7 +254,7 @@
   "settings": {
     "features": {
       "boxes": true,
-      "bins": false
+      "bins": true
     },
     "boxes": {
       "A": {
