@@ -101,11 +101,16 @@ try {
   await sleep(300);
   await shot("history.jpg");
 
-  /* Hand-packed, fresh: nothing pre-selected */
-  await page.evaluate(() => document.querySelector('[data-tab="hand"]').click());
+  /* Hand-pack batch mode on the Packing tab (merged flow): queue the same
+     CAK-18 as a hand-packed line and show the batch panel */
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(300);
+  await page.evaluate(() => document.querySelector("#btn-mode-hand").click());
+  await sleep(200);
+  await page.evaluate(() => document.querySelector("#btn-hand-add").click());
   await sleep(300);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await shot("hand-fresh.jpg");
+  await shot("hand-batch.jpg");
 
   /* Inventory with an item panel open */
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
