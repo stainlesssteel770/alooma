@@ -3,7 +3,6 @@
    API — never the live data. Output: ./screenshots/*.jpg
    Run: node tests/screenshots.mjs */
 import { createRequire } from "module";
-import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -35,8 +34,18 @@ remoteData.inventory["heat-gun"] = { qty: 4, threshold: 2 };
 remoteData.inventory["mi-name-label"] = { qty: 0, threshold: 12 };
 let remoteSha = "sha-1", putCount = 0;
 
-const server = spawn("python3", ["-m", "http.server", String(PORT), "--bind", "127.0.0.1"], { cwd: ROOT, stdio: "ignore" });
-await sleep(700);
+import http from "http";
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png" };
+const server = http.createServer((req, res) => {
+  const rel = decodeURIComponent(req.url.split("?")[0]);
+  const file = path.join(ROOT, rel === "/" ? "index.html" : rel.replace(/^\/+/, ""));
+  fs.readFile(file, (err, data) => {
+    if (err) { res.writeHead(404); res.end("not found"); return; }
+    res.writeHead(200, { "Content-Type": MIME[path.extname(file)] || "application/octet-stream" });
+    res.end(data);
+  });
+});
+await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 const launchOpts = { headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] };
 if (EXE) launchOpts.executablePath = EXE;
 const browser = await puppeteer.launch(launchOpts);
@@ -123,5 +132,5 @@ try {
   console.log("screenshots done; mock PUTs:", putCount);
 } finally {
   await browser.close();
-  server.kill();
+  server.close();
 }
