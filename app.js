@@ -1094,7 +1094,8 @@
   /* ---------- Settings: default boxes (Batch C1, free-form list) ---------- */
   /* Boxes are a simple list of names the user adds himself (any count, no
      sizes). A rule = craft (dropdown) + kit count (typed, multiples of 6
-     only) + one box (dropdown of his boxes). */
+     only) + one box from a dropdown, plus an optional second box for
+     bigger orders that ship in two different boxes. */
   function renderBoxSettings() {
     var s = settings();
     $("set-boxes-on").checked = !!s.features.boxes;
@@ -1151,6 +1152,17 @@
       boxSel.appendChild(o);
     });
     if (s.boxes.indexOf(prev) >= 0) boxSel.value = prev;
+    /* Optional second box: bigger orders often ship in two different boxes */
+    var boxSel2 = $("rule-boxes-2");
+    var prev2 = boxSel2.value;
+    boxSel2.innerHTML = "";
+    var noneOpt = document.createElement("option"); noneOpt.value = ""; noneOpt.textContent = "Second box (optional)";
+    boxSel2.appendChild(noneOpt);
+    s.boxes.forEach(function (name) {
+      var o2 = document.createElement("option"); o2.value = name; o2.textContent = name;
+      boxSel2.appendChild(o2);
+    });
+    if (s.boxes.indexOf(prev2) >= 0) boxSel2.value = prev2;
   }
   function addBoxFromField() {
     if (!requireEditor()) return;
@@ -1301,10 +1313,13 @@
       var craftId = $("rule-craft").value;
       var kits = parseInt($("rule-kits").value, 10);
       var box = $("rule-boxes").value;
+      var box2 = $("rule-boxes-2").value;
       if (!box) { err.textContent = "Add a box first (above) — then it appears in the box menu."; return; }
       if (!L.validKits(kits)) { err.textContent = "Kit count must be a multiple of 6 — 6, 12, 18, 24…"; return; }
+      var ruleBoxes = [box];
+      if (box2 && box2 !== box) ruleBoxes.push(box2);
       settings().boxRules = settings().boxRules.filter(function (r) { return !(r.craftId === craftId && r.kits === kits); });
-      settings().boxRules.push({ craftId: craftId, kits: kits, boxes: [box] });
+      settings().boxRules.push({ craftId: craftId, kits: kits, boxes: ruleBoxes });
       $("rule-kits").value = "";
       saveData("Box rule added").then(function () { toast("Rule added."); renderAll(); });
     });
