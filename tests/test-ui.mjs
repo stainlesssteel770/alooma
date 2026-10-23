@@ -136,7 +136,8 @@ try {
   await page.type("#gh-token", "fake-token-for-test");
   await page.click("#btn-connect");
   await sleep(600);
-  eq(await page.$eval("#conn-badge", e => e.textContent.trim()), "Editor — @testeditor", "connected as editor");
+  eq(await page.$eval("#conn-badge", e => e.textContent.trim()), "Editor", "v2 C3: badge reads Editor with a check (username lives in Settings only)");
+  eq(await page.$eval("#conn-badge", e => Math.round(e.getBoundingClientRect().height)), 44, "v2 C3: badge is a 44px target");
   eq(await page.$eval('[data-tab="pack"]', e => e.hidden), false, "Editor: all tabs appear once connected");
   const ls = await page.evaluate(() => localStorage.getItem("alooma.editor.v1"));
   eq(JSON.parse(ls).login, "testeditor", "editor saved on this device only (localStorage)");
@@ -150,6 +151,8 @@ try {
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await sleep(200);
   eq(await page.$eval("#pack-sku", e => e.textContent), "CAK-18", "SKU CAK-18 after choosing craft+kits");
+  eq(await page.$eval(".craft-btn.selected", e => getComputedStyle(e).backgroundColor), "rgb(232, 238, 248)", "v2 C1: selected craft uses the one selected style");
+  eq(await page.$eval(".kits-chip.selected", e => getComputedStyle(e).backgroundColor), "rgb(232, 238, 248)", "v2 C1: selected kit chip uses the one selected style");
   eq(await page.$eval("#pack-order", e => e.hidden), true, "Flow: nothing under Print / Hand pack until a path is picked");
   const packRows = await page.$$eval("#pack-table tbody tr", trs => trs.map(tr => [...tr.children].map(td => td.textContent.trim()).join("|")));
   eq(packRows.length, 19, "CAK pack list 19 rows");
@@ -445,6 +448,12 @@ try {
   const expOut = Object.values(remoteData.inventory).filter(r => r.qty === 0).length;
   eq(await page.$eval("#low-count", e => e.textContent), String(expLow), "B3: Low filter count matches the data");
   eq(await page.$eval("#out-count", e => e.textContent), String(expOut), "B3: Out filter count matches the data");
+  const c5 = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll(".inv-item")];
+    const zero = rows.filter(r => { const q = r.querySelector(".inv-qty"); return q && q.textContent.trim() === "0"; });
+    return { zero: zero.length, badged: zero.filter(r => r.querySelector(".out-badge")).length };
+  });
+  eq(c5.badged, c5.zero, "v2 C5: every item at 0 wears the Out badge, threshold or not (" + c5.zero + " at 0)");
   await page.click("#btn-lowfilter");
   await sleep(200);
   const visLow = await page.$$eval(".inv-item", els => els.filter(e => e.style.display !== "none").length);
@@ -459,6 +468,8 @@ try {
   const putsBefore = putCount;
   await page.click("#btn-delivery");
   await sleep(250);
+  eq(await page.$eval("#delivery-entry .hint", e => getComputedStyle(e).fontSize), "16px", "v2 C2: panel hint text is 16px");
+  eq(await page.$eval("#btn-delivery", e => getComputedStyle(e).fontSize), "16px", "v2 C2: buttons are 16px");
   await page.evaluate(() => {
     document.querySelector('#delivery-entry-list input[data-item="scissors"]').value = "50";
     document.querySelector('#delivery-entry-list input[data-item="wood-board"]').value = "18";
@@ -722,6 +733,7 @@ try {
   await page.click("#sheet-primary");
   await sleep(600);
   eq(await page.$eval("#conn-badge", e => e.textContent.trim()), "View only", "disconnect returns to view-only");
+  eq(await page.$eval("#tab-settings details summary", e => Math.round(e.getBoundingClientRect().height) >= 44), true, "v2 C4: 'How to make a token' summary is a 44px target");
   eq(await page.$eval('[data-tab="pack"]', e => e.hidden), true, "View-only: Packing tab hidden again after disconnect");
   eq(await page.$eval("#tab-inventory", e => e.classList.contains("active")), true, "View-only: disconnect lands on Inventory");
   eq(await page.evaluate(() => localStorage.getItem("alooma.editor.v1")), null, "token removed from device on disconnect");
