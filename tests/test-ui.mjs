@@ -118,6 +118,15 @@ try {
   eq(await page.$eval("#pack-error", e => e.textContent.includes("multiples of 6")), true, "v2 A1: kits error appears once the field is touched");
   eq(await page.$eval("#pack-help", e => e.hidden), true, "v2 A1: help line gives way to the error");
   await page.evaluate(() => { const i = document.querySelector("#pack-kits"); i.value = ""; i.dispatchEvent(new Event("input", { bubbles: true })); });
+  /* v2 A4: the disabled primary's label IS the instruction — measure its contrast */
+  const disRatio = await page.evaluate(() => {
+    const b = document.querySelector("#btn-complete-pack");
+    const cs = getComputedStyle(b);
+    const lum = rgb => { const p = rgb.match(/[\d.]+/g).map(Number); const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(p[0]) + 0.7152 * f(p[1]) + 0.0722 * f(p[2]); };
+    const l1 = lum(cs.color), l2 = lum(cs.backgroundColor);
+    return Math.round(((Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)) * 100) / 100;
+  });
+  eq(disRatio >= 4.5, true, "v2 A4: disabled primary contrast >= 4.5:1 (measured " + disRatio + ":1)");
 
   /* Connect with a (mock) token — reached by tapping the header badge,
      the view-only door into Settings */
