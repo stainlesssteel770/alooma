@@ -259,14 +259,20 @@
     else btn.textContent = "Complete " + L.sku(state.packCraft, kitsNow);
     $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
   }
+  var packFoldOverride = false;
   function renderPack() {
-    craftButtons("pack-crafts", state.packCraft, function (id) { state.packCraft = id; renderPack(); });
+    craftButtons("pack-crafts", state.packCraft, function (id) { state.packCraft = id; packFoldOverride = false; renderPack(); });
     var kits = parseInt($("pack-kits").value, 10);
     markChips("pack", kits);
     var err = $("pack-error"), warn = $("pack-warning");
     err.textContent = ""; warn.hidden = true;
     var valid = L.validKits(kits);
     $("pack-sku").textContent = valid && state.packCraft ? L.sku(state.packCraft, kits) : "—";
+    /* Batch B1: once craft + kits are chosen, fold the picker into one summary line */
+    var folded = !packFoldOverride && !!state.packCraft && valid;
+    $("pack-picker").hidden = folded;
+    $("pack-picker-summary").hidden = !folded;
+    if (folded) $("pack-summary-text").textContent = L.craftById(state.packCraft).name + " · " + kits + " kits";
     var tbody = $("pack-table").querySelector("tbody");
     tbody.innerHTML = "";
     if (!valid) {
@@ -821,7 +827,8 @@
         $("tab-" + b.getAttribute("data-tab")).classList.add("active");
       });
     });
-    $("pack-kits").addEventListener("input", renderPack);
+    $("pack-kits").addEventListener("input", function () { packFoldOverride = false; renderPack(); });
+    $("btn-pack-change").addEventListener("click", function () { packFoldOverride = true; renderPack(); });
     $("hand-kits").addEventListener("input", renderHand);
     function wireStepper(inputId, minusId, plusId, renderFn) {
       $(minusId).addEventListener("click", function () {
@@ -835,13 +842,13 @@
         renderFn();
       });
     }
-    wireStepper("pack-kits", "pack-minus", "pack-plus", renderPack);
+    wireStepper("pack-kits", "pack-minus", "pack-plus", function () { packFoldOverride = false; renderPack(); });
     wireStepper("hand-kits", "hand-minus", "hand-plus", renderHand);
     document.querySelectorAll(".kits-chip").forEach(function (chip) {
       chip.addEventListener("click", function () {
         var target = chip.getAttribute("data-for");
         $(target + "-kits").value = chip.getAttribute("data-kits");
-        if (target === "pack") renderPack(); else renderHand();
+        if (target === "pack") { packFoldOverride = false; renderPack(); } else renderHand();
       });
     });
     $("btn-check-all").addEventListener("click", function () {
