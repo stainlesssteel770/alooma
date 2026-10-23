@@ -68,6 +68,10 @@ try {
 
   /* Viewer mode by default */
   eq(await page.$eval("#conn-badge", e => e.textContent.trim()), "View only", "starts view-only");
+  /* Regression (2026-10-22): the empty toast must be truly hidden on load —
+     .toast{display:flex} used to override [hidden] and render a black pill */
+  eq(await page.$eval("#toast", e => getComputedStyle(e).display), "none", "toast hidden on load (no floating pill)");
+  eq(await page.$eval("#toast", e => { e.hidden = false; const d = getComputedStyle(e).display; e.hidden = true; return d; }), "flex", "toast displays when shown");
   eq(await page.$$eval("#pack-crafts .craft-btn", els => els.length), 6, "6 craft buttons");
   eq(await page.$eval("#pack-sku", e => e.textContent), "CAK-18", "default SKU CAK-18");
 

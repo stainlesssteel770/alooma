@@ -141,6 +141,7 @@ tr.checked-row td .row-name { text-decoration: line-through; }
 .repo-row label { flex: 1 1 200px; }
 .help-list li { margin: 6px 0; font-size: 15px; }
 .error-banner { background: var(--red-bg); border: 1px solid #E3B6B1; color: #7C1D16; max-width: 920px; margin: 10px auto 0; padding: 12px 16px; border-radius: 10px; font-weight: 600; font-size: 15px; }
+.toast[hidden] { display: none !important; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 76px; background: var(--ink); color: #fff; padding: 12px 18px; border-radius: var(--radius); font-weight: 600; font-size: 15.5px; box-shadow: 0 6px 22px rgba(0,0,0,.28); z-index: 60; max-width: min(92vw, 560px); display: flex; align-items: center; gap: 14px; pointer-events: none; }
 .toast button { background: none; border: none; color: #FFD94D; font-weight: 800; font-size: 15.5px; cursor: pointer; min-height: 44px; padding: 4px 6px; letter-spacing: .03em; pointer-events: auto; }
 #print-area { display: none; }
