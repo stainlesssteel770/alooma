@@ -45,15 +45,17 @@ paper ≠ parchment circle, Clay Tray A ≠ B).
 ## Tests
 
 - `node tests/test-logic.js` — quantity logic: CAK-18 deductions match the old site exactly,
-  tier rule, tray alternation, pack/receive/undo/edit arithmetic (75 checks).
+  tier rule, tray alternation, pack/receive/undo/edit arithmetic, plus the Batch C settings model — box-rule matching and placeholder bins (88 checks).
 - `node tests/test-ui.mjs` — drives the real page and real buttons in headless Chrome with
   the GitHub API mocked (Batch A: nothing pre-selected, disabled-button reasons, print
   unlocks Complete, in-app confirm sheet for Complete/Record/Undo/Edit; plus connect,
-  item-panel receive + warning, count entry, prints, tap-target sizes, disconnect; Batch B: picker fold + first-row position, solid action bar, inventory filters + print menu, receive delivery in one save — 76 checks).
+  item-panel receive + warning, count entry, prints, tap-target sizes, disconnect; Batch B: picker fold + first-row position, solid action bar, inventory filters + print menu, receive delivery in one save; Batch C: feature toggles off = today's screens, box rule + per-order override + printed BOXES line, bin labels + panel Bin mode + bin sort — 101 checks).
 - `node tests/test-offline.mjs` — blocks the data load and verifies the single
   "Can't reach the stock data" empty state and that Retry recovers (9 checks).
 - `node tests/check-print.mjs` — renders the prints to PDF and verifies the page size is
   exactly 4×6 in and the page count equals the content (no blank labels).
+- `node tests/test-a11y.mjs` — runs axe-core over all five tabs and fails on any
+  serious or critical accessibility violation (Batch C: 0 on every tab).
 - `node tests/screenshots.mjs` — captures the main screens at 390px for batch reports.
 
 The same suites run on GitHub's machines: Actions tab → **Tests** → Run workflow
