@@ -88,11 +88,15 @@
       <div id="pack-checklist">
       <div class="list-head">
         <h3>Pack list</h3>
+      </div>
+      <div class="progress-line">
         <span id="pack-progress" class="progress-text"></span>
+        <div class="progress-bar" aria-hidden="true"><i id="pack-progress-fill"></i></div>
+      </div>
+      <div class="list-tools">
         <button type="button" id="btn-pack-sort" class="btn btn-quiet" hidden>Sort by bin</button>
         <button type="button" id="btn-check-all" class="btn btn-quiet">Check all</button>
       </div>
-      <div class="progress-bar" aria-hidden="true"><i id="pack-progress-fill"></i></div>
       <table class="data-table" id="pack-table">
         <thead><tr><th><span class="sr-only">Done</span></th><th>Item</th><th class="num">Need</th><th class="num">On hand</th></tr></thead>
         <tbody></tbody>
