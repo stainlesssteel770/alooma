@@ -155,7 +155,20 @@ try {
     await check(width + " pack: print path (boxes line + Complete)");
     await clickEl("#btn-mode-hand"); await sleep(250);
     await check(width + " pack: hand path checklist");
+    if (width === 390) {
+      /* v2 B1: with the checklist scrolled into work position, at least 5
+         rows must be fully visible above the tab bar + sticky action bar */
+      await page.evaluate(() => document.querySelector("#pack-checklist").scrollIntoView());
+      await sleep(200);
+      const visRows = await page.evaluate(() => {
+        const limit = window.innerHeight - 140;
+        return [...document.querySelectorAll("#pack-table tbody tr")].filter(tr => { const r = tr.getBoundingClientRect(); return r.top >= 0 && r.bottom <= limit; }).length;
+      });
+      console.log("v2 B1 visible rows at 390x844:", visRows);
+      ok(visRows >= 5, "v2 B1: at least 5 pack rows visible at 390x844 (saw " + visRows + ")");
+    }
     await clickEl("#btn-check-all"); await sleep(200);
+    await clickEl("#sheet-primary"); await sleep(200); /* v2 A5: confirm the check-all */
     await clickEl("#btn-complete-pack"); await sleep(300);
     await check(width + " pack: confirm sheet open");
     await page.evaluate(() => document.querySelector("#sheet-cancel").click()); await sleep(250);
