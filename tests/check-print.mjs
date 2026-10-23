@@ -1,24 +1,72 @@
-/* Print check: each 4x6 output must paginate to EXACTLY its content —
-   no trailing blank labels (the pre-redesign bug: pack sheet printed 3
-   labels, inventory/count 7, most of them blank).
+/* Print check (desktop brief items 2+3): every print is one craft per
+   4x6 page in the checklist style — big craft title, ONE subtitle line,
+   full black grid, repeated title/header on continuation pages, no
+   blank pages, LOW rows flagged from warn-at (bold + LOW tag), packing
+   gains a Per 6 column, footers sign each craft's sheet.
+   Pagination is asserted from the actual PDF text (pdfjs): each page
+   must contain exactly one craft-group title.
    Run: node tests/check-print.mjs */
 import { createRequire } from "module";
 import fs from "fs";
 import path from "path";
-const require = createRequire(import.meta.url);
+import http from "http";
 import { fileURLToPath } from "url";
-const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-/* Portable browser loading: full `puppeteer` if installed (CI installs it);
-   otherwise the sandbox's puppeteer-core + chrome-headless-shell.
-   Override with PUPPETEER_CORE_PATH / CHROME_PATH. */
+
+const require = createRequire(import.meta.url);
 let puppeteer, EXE;
 try { puppeteer = require("puppeteer"); }
 catch (e) {
   puppeteer = require(process.env.PUPPETEER_CORE_PATH || "/home/hatch/workspace/steady/tests/node_modules/puppeteer-core");
   EXE = process.env.CHROME_PATH || "/home/hatch/.cache/puppeteer/chrome-headless-shell/linux-155.0.8059.84/chrome-headless-shell-linux64/chrome-headless-shell";
 }
+const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+try { pdfjs.GlobalWorkerOptions.workerSrc = new URL("file://" + require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")).href; } catch (e) {}
+
+const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const PORT = 8908;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-import http from "http";
+let fail = 0;
+function ok(cond, label) { if (cond) console.log("ok   " + label); else { fail++; console.log("FAIL " + label); } }
+
+/* Sample data through a mocked repo: every item at 100; the first BM
+   group gets the brief's three LOW cases on its first three items */
+const L = require(path.join(ROOT, "logic.js"));
+const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+remote.history = [];
+Object.keys(remote.inventory).forEach(k => { remote.inventory[k].qty = 100; remote.inventory[k].threshold = null; });
+const groups = L.inventoryGroups();
+const G0 = groups[0];
+remote.inventory[G0.items[0]].threshold = 50; remote.inventory[G0.items[0]].qty = 17;  /* LOW */
+remote.inventory[G0.items[1]].threshold = 50; remote.inventory[G0.items[1]].qty = 63;  /* not low */
+remote.inventory[G0.items[2]].threshold = null; remote.inventory[G0.items[2]].qty = 5; /* no level: never low */
+const remoteSha = "sha-print";
+const b64e = s => Buffer.from(s, "utf8").toString("base64");
+const TOKENS = groups.map(g => g.name.split(" ")[0]); /* Blooming, Tambourines, Judaic, Hafrashat, The→?, ... */
+const DISTINCT = ["Blooming", "Tambourines", "Judaic", "Hafrashat", "Cakery", "Miniature", "Shared"];
+
+async function pageTexts(pdf) {
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(pdf)) }).promise;
+  const out = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const pg = await doc.getPage(i);
+    const tc = await pg.getTextContent();
+    out.push(tc.items.map(it => it.str).join(" "));
+  }
+  return out;
+}
+function checkPagination(texts, label) {
+  ok(texts.length >= groups.length, label + ": at least one page per group (" + texts.length + " pages)");
+  let allPure = true, seen = new Set();
+  texts.forEach(t => {
+    const found = DISTINCT.filter(tok => t.includes(tok));
+    if (found.length !== 1) allPure = false;
+    found.forEach(f => seen.add(f));
+    if (t.trim().length < 30) allPure = false; /* blank page */
+  });
+  ok(allPure, label + ": every page holds exactly one craft, none blank");
+  ok(seen.size === DISTINCT.length, label + ": all " + DISTINCT.length + " groups present (" + [...seen].join(", ") + ")");
+}
+
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png" };
 const server = http.createServer((req, res) => {
   const rel = decodeURIComponent(req.url.split("?")[0]);
@@ -29,65 +77,111 @@ const server = http.createServer((req, res) => {
     res.end(data);
   });
 });
-const PORT = 8908;
 await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
-let fail = 0;
-function pages(pdf) { return fs.readFileSync(pdf, "latin1").match(/\/MediaBox/g).length; }
-function expectPages(pdf, want, label) {
-  const got = pages(pdf);
-  if (got === want) console.log("ok   " + label + " = " + got + " page(s)");
-  else { fail++; console.log("FAIL " + label + ": expected " + want + " page(s), got " + got); }
-}
 try {
   const page = await browser.newPage();
-  await page.goto("http://127.0.0.1:8908/index.html", { waitUntil: "networkidle0", timeout: 30000 });
-  await sleep(300);
-  /* View-only lands on Inventory; activate the Packing panel for the test */
+  await page.setRequestInterception(true);
+  const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
+  page.on("request", req => {
+    const url = req.url();
+    if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: CORS, body: "" });
+    if (url.includes("/contents/data.json")) {
+      return req.respond({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ sha: remoteSha, content: b64e(JSON.stringify(remote)) }) });
+    }
+    if (url.startsWith("https://api.github.com")) return req.respond({ status: 404, headers: CORS, body: "{}" });
+    req.continue();
+  });
+  await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
+  await sleep(500);
+
+  /* ---- Packing sheet: CAK-36 (Per 6 vs Total must differ somewhere) ---- */
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
-  /* Select The Cakery + 18 kits with real clicks, then print the sheet */
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
-  await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
+  await page.click('.kits-chip[data-for="pack"][data-kits="36"]');
   await sleep(300);
   await page.evaluate(() => { document.querySelector("#btn-print-sheet").click(); });
   await sleep(300);
-  const packInfo = await page.evaluate(() => ({
-    sku: document.querySelector("#print-area").textContent.includes("CAK-18"),
-    rows: document.querySelectorAll("#print-area tbody tr").length,
-    ticks: document.querySelectorAll("#print-area .tick-box").length
-  }));
-  if (!packInfo.sku || packInfo.rows !== 19 || packInfo.ticks !== 19) { fail++; console.log("FAIL pack sheet CAK-18 content:", JSON.stringify(packInfo)); }
-  else console.log("ok   pack sheet CAK-18 content: 19 rows, 19 tick boxes");
+  const pack = await page.evaluate(() => {
+    const pa = document.querySelector("#print-area");
+    const heatRow = [...pa.querySelectorAll("tbody tr")].find(tr => tr.textContent.includes("Heat Gun"));
+    return {
+      rows: pa.querySelectorAll("tbody tr").length,
+      ticks: pa.querySelectorAll(".tick-box").length,
+      text: pa.textContent,
+      heat: heatRow ? [...heatRow.querySelectorAll("td")].map(td => td.textContent.trim()) : null
+    };
+  });
+  ok(pack.rows === 19 && pack.ticks === 19, "pack sheet CAK-36: 19 rows, 19 tick boxes");
+  ok(pack.text.includes("Total kits: 36") && pack.text.includes("Order ID:"), "pack sheet: subtitle is 'Total kits: 36   Order ID: ___'");
+  ok(pack.text.includes("Per 6") && pack.text.includes("Total"), "pack sheet: Per 6 + Total columns");
+  ok(!pack.text.includes("SKU"), "pack sheet: no SKU line (mockup)");
+  ok(pack.heat && pack.heat[pack.heat.length - 2] === "1" && pack.heat[pack.heat.length - 1] === "2", "pack sheet: Heat Gun Per 6 = 1, Total = 2 at 36 kits (tier rule)");
   await page.pdf({ path: "/tmp/alooma-packsheet.pdf", preferCSSPageSize: true, printBackground: true });
-  /* CAK-12: all 19 lines must fit on ONE 4x6 label (Batch C3) */
+  const packTexts = await pageTexts("/tmp/alooma-packsheet.pdf");
+  ok(packTexts.length >= 2, "pack sheet CAK-36: big rows spill to a 2nd page rather than shrinking (" + packTexts.length + " pages)");
+  ok(packTexts.every(t => t.includes("Cakery") && t.trim().length > 30), "pack sheet: craft title repeats on every page, none blank");
+  const packedByPages = packTexts.map((t, i) => t.includes("Packed by") ? i : -1).filter(i => i >= 0);
+  ok(packedByPages.length === 1 && packedByPages[0] === packTexts.length - 1, "pack sheet: 'Packed by' footer lands once, on the last page");
+
+  /* CAK-12: all 19 lines still listed (2 pages now, by design) */
   await page.click("#btn-pack-change");
   await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
   await sleep(300);
   await page.evaluate(() => { document.querySelector("#btn-print-sheet").click(); });
   await sleep(300);
-  const pack12 = await page.evaluate(() => ({
-    sku: document.querySelector("#print-area").textContent.includes("CAK-12"),
-    rows: document.querySelectorAll("#print-area tbody tr").length
-  }));
-  if (!pack12.sku || pack12.rows !== 19) { fail++; console.log("FAIL pack sheet CAK-12 content:", JSON.stringify(pack12)); }
-  else console.log("ok   pack sheet CAK-12 content: 19 rows");
+  eq12: {
+    const rows12 = await page.evaluate(() => document.querySelectorAll("#print-area tbody tr").length);
+    ok(rows12 === 19, "pack sheet CAK-12: all 19 rows listed");
+  }
   await page.pdf({ path: "/tmp/alooma-packsheet12.pdf", preferCSSPageSize: true, printBackground: true });
+  const pack12Texts = await pageTexts("/tmp/alooma-packsheet12.pdf");
+  ok(pack12Texts.every(t => t.trim().length > 30), "pack sheet CAK-12: no blank pages (" + pack12Texts.length + " pages)");
+
+  /* ---- Inventory report ---- */
   await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); document.querySelector("#btn-print-inventory").click(); });
   await sleep(300);
-  const invHas = await page.evaluate(() => document.querySelector("#print-area").textContent.includes("Scissors"));
-  if (!invHas) { fail++; console.log("FAIL inventory report content: Scissors missing"); }
-  else console.log("ok   inventory report content present");
+  const inv = await page.evaluate(() => {
+    const pa = document.querySelector("#print-area");
+    const rows = [...pa.querySelectorAll("tbody tr")].map(tr => ({ text: tr.textContent, low: tr.classList.contains("low") }));
+    return { sections: pa.querySelectorAll(".print-page").length, text: pa.textContent, rows,
+             firstSub: pa.querySelector(".label-sub") ? pa.querySelector(".label-sub").textContent : "" };
+  });
+  ok(inv.sections === groups.length, "inventory: one section per group (" + inv.sections + ")");
+  ok(/^Inventory · [A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(inv.firstSub.trim()), "inventory: subtitle is 'Inventory · <date>' (" + inv.firstSub.trim() + ")");
+  ok(!inv.text.includes("Warn at"), "inventory: no Warn-at column or text");
+  const lowRow = inv.rows.find(r => r.text.includes(L.ITEMS[G0.items[0]]));
+  const midRow = inv.rows.find(r => r.text.includes(L.ITEMS[G0.items[1]]));
+  const noLvlRow = inv.rows.find(r => r.text.includes(L.ITEMS[G0.items[2]]));
+  ok(lowRow && lowRow.low && lowRow.text.includes("LOW"), "LOW flag: level 50, on hand 17 -> flagged (bold row + LOW tag)");
+  ok(midRow && !midRow.low, "LOW flag: level 50, on hand 63 -> not flagged");
+  ok(noLvlRow && !noLvlRow.low, "LOW flag: no level set -> never flagged");
   await page.pdf({ path: "/tmp/alooma-invreport.pdf", preferCSSPageSize: true, printBackground: true });
+  checkPagination(await pageTexts("/tmp/alooma-invreport.pdf"), "inventory report");
+
+  /* ---- Count sheet ---- */
   await page.evaluate(() => { document.querySelector("#btn-print-count").click(); });
   await sleep(300);
-  const cntHas = await page.evaluate(() => document.querySelector("#print-area").textContent.includes("Counted"));
-  if (!cntHas) { fail++; console.log("FAIL count sheet content: Counted column missing"); }
+  const cnt = await page.evaluate(() => {
+    const pa = document.querySelector("#print-area");
+    const rows = [...pa.querySelectorAll("tbody tr")].map(tr => ({ text: tr.textContent, low: tr.classList.contains("low") }));
+    return { text: pa.textContent, rows, firstSub: pa.querySelector(".label-sub") ? pa.querySelector(".label-sub").textContent : "" };
+  });
+  ok(/^Count sheet · /.test(cnt.firstSub.trim()), "count sheet: subtitle is 'Count sheet · <date>'");
+  ok(cnt.text.includes("Counted by:"), "count sheet: 'Counted by' footer present");
+  ok(!cnt.text.includes("Write the counted number"), "count sheet: instruction line removed");
+  ok(!cnt.text.includes("Warn at"), "count sheet: no Warn-at column or text");
+  const cLow = cnt.rows.find(r => r.text.includes(L.ITEMS[G0.items[0]]));
+  ok(cLow && cLow.low && cLow.text.includes("LOW"), "count sheet: LOW flag applies too");
   await page.pdf({ path: "/tmp/alooma-countsheet.pdf", preferCSSPageSize: true, printBackground: true });
-  console.log("pdfs written");
-  expectPages("/tmp/alooma-packsheet.pdf", 1, "pack sheet CAK-18");
-  expectPages("/tmp/alooma-packsheet12.pdf", 1, "pack sheet CAK-12 (all 19 lines, one label)");
-  expectPages("/tmp/alooma-invreport.pdf", 3, "inventory report (62 items)");
-  expectPages("/tmp/alooma-countsheet.pdf", 3, "count sheet (62 items)");
-} finally { await browser.close(); server.close(); }
+  const cntTexts = await pageTexts("/tmp/alooma-countsheet.pdf");
+  checkPagination(cntTexts, "count sheet");
+  ok(cntTexts.filter(t => t.includes("Counted by")).length === groups.length, "count sheet: every craft's sheet carries its own 'Counted by' footer");
+
+  console.log(fail ? "PRINT CHECKS FAILED (" + fail + ")" : "all print checks passed");
+} finally {
+  await browser.close();
+  server.close();
+}
 process.exit(fail ? 1 : 0);
