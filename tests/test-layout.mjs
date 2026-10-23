@@ -149,6 +149,14 @@ try {
     await sleep(400);
     /* View-only pass: Inventory + History + the Print menu (reachable view-only) */
     await check(width + " view-only: inventory");
+    /* v3 D6: for viewers the Print button lives in the chip row, and the
+       first stock row starts higher without the empty action row */
+    const voWrap = await page.evaluate(() => document.querySelector(".print-menu-wrap").parentElement.className);
+    ok(voWrap.includes("inv-filters"), "v3 D6: view-only Print sits in the chip row at " + width);
+    await page.evaluate(() => window.scrollTo(0, 0)); await sleep(100);
+    const voTop = await page.evaluate(() => { const el = document.querySelector(".inv-item"); return el ? Math.round(el.getBoundingClientRect().top + window.scrollY) : -1; });
+    console.log("v3 D6 view-only first row at", width, "=", voTop);
+    ok(voTop > 0 && voTop <= 300, "v3 D6: view-only first row at/above 300 at " + width + " (saw " + voTop + ")");
     await clickEl("#btn-print-menu"); await sleep(200);
     await check(width + " view-only: print menu open");
     await page.evaluate(() => document.body.click()); await sleep(150);
@@ -230,6 +238,11 @@ try {
     /* The brief's 300 target didn't reconcile with its own changes (489 -> 363);
        the user's pick 2026-10-23: drop the Inventory title too and accept ~331. */
     ok(invTop > 0 && invTop <= 340, "v2 B2: first inventory row at/above the agreed 340 at " + width + "px (saw " + invTop + ")");
+    /* v3 D2 + D6: the editor action row is exactly 48 and Print is back in it */
+    const actH = await page.evaluate(() => Math.round(document.querySelector(".inv-actions").getBoundingClientRect().height));
+    ok(actH === 48, "v3 D2: inventory action row is 48px at " + width + " (saw " + actH + ")");
+    const edWrap = await page.evaluate(() => document.querySelector(".print-menu-wrap").parentElement.className);
+    ok(edWrap.includes("inv-actions"), "v3 D6: editor Print sits in the action row at " + width);
     await clickEl("#btn-print-menu"); await sleep(200);
     await check(width + " inventory: print menu open");
     await clickEl("#btn-print-menu"); await sleep(150);
