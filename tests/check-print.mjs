@@ -39,6 +39,7 @@ const G0 = groups[0];
 remote.inventory[G0.items[0]].threshold = 50; remote.inventory[G0.items[0]].qty = 17;  /* LOW */
 remote.inventory[G0.items[1]].threshold = 50; remote.inventory[G0.items[1]].qty = 63;  /* not low */
 remote.inventory[G0.items[2]].threshold = null; remote.inventory[G0.items[2]].qty = 5; /* no level: never low */
+remote.settings.boxRules = [{ craftId: "cak", kits: 36, boxes: ["Big Box", "Small Box"] }]; /* CAK-36 order carries boxes */
 const remoteSha = "sha-print";
 const b64e = s => Buffer.from(s, "utf8").toString("base64");
 const DISTINCT = ["Blooming Mirrors", "Tambourines", "Judaic Clay-Art", "Hafrashat Challah", "The Cakery", "Miniature Interiors", "Shared items"]; /* full title phrases: bare "Miniature" also matches HCB's own item "Miniatures bread bag" */
@@ -108,6 +109,8 @@ try {
       rows: pa.querySelectorAll("tbody tr").length,
       ticks: pa.querySelectorAll(".tick-box").length,
       text: pa.textContent,
+      titleText: pa.querySelector("thead") ? pa.querySelector("thead").textContent : "",
+      footText: pa.querySelector(".print-foot") ? pa.querySelector(".print-foot").textContent : "",
       rowCells: [...pa.querySelectorAll("tbody tr")].map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent.trim()))
     };
   });
@@ -115,6 +118,9 @@ try {
   ok(pack.text.includes("Total kits: 36") && pack.text.includes("Order ID:"), "pack sheet: subtitle is 'Total kits: 36   Order ID: ___'");
   ok(pack.text.includes("Per 6") && pack.text.includes("Total"), "pack sheet: Per 6 + Total columns");
   ok(!pack.text.includes("SKU"), "pack sheet: no SKU line (mockup)");
+  ok(pack.text.includes("BOXES: Big Box + Small Box"), "pack sheet: the order's boxes are printed");
+  ok(!pack.titleText.includes("BOXES"), "pack sheet: top stays title + subtitle only (no BOXES under the title)");
+  ok(pack.footText.includes("BOXES: Big Box + Small Box") && pack.footText.includes("Packed by"), "pack sheet: BOXES line sits in the footer, above 'Packed by'");
   const cakCraft = Object.values(L.CRAFTS).find(c => c.name === "The Cakery");
   const expectCells = {};
   cakCraft.items.forEach(ln => { expectCells[L.ITEMS[ln.item]] = [String(L.lineQty(ln, 6)), String(L.lineQty(ln, 36))]; });
@@ -126,6 +132,7 @@ try {
   ok(packTexts.every(t => t.includes("Cakery") && t.trim().length > 30), "pack sheet: craft title repeats on every page, none blank");
   const packedByPages = packTexts.map((t, i) => t.includes("Packed by") ? i : -1).filter(i => i >= 0);
   ok(packedByPages.length === 1 && packedByPages[0] === packTexts.length - 1, "pack sheet: 'Packed by' footer lands once, on the last page");
+  ok(!packTexts[0].includes("BOXES") && packTexts[packTexts.length - 1].includes("BOXES: Big Box + Small Box"), "pack sheet PDF: BOXES appears only on the last page, with the footer");
 
   /* CAK-12: all 19 lines still listed (2 pages now, by design) */
   await page.click("#btn-pack-change");
@@ -140,6 +147,15 @@ try {
   await page.pdf({ path: "/tmp/alooma-packsheet12.pdf", preferCSSPageSize: true, printBackground: true });
   const pack12Texts = await pageTexts("/tmp/alooma-packsheet12.pdf");
   ok(pack12Texts.every(t => t.trim().length > 30), "pack sheet CAK-12: no blank pages (" + pack12Texts.length + " pages)");
+
+  /* Evidence for Mark's thermal test: a SHORT craft's pack sheet (HCB-12) */
+  await page.click("#btn-pack-change");
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat Challah")).click());
+  await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
+  await sleep(300);
+  await page.evaluate(() => { document.querySelector("#btn-print-sheet").click(); });
+  await sleep(300);
+  await page.pdf({ path: "/tmp/alooma-packsheet-hcb.pdf", preferCSSPageSize: true, printBackground: true });
 
   /* ---- Inventory report ---- */
   await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); document.querySelector("#btn-print-inventory").click(); });
@@ -161,6 +177,21 @@ try {
   ok(noLvlRow && !noLvlRow.low, "LOW flag: no level set -> never flagged");
   await page.pdf({ path: "/tmp/alooma-invreport.pdf", preferCSSPageSize: true, printBackground: true });
   checkPagination(await pageTexts("/tmp/alooma-invreport.pdf"), "inventory report");
+
+  /* Evidence for Mark's thermal test: single-craft inventory PDFs (the
+     full build above is trimmed harness-side, after its asserts ran) */
+  for (const [name, file] of [["The Cakery", "/tmp/alooma-inventory-cak.pdf"], ["Hafrashat Challah", "/tmp/alooma-inventory-hcb.pdf"]]) {
+    await page.evaluate(() => { document.querySelector("#btn-print-inventory").click(); });
+    await sleep(300);
+    await page.evaluate(n => {
+      const pa = document.querySelector("#print-area");
+      [...pa.querySelectorAll(".print-page")].forEach(sec => {
+        const t = sec.querySelector(".label-title");
+        if (!t || !t.textContent.includes(n)) sec.remove();
+      });
+    }, name);
+    await page.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
+  }
 
   /* ---- Count sheet ---- */
   await page.evaluate(() => { document.querySelector("#btn-print-count").click(); });
