@@ -99,7 +99,7 @@ tr.checked-row td .row-name { text-decoration: line-through; }
 .picker-summary[hidden] { display: none !important; }
 .picker-summary span { flex: 1; }
 .action-bar { display: flex; gap: 8px; margin-top: 10px; }
-.action-bar .btn { min-height: 54px; font-size: 16.5px; }
+.action-bar .btn { min-height: 48px; font-size: 16.5px; white-space: nowrap; }
 .action-bar .btn-primary { flex: 1; }
 
 /* inventory */
@@ -174,7 +174,8 @@ tr.checked-row td .row-name { text-decoration: line-through; }
   .tabs button.active { color: var(--accent); background: none; }
   .tab-ic { font-size: 20px; margin: 0; line-height: 1.1; }
   main { margin: 8px 8px 16px; padding: 14px 12px 20px; }
-  #tab-pack .action-bar, #tab-hand .action-bar { position: sticky; bottom: 66px; background: linear-gradient(transparent, var(--surface) 35%); padding-top: 14px; }
+  #tab-pack .action-bar, #tab-hand .action-bar { position: sticky; bottom: 66px; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -4px 14px rgba(31,35,40,.08); padding: 10px 0; margin-top: 0; }
+  #pack-list-wrap { padding-bottom: 76px; }
   .toast { bottom: 132px; }
   .header-text p { display: none; }
 }
