@@ -306,6 +306,25 @@
     var b = settings && settings.boxes && settings.boxes[boxId];
     return b && b.name ? b.name : "Box " + boxId;
   }
+
+  /* Bin locations (Batch C2): placeholders BIN-01, BIN-02... in inventory
+     order until an item's bin is set in Inventory. */
+  function defaultBins() {
+    var map = {}, n = 0;
+    inventoryGroups().forEach(function (g) {
+      g.items.forEach(function (id) {
+        n++;
+        map[id] = "BIN-" + (n < 10 ? "0" : "") + n;
+      });
+    });
+    return map;
+  }
+  function binFor(settings, itemId) {
+    if (settings && settings.bins && typeof settings.bins[itemId] === "string" && settings.bins[itemId]) {
+      return settings.bins[itemId];
+    }
+    return defaultBins()[itemId] || "";
+  }
   function boxesText(settings, boxIds) {
     return boxIds.map(function (b) { return boxLabel(settings, b); }).join(" + ");
   }
@@ -325,7 +344,8 @@
     emptyData: emptyData, applyEffects: applyEffects,
     BOX_IDS: BOX_IDS, defaultSettings: defaultSettings,
     normalizeSettings: normalizeSettings, boxRuleFor: boxRuleFor,
-    boxLabel: boxLabel, boxesText: boxesText
+    boxLabel: boxLabel, boxesText: boxesText,
+    defaultBins: defaultBins, binFor: binFor
   };
   root.ALOOMA = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
