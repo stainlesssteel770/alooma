@@ -828,7 +828,8 @@
       '<div class="label-sub">' + new Date().toLocaleString() + "</div>";
     if (mode === "count") {
       head = '<div class="label-title">Alooma — Count Sheet</div><div class="label-sub">' +
-        new Date().toLocaleString() + " · Write the counted number, then type it back in under Inventory → Enter counted numbers</div>";
+        new Date().toLocaleString() + " · Write the counted number, then type it back in under Inventory → Enter counted numbers</div>" +
+        '<div class="label-sub">Columns: Item · Should be · Counted</div>';
       var binsOn = settings().features.bins;
       groupsHtml = L.inventoryGroups().map(function (g) {
         var cItems = g.items.slice();
@@ -843,7 +844,7 @@
             (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), itemId)) + "</td>" : "") +
             '<td class="qty">' + qtyOf(itemId) + '</td><td class="counted-blank">&nbsp;</td></tr>';
         }).join("");
-        return '<div class="group-head">' + esc(g.name) + "</div><table><tr><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Should be</th><th>Counted</th></tr>" + rows + "</table>";
+        return '<div class="group-head">' + esc(g.name) + "</div><table>" + rows + "</table>";
       }).join("");
     }
     printHtml(head + groupsHtml);
