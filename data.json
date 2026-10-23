@@ -250,5 +250,27 @@
       "threshold": null
     }
   },
-  "history": []
+  "history": [],
+  "settings": {
+    "features": {
+      "boxes": true,
+      "bins": false
+    },
+    "boxes": {
+      "A": {
+        "name": "Box A",
+        "size": ""
+      },
+      "B": {
+        "name": "Box B",
+        "size": ""
+      },
+      "C": {
+        "name": "Box C",
+        "size": ""
+      }
+    },
+    "boxRules": [],
+    "bins": {}
+  }
 }
