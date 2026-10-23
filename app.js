@@ -36,6 +36,44 @@
   function actionToast(msg, entry) {
     showToast(esc(msg), "UNDO", function () { undoEntry(entry, true); }, 10000);
   }
+  /* v2 A3: batch saves (a whole delivery / count) get one UNDO that
+     reverses every entry in the batch */
+  function batchToast(msg, entries) {
+    showToast(esc(msg), "UNDO", function () { undoEntries(entries); }, 10000);
+  }
+  function undoEntries(entries) {
+    var any = false;
+    entries.forEach(function (e) {
+      if (!e.undone) { L.applyEffects(state.data.inventory, e.effects, -1); e.undone = true; any = true; }
+    });
+    if (!any) return;
+    renderAll();
+    saveData("Undo batch of " + entries.length).then(function () { toast("Undone — the whole batch was reversed."); });
+  }
+  function lastDeliveryFor(itemId) {
+    for (var i = 0; i < state.data.history.length; i++) {
+      var e = state.data.history[i];
+      if (e.type === "received" && e.item === itemId && !e.undone) return e.amount || 0;
+    }
+    return 0;
+  }
+  /* The Inventory search box also filters the delivery / count forms:
+     rows hide in place (typed values are never wiped by a re-render) */
+  function filterEntryList(list) {
+    if (!list) return;
+    var head = null, headVisible = false;
+    Array.prototype.forEach.call(list.children, function (el) {
+      if (el.classList.contains("entry-head")) {
+        if (head) head.style.display = headVisible ? "" : "none";
+        head = el; headVisible = false;
+      } else {
+        var show = !invQuery || (el.getAttribute("data-name") || "").indexOf(invQuery) >= 0;
+        el.style.display = show ? "" : "none";
+        if (show) headVisible = true;
+      }
+    });
+    if (head) head.style.display = headVisible ? "" : "none";
+  }
   /* ---------- in-app confirm sheet (no window.confirm / window.prompt) ---------- */
   var sheetCb = null;
   function openSheet(opts) {
@@ -651,15 +689,18 @@
     var list = $("count-entry-list"); list.innerHTML = "";
     L.inventoryGroups().forEach(function (g) {
       var head = document.createElement("div");
+      head.className = "entry-head";
       head.innerHTML = "<strong>" + esc(g.name) + "</strong>";
       list.appendChild(head);
       g.items.forEach(function (itemId) {
         var row = document.createElement("div"); row.className = "count-row";
+        row.setAttribute("data-name", L.ITEMS[itemId].toLowerCase());
         row.innerHTML = "<span>" + esc(L.ITEMS[itemId]) + " (on hand: " + qtyOf(itemId) + ')</span>' +
           '<input type="number" min="0" step="1" data-item="' + itemId + '" placeholder="Counted">';
         list.appendChild(row);
       });
     });
+    filterEntryList(list);
   }
   function applyCounts() {
     if (!requireEditor()) return;
@@ -671,40 +712,65 @@
       var itemId = inp.getAttribute("data-item");
       if (!Number.isInteger(v) || v < 0) return;
       var cur = qtyOf(itemId);
-      if (v !== cur) changes.push({ item: itemId, counted: v, delta: v - cur });
+      if (v !== cur) changes.push({ item: itemId, counted: v, delta: v - cur, cur: cur });
     });
     if (!changes.length) { toast("No counts differ from what's on hand — nothing to apply."); return; }
-    var done = 0;
-    changes.forEach(function (ch) {
-      var entry = newEntry(
-        "count-fix",
-        "Count fix " + L.ITEMS[ch.item] + ": " + qtyOf(ch.item) + " → " + ch.counted,
-        [{ item: ch.item, delta: ch.delta }],
-        { item: ch.item, counted: ch.counted }
-      );
-      /* apply locally without a save per item; one save at the end */
-      L.applyEffects(state.data.inventory, entry.effects, +1);
-      state.data.history.unshift(entry);
-      done++;
+    /* v2 A3: confirm sheet first. A count that differs from on-hand by more
+       than 50% either way is flagged amber; on-hand 0 is never flagged
+       (user's rule — with everything at 0 it would flag the world). */
+    var lines = changes.map(function (ch) {
+      var flag = "";
+      if (ch.cur !== 0 && Math.abs(ch.counted - ch.cur) > Math.abs(ch.cur) / 2) {
+        var pct = Math.round((ch.counted - ch.cur) / Math.abs(ch.cur) * 100);
+        flag = ' <span class="flag">(' + (pct > 0 ? "+" : "") + pct + "% — double-check)</span>";
+      }
+      return "<li>" + esc(L.ITEMS[ch.item]) + ": " + ch.cur + " → " + ch.counted + flag + "</li>";
+    }).join("");
+    openSheet({
+      title: "Set " + changes.length + (changes.length === 1 ? " count?" : " counts?"),
+      summary: "Check the new counts — nothing is saved yet.",
+      extraHtml: '<ul class="sheet-lines">' + lines + "</ul>",
+      primary: "Apply counts",
+      cancelLabel: "Edit numbers",
+      onConfirm: function () {
+        var entries = [];
+        changes.forEach(function (ch) {
+          var entry = newEntry(
+            "count-fix",
+            "Count fix " + L.ITEMS[ch.item] + ": " + ch.cur + " → " + ch.counted,
+            [{ item: ch.item, delta: ch.delta }],
+            { item: ch.item, counted: ch.counted }
+          );
+          /* apply locally without a save per item; one save at the end */
+          L.applyEffects(state.data.inventory, entry.effects, +1);
+          state.data.history.unshift(entry);
+          entries.push(entry);
+        });
+        $("count-entry").hidden = true;
+        renderAll();
+        saveData("Count entry: " + entries.length + " item(s) fixed").then(function () {
+          batchToast("Counts applied: " + entries.length + " item(s) updated.", entries);
+        });
+      }
     });
-    $("count-entry").hidden = true;
-    renderAll();
-    saveData("Count entry: " + done + " item(s) fixed").then(function () { toast("Counts applied: " + done + " item(s) updated."); });
   }
   /* Batch B4: receive a whole delivery on one form — one save, one History entry per item */
   function renderDeliveryEntry() {
     var list = $("delivery-entry-list"); list.innerHTML = "";
     L.inventoryGroups().forEach(function (g) {
       var head = document.createElement("div");
+      head.className = "entry-head";
       head.innerHTML = "<strong>" + esc(g.name) + "</strong>";
       list.appendChild(head);
       g.items.forEach(function (itemId) {
         var row = document.createElement("div"); row.className = "count-row";
+        row.setAttribute("data-name", L.ITEMS[itemId].toLowerCase());
         row.innerHTML = "<span>" + esc(L.ITEMS[itemId]) + " (on hand: " + qtyOf(itemId) + ')</span>' +
           '<input type="number" min="0" step="1" data-item="' + itemId + '" placeholder="Arrived">';
         list.appendChild(row);
       });
     });
+    filterEntryList(list);
   }
   function applyDelivery() {
     if (!requireEditor()) return;
@@ -717,21 +783,39 @@
       received.push({ item: inp.getAttribute("data-item"), amount: v });
     });
     if (!received.length) { toast("Type how many of each item arrived first — nothing to save yet."); return; }
-    received.forEach(function (r) {
-      var entry = newEntry(
-        "received",
-        "Received " + r.amount + " × " + L.ITEMS[r.item],
-        [{ item: r.item, delta: r.amount }],
-        { item: r.item, amount: r.amount }
-      );
-      /* apply locally without a save per item; one save at the end */
-      L.applyEffects(state.data.inventory, entry.effects, +1);
-      state.data.history.unshift(entry);
-    });
-    $("delivery-entry").hidden = true;
-    renderAll();
-    saveData("Delivery: " + received.length + " item(s) received").then(function () {
-      toast("Delivery saved: " + received.length + " item(s) received.");
+    /* v2 A3: confirm sheet first; an amount over 5× that item's last
+       delivery is flagged amber in the list */
+    var lines = received.map(function (r) {
+      var last = lastDeliveryFor(r.item);
+      var flag = last > 0 && r.amount > 5 * last ? ' <span class="flag">(' + Math.round(r.amount / last) + "× usual)</span>" : "";
+      return "<li>" + esc(L.ITEMS[r.item]) + " +" + r.amount + flag + "</li>";
+    }).join("");
+    openSheet({
+      title: "Add " + received.length + (received.length === 1 ? " item" : " items") + " to stock?",
+      summary: "Check the amounts — nothing is saved yet.",
+      extraHtml: '<ul class="sheet-lines">' + lines + "</ul>",
+      primary: "Add to stock",
+      cancelLabel: "Edit numbers",
+      onConfirm: function () {
+        var entries = [];
+        received.forEach(function (r) {
+          var entry = newEntry(
+            "received",
+            "Received " + r.amount + " × " + L.ITEMS[r.item],
+            [{ item: r.item, delta: r.amount }],
+            { item: r.item, amount: r.amount }
+          );
+          /* apply locally without a save per item; one save at the end */
+          L.applyEffects(state.data.inventory, entry.effects, +1);
+          state.data.history.unshift(entry);
+          entries.push(entry);
+        });
+        $("delivery-entry").hidden = true;
+        renderAll();
+        saveData("Delivery: " + received.length + " item(s) received").then(function () {
+          batchToast("Delivery saved: " + received.length + " item(s) received.", entries);
+        });
+      }
     });
   }
 
@@ -1272,7 +1356,7 @@
       });
       updatePackProgress();
     });
-    $("inv-search").addEventListener("input", function (ev) { invQuery = ev.target.value.trim().toLowerCase(); applyInvFilters(); });
+    $("inv-search").addEventListener("input", function (ev) { invQuery = ev.target.value.trim().toLowerCase(); applyInvFilters(); filterEntryList($("delivery-entry-list")); filterEntryList($("count-entry-list")); });
     $("btn-filter-all").addEventListener("click", function () { invFilter = "all"; applyInvFilters(); });
     $("btn-lowfilter").addEventListener("click", function () { invFilter = "low"; applyInvFilters(); });
     $("btn-outfilter").addEventListener("click", function () { invFilter = "out"; applyInvFilters(); });
