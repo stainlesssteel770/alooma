@@ -465,7 +465,8 @@ try {
     return document.querySelector("#print-area").innerHTML;
   });
   eq(packPrint.includes("Order ID:"), true, "packing sheet has Order ID line");
-  eq(packPrint.includes("CAK-18"), true, "packing sheet shows SKU");
+  eq(packPrint.includes("Total kits: 18"), true, "packing sheet shows Total kits (desktop brief item 3 subtitle)");
+  eq(packPrint.includes("CAK-18"), false, "desktop brief item 3: no SKU line on the packing sheet (matches Mark's mockup)");
   const invPrint = await page.evaluate(() => {
     document.querySelector('[data-tab="inventory"]').click();
     document.querySelector("#btn-print-inventory").click();
@@ -633,8 +634,8 @@ try {
   await page.click("#btn-print-reorder");
   await sleep(250);
   const reorderPrint = await page.$eval("#print-area", e => e.innerHTML);
-  eq(reorderPrint.includes("Reorder List") && reorderPrint.includes("Scissors") && reorderPrint.includes("300"), true, "v3 E2: printed list carries the edited qty");
-  eq(reorderPrint.includes("2 × warning level"), true, "v3 E2: report says how the qty was worked out");
+  eq(reorderPrint.includes("Reorder list ·") && reorderPrint.includes("Scissors") && reorderPrint.includes("300"), true, "v3 E2: printed list carries the edited qty");
+  eq(reorderPrint.includes("Order qty ="), false, "desktop brief item 3: no formula text on the printed reorder list (the panel explains it on screen)");
   await page.click("#btn-close-reorder");
   await sleep(150);
   await openPanel("#delivery-entry", "#btn-delivery");
