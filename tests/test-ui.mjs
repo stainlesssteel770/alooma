@@ -271,6 +271,61 @@ try {
   });
   eq(countPrint.includes("Should be") && countPrint.includes("Counted"), true, "count sheet has Should be / Counted columns");
 
+  /* Batch B: picker folds (B1), solid action bar (B2), inventory filters + print menu (B3), receive delivery (B4) */
+  await page.setViewport({ width: 390, height: 844 });
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(200);
+  eq(await page.$eval("#pack-picker-summary", e => e.hidden), false, "B1: picker folded into summary line after choosing");
+  eq(await page.$eval("#pack-summary-text", e => e.textContent), "The Cakery · 18 kits", "B1: summary line names craft + kits");
+  eq(await page.$eval("#pack-picker", e => e.hidden), true, "B1: full picker hidden once folded");
+  const firstRowTop = await page.evaluate(() => Math.round(document.querySelector("#pack-table tbody tr").getBoundingClientRect().top + window.scrollY));
+  console.log("B1 measured: first pack row top =", firstRowTop, "px");
+  eq(firstRowTop < 460, true, "B1: first pack row near the top (was ~857px before B1)");
+  await page.click("#btn-pack-change");
+  await sleep(200);
+  eq(await page.$eval("#pack-picker", e => e.hidden), false, "B1: Change reopens the picker");
+  await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
+  await sleep(200);
+  eq(await page.$eval("#pack-picker", e => e.hidden), true, "B1: picking again re-folds the picker");
+  eq(await page.$eval("#btn-print-sheet", e => e.textContent.trim()), "🖨 Print", "B2: print button is one short label");
+  const barBg = await page.evaluate(() => getComputedStyle(document.querySelector("#tab-pack .action-bar")).backgroundColor);
+  eq(barBg, "rgb(255, 255, 255)", "B2: action bar is solid white, not see-through");
+  const btnH = await page.$eval("#btn-print-sheet", e => Math.round(e.getBoundingClientRect().height));
+  eq(btnH <= 52, true, "B2: action buttons fit one line (height " + btnH + "px)");
+
+  await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
+  await sleep(250);
+  eq(await page.$eval("#all-count", e => e.textContent), "62", "B3: All filter shows the live total");
+  const expLow = Object.keys(remoteData.inventory).filter(id => { const r = remoteData.inventory[id]; return r.threshold !== null && r.threshold !== undefined && r.qty <= r.threshold; }).length;
+  const expOut = Object.values(remoteData.inventory).filter(r => r.qty === 0).length;
+  eq(await page.$eval("#low-count", e => e.textContent), String(expLow), "B3: Low filter count matches the data");
+  eq(await page.$eval("#out-count", e => e.textContent), String(expOut), "B3: Out filter count matches the data");
+  await page.click("#btn-lowfilter");
+  await sleep(200);
+  const visLow = await page.$$eval(".inv-item", els => els.filter(e => e.style.display !== "none").length);
+  eq(visLow, expLow, "B3: Low filter shows only low items");
+  await page.click("#btn-filter-all");
+  await sleep(200);
+  eq(await page.$eval("#btn-print-inventory", e => e.offsetParent === null), true, "B3: print options live inside the Print menu");
+  await page.click("#btn-print-menu");
+  await sleep(150);
+  eq(await page.$eval("#print-menu", e => e.hidden), false, "B3: Print menu opens");
+
+  const putsBefore = putCount;
+  await page.click("#btn-delivery");
+  await sleep(250);
+  await page.evaluate(() => {
+    document.querySelector('#delivery-entry-list input[data-item="scissors"]').value = "50";
+    document.querySelector('#delivery-entry-list input[data-item="wood-board"]').value = "18";
+  });
+  await page.click("#btn-apply-delivery");
+  await sleep(700);
+  eq(remoteData.inventory["scissors"].qty, 245, "B4: delivery added 50 scissors (195->245)");
+  eq(remoteData.inventory["wood-board"].qty, 0, "B4: delivery added 18 wood boards (-18->0)");
+  eq(remoteData.history[0].type, "received", "B4: newest History entry is a delivery receive");
+  eq(remoteData.history[1].type, "received", "B4: second History entry is the other delivered item");
+  eq(putCount, putsBefore + 1, "B4: the whole delivery saved with ONE repo write");
+
   /* Disconnect: back to view-only, token gone from this device */
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
   await sleep(150);
