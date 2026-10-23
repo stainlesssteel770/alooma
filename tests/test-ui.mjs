@@ -456,9 +456,10 @@ try {
   await page.select("#rule-craft", "cak");
   await page.type("#rule-kits", "12");
   await page.select("#rule-boxes", "Box A");
+  await page.select("#rule-boxes-2", "Box B");
   await page.click("#btn-rule-add");
   await waitRemote(() => (remoteData.settings.boxRules || []).length === 1, "box rule saved");
-  eq(remoteData.settings.boxRules[0].boxes.join(",") === "Box A", true, "C1: rule saved (CAK 12 = Box A, picked from the dropdown)");
+  eq(remoteData.settings.boxRules[0].boxes.join(",") === "Box A,Box B", true, "C1: rule saved (CAK 12 = Box A + Box B, from the two dropdowns)");
   /* The kits field validates: 7 is not a multiple of 6, so no rule is added */
   await page.type("#rule-kits", "7");
   await page.click("#btn-rule-add");
@@ -475,7 +476,7 @@ try {
   await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
   await page.click("#btn-mode-hand");
   await waitDom(() => !document.querySelector("#pack-boxes").hidden, "boxes line shows");
-  eq(await page.$eval("#pack-boxes-text", e => e.textContent), "Box A", "C1: boxes line shows the rule's box");
+  eq(await page.$eval("#pack-boxes-text", e => e.textContent), "Box A + Box B", "C1: boxes line shows the rule's boxes");
   await page.click("#btn-pack-change");
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await sleep(200);
@@ -491,7 +492,7 @@ try {
   eq((await page.$eval("#pack-boxes-text", e => e.textContent)).includes("Box C"), true, "C1: Change override adds Box C for this order");
   await page.evaluate(() => document.querySelector("#btn-print-sheet").click());
   await sleep(250);
-  eq((await page.evaluate(() => document.querySelector("#print-area").textContent)).includes("BOXES: Box A + Box C"), true, "C1+C3: packing sheet prints BOXES: Box A + Box C");
+  eq((await page.evaluate(() => document.querySelector("#print-area").textContent)).includes("BOXES: Box A + Box B + Box C"), true, "C1+C3: packing sheet prints BOXES: Box A + Box B + Box C");
   await page.click("#btn-mode-hand");
   await sleep(200);
   await page.click("#btn-check-all");
