@@ -43,6 +43,9 @@ try {
   const page = await browser.newPage();
   await page.goto("http://127.0.0.1:8908/index.html", { waitUntil: "networkidle0", timeout: 30000 });
   await sleep(300);
+  /* View-only lands on Inventory; activate the Packing panel for the test */
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(200);
   /* Select The Cakery + 18 kits with real clicks, then print the sheet */
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
