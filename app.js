@@ -1099,11 +1099,18 @@
       .catch(function (e) { err.textContent = e.message; });
   }
   function disconnectDevice() {
-    if (!window.confirm("Disconnect GitHub from this device?\n\nThe site becomes view-only here (Inventory and History only). Your data in the repo is not touched.")) return;
-    state.editor = null;
-    try { localStorage.removeItem(LS_KEY); } catch (e) {}
-    state.sha = null;
-    loadData().then(function () { renderAll(); toast("Disconnected — this device is view-only now."); });
+    /* v2 A6: the last pop-ups move into the in-app sheet */
+    openSheet({
+      title: "Disconnect this device?",
+      summary: "The site becomes view-only here (Inventory and History only). Your data in the repo is not touched.",
+      primary: "Disconnect",
+      onConfirm: function () {
+        state.editor = null;
+        try { localStorage.removeItem(LS_KEY); } catch (e) {}
+        state.sha = null;
+        loadData().then(function () { renderAll(); toast("Disconnected — this device is view-only now."); });
+      }
+    });
   }
   /* ---------- GitHub App device sign-in (no token to paste) ---------- */
   /* Public client ID of the "Alooma Packing" GitHub App (alooma repo only,
@@ -1190,13 +1197,19 @@
       if (!parsed || typeof parsed.inventory !== "object" || !Array.isArray(parsed.history)) {
         showError("That file doesn't look like an Alooma backup (needs inventory + history) — import cancelled."); return;
       }
-      if (!window.confirm("Replace ALL current data with this backup?\n\nCurrent inventory and history will be overwritten. This is logged in History.")) return;
-      state.data = parsed;
-      normalizeData();
-      var marker = newEntry("import", "Imported a backup file", [], {});
-      state.data.history.unshift(marker);
-      renderAll();
-      saveData("Import backup").then(function () { toast("Backup imported and saved."); });
+      openSheet({
+        title: "Replace all data with this backup?",
+        summary: "Current inventory and history will be overwritten. This is logged in History.",
+        primary: "Replace all data",
+        onConfirm: function () {
+          state.data = parsed;
+          normalizeData();
+          var marker = newEntry("import", "Imported a backup file", [], {});
+          state.data.history.unshift(marker);
+          renderAll();
+          saveData("Import backup").then(function () { toast("Backup imported and saved."); });
+        }
+      });
     };
     reader.readAsText(file);
   }
