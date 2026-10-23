@@ -99,6 +99,9 @@ try {
   await sleep(200);
   await page.click("#sheet-primary"); /* Mark all */
   await sleep(200);
+  await page.evaluate(() => document.querySelector("#pack-checklist").scrollIntoView());
+  await sleep(200);
+  await shot("handpack.jpg");
   await page.click("#btn-complete-pack");
   await sleep(400);
   await shot("pack-confirm-sheet.jpg");
