@@ -253,7 +253,7 @@
   "history": [],
   "settings": {
     "features": {
-      "boxes": false,
+      "boxes": true,
       "bins": false
     },
     "boxes": {
