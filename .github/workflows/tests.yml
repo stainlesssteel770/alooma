@@ -23,7 +23,7 @@ jobs:
           node-version: 20
 
       - name: Install Puppeteer (downloads its Chrome)
-        run: npm install --no-save puppeteer axe-core
+        run: npm install --no-save puppeteer axe-core pdfjs-dist@4
 
       - name: Logic tests (stock math, recipes, history)
         run: node tests/test-logic.js
