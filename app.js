@@ -1225,11 +1225,11 @@
       '<section class="print-page with-foot"><table><thead>' +
       '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title">' + esc(cur.craft.name) + "</div>" +
       '<div class="label-sub">Total kits: ' + cur.kits + " &nbsp;&nbsp; Order ID: ____________</div>" +
-      (boxes && boxes.length ? '<div class="label-sub">BOXES: ' + esc(boxes.join(" + ")) + "</div>" : "") +
       "</th></tr>" +
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>" +
-      '<div class="print-foot">Packed by: ____________________ &nbsp; Date: ____________</div></section>'
+      '<div class="print-foot">' + (boxes && boxes.length ? '<div class="foot-boxes">BOXES: ' + esc(boxes.join(" + ")) + "</div>" : "") +
+      "Packed by: ____________________ &nbsp; Date: ____________</div></section>"
     );
   }
   function printInventory(mode) {
