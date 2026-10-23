@@ -133,6 +133,7 @@ try {
   await page.click("#conn-badge");
   await sleep(200);
   eq(await page.$eval("#tab-settings", e => e.classList.contains("active")), true, "View-only: badge tap opens Settings to connect");
+  eq(await page.$eval("#tab-settings details summary", e => Math.round(e.getBoundingClientRect().height) >= 44), true, "v2 C4: 'How to make a token' summary is a 44px target");
   await page.type("#gh-token", "fake-token-for-test");
   await page.click("#btn-connect");
   await sleep(600);
@@ -653,37 +654,11 @@ try {
   await page.select("#rule-boxes", "Box A");
   await page.select("#rule-boxes", "Box B");
   await page.select("#rule-boxes", "Mailer box");
-  const ruleDiag = await page.evaluate(() => {
-    const b = document.querySelector("#btn-rule-add");
-    const r = b.getBoundingClientRect();
-    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    return {
-      craft: document.querySelector("#rule-craft").value,
-      kits: document.querySelector("#rule-kits").value,
-      picked: document.querySelectorAll("#rule-boxes-picked > *").length,
-      error: (document.querySelector("#rule-error") || {}).textContent || "",
-      coveredBy: top ? (top.id || top.className || top.tagName) : "none",
-      btnText: b.textContent.trim()
-    };
-  });
-  console.log("rule diag:", JSON.stringify(ruleDiag));
+  /* Center the button before the real click: an uncentered click raced the
+     save toast twice (the toast sits fixed at the bottom of the screen) */
   await page.evaluate(() => document.querySelector("#btn-rule-add").scrollIntoView({ block: "center" }));
   await sleep(200);
   await page.click("#btn-rule-add");
-  await sleep(400);
-  const ruleDiag2 = await page.evaluate(() => {
-    const b = document.querySelector("#btn-rule-add");
-    const r = b.getBoundingClientRect();
-    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    const toast = document.querySelector("#toast");
-    return {
-      errorAfter: (document.querySelector("#rule-error") || {}).textContent || "",
-      coveredByAfter: top ? (top.id || top.className || top.tagName) : "none",
-      toastHidden: toast ? toast.hidden : "no-toast",
-      toastText: toast ? toast.textContent.slice(0, 60) : ""
-    };
-  });
-  console.log("rule diag2:", JSON.stringify(ruleDiag2), "| remote rules:", (remoteData.settings.boxRules || []).length);
   await waitRemote(() => (remoteData.settings.boxRules || []).length === 2, "3-box rule saved");
   eq(remoteData.settings.boxRules[1].boxes.join(","), "Box A,Box B,Mailer box", "Boxes: a rule holds three boxes (any number works)");
   await page.evaluate(() => [...document.querySelectorAll("#box-list .box-rule-row")].find(r => r.textContent.includes("Mailer box")).querySelector("button").click());
@@ -763,7 +738,6 @@ try {
   await page.click("#sheet-primary");
   await sleep(600);
   eq(await page.$eval("#conn-badge", e => e.textContent.trim()), "View only", "disconnect returns to view-only");
-  eq(await page.$eval("#tab-settings details summary", e => Math.round(e.getBoundingClientRect().height) >= 44), true, "v2 C4: 'How to make a token' summary is a 44px target");
   eq(await page.$eval('[data-tab="pack"]', e => e.hidden), true, "View-only: Packing tab hidden again after disconnect");
   eq(await page.$eval("#tab-inventory", e => e.classList.contains("active")), true, "View-only: disconnect lands on Inventory");
   eq(await page.evaluate(() => localStorage.getItem("alooma.editor.v1")), null, "token removed from device on disconnect");
