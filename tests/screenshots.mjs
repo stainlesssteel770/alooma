@@ -149,6 +149,18 @@ try {
   await sleep(500);
   await shot("settings.jpg");
 
+  /* v3: 360px views of the main screens (the brief asks for 360px evidence) */
+  await page.setViewport({ width: 360, height: 780, isMobile: true, hasTouch: true });
+  await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
+  await sleep(350);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await shot("inventory-360.jpg");
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(350);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await shot("pack-360.jpg");
+  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+
   /* Offline state (A6): second page, data requests blocked */
   const page2 = await browser.newPage();
   await page2.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
