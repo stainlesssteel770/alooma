@@ -95,19 +95,23 @@ const groups = L.inventoryGroups();
 eq(groups.reduce((n, g) => n + g.items.length, 0), 62, "groups cover all 62 items exactly once");
 eq(groups.find(g => g.id === "shared").items, ["scissors", "tacky-glue", "permanent-markers"], "shared group");
 
-/* --- Batch C: settings, box rules, bins --- */
+/* --- Batch C: settings, box rules, bins (boxes = free-form name list) --- */
 const ds = L.defaultSettings();
 eq(ds.features, { boxes: false, bins: false }, "default settings: both features OFF");
+eq(ds.boxes, ["Box A", "Box B", "Box C"], "default boxes: the three starter names");
 eq(L.boxRuleFor(ds, "cak", 12), null, "no rule -> no boxes");
-const s1 = L.normalizeSettings({ features: { boxes: true }, boxRules: [{ craftId: "cak", kits: 12, boxes: ["A", "B"] }] });
-eq(L.boxRuleFor(s1, "cak", 12), ["A", "B"], "box rule: exact craft+kits match");
+const s1 = L.normalizeSettings({ features: { boxes: true }, boxes: ["Small", "Large"], boxRules: [{ craftId: "cak", kits: 12, boxes: ["Small", "Large"] }] });
+eq(L.boxRuleFor(s1, "cak", 12), ["Small", "Large"], "box rule: exact craft+kits match");
 eq(L.boxRuleFor(s1, "cak", 18), null, "box rule: different kits -> no match");
 eq(L.boxRuleFor(s1, "bm", 12), null, "box rule: different craft -> no match");
-const sOff = L.normalizeSettings({ features: { boxes: false }, boxRules: [{ craftId: "cak", kits: 12, boxes: ["A"] }] });
+const sOff = L.normalizeSettings({ features: { boxes: false }, boxes: ["Small"], boxRules: [{ craftId: "cak", kits: 12, boxes: ["Small"] }] });
 eq(L.boxRuleFor(sOff, "cak", 12), null, "feature off -> no boxes even with a rule");
 eq(L.normalizeSettings(undefined).features.boxes, false, "missing settings -> defaults (old data files)");
 eq(L.normalizeSettings({ boxRules: [{ craftId: "nope", kits: 12, boxes: ["A"] }, { craftId: "cak", kits: 7, boxes: ["A"] }] }).boxRules, [], "junk rules are dropped");
-eq(L.boxesText(s1, ["A", "B"]), "Box A + Box B", "boxes text uses the box names");
+eq(L.boxesText(s1, ["Small", "Large"]), "Small + Large", "boxes text joins the names");
+const mig = L.normalizeSettings({ features: { boxes: true }, boxes: { A: { name: "Small box", size: "1" }, B: { name: "Box B", size: "" }, C: { name: "Box C", size: "" } }, boxRules: [{ craftId: "cak", kits: 12, boxes: ["A", "C"] }] });
+eq(mig.boxes, ["Small box", "Box B", "Box C"], "old A/B/C settings migrate to a name list");
+eq(L.boxRuleFor(mig, "cak", 12), ["Small box", "Box C"], "rules migrate from letters to names");
 const allBins = L.defaultBins();
 eq(Object.keys(allBins).length, 62, "a placeholder bin for every item");
 eq(allBins["tree-mirror"], "BIN-01", "first inventory item is BIN-01");
