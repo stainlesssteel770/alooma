@@ -591,7 +591,7 @@
 
   /* ---------- History tab ---------- */
   var TYPE_LABEL = { "received": "Received", "packed": "Packed", "hand-packed": "Hand-packed", "count-fix": "Count fix", "import": "Backup import" };
-  var TYPE_DOT = { "packed": "#14632F", "hand-packed": "#20242B", "received": "#5C6570", "count-fix": "#B45309", "import": "#5C6570" };
+  var TYPE_DOT = { "packed": "#1A7336", "hand-packed": "#20242B", "received": "#5C6570", "count-fix": "#8A4B00", "import": "#5C6570" };
   function fmtDateRel(iso) {
     var d = new Date(iso), now = new Date();
     var sameDay = d.toDateString() === now.toDateString();
