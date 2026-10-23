@@ -26,6 +26,7 @@ const server = http.createServer((req, res) => {
     res.end(data);
   });
 });
+const PORT = 8908;
 await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 let fail = 0;
