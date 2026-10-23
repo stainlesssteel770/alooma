@@ -54,7 +54,7 @@ paper ≠ parchment circle, Clay Tray A ≠ B).
 - `node tests/test-ui.mjs` — drives the real page and real buttons in headless Chrome with
   the GitHub API mocked (Batch A: nothing pre-selected, disabled-button reasons, print
   unlocks Complete, in-app confirm sheet for Complete/Record/Undo/Edit; plus connect,
-  item-panel receive + warning, count entry, prints, tap-target sizes, disconnect; Batch B: picker fold + first-row position, solid action bar, inventory filters + print menu, receive delivery in one save; Batch C: feature toggles off = today's screens, box rule (craft + box dropdowns, kits field validated to multiples of 6) + per-order override + printed BOXES line, bin labels + panel Bin mode + bin sort; corrected flow: view-only tab gating + badge connect door, checklist only under Hand pack, Bulk import tab batch recorded in one save — 143 checks).
+  item-panel receive + warning, count entry, prints, tap-target sizes, disconnect; Batch B: picker fold + first-row position, solid action bar, inventory filters + print menu, receive delivery in one save; Batch C: feature toggles off = today's screens, box rule (craft dropdown, boxes picked from a dropdown — any number per rule, kits field validated to multiples of 6) + per-order override + printed BOXES line, bin labels + panel Bin mode + bin sort; corrected flow: view-only tab gating + badge connect door, checklist only under Hand pack, Bulk import tab batch recorded in one save — 145 checks).
 - `node tests/test-offline.mjs` — blocks the data load and verifies the single
   "Can't reach the stock data" empty state and that Retry recovers (9 checks).
 - `node tests/check-print.mjs` — renders the prints to PDF and verifies the page size is
