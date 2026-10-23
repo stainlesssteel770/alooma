@@ -416,7 +416,7 @@ try {
   eq(await page.evaluate(() => !document.querySelector("#btn-binfilter").hidden), true, "C2: By bin chip appears with the feature");
   await waitDom(() => document.querySelectorAll("#inventory-groups .inv-bin").length >= 60, "placeholder bins render");
   eq((await page.evaluate(() => document.querySelectorAll("#inventory-groups .inv-bin").length)) >= 60, true, "C2: inventory rows show placeholder bins");
-  await page.evaluate(() => document.querySelector('.inv-item[data-item="scissors"] .inv-main').click());
+  await page.evaluate(() => { const m = document.querySelector('.inv-item[data-item="scissors"] .inv-main'); if (m.getAttribute("aria-expanded") !== "true") m.click(); });
   await sleep(300);
   eq(await page.evaluate(() => [...document.querySelectorAll(".inv-panel .seg button")].map(b => b.textContent).includes("Bin")), true, "C2: item panel gains a Bin mode");
   await page.evaluate(() => [...document.querySelectorAll(".inv-panel .seg button")].find(b => b.textContent === "Bin").click());
