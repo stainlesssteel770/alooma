@@ -505,7 +505,7 @@
     var add = $("btn-bulk-add");
     var kits = parseInt($("bulk-kits").value, 10);
     add.disabled = !(!!state.bulkCraft && L.validKits(kits));
-    add.textContent = !state.bulkCraft ? "Choose a craft"
+    add.textContent = !state.bulkCraft ? "Pick a craft"
       : !L.validKits(kits) ? "Choose kits"
       : "Add " + L.sku(state.bulkCraft, kits);
     var rec = $("btn-bulk-record");
