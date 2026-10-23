@@ -116,6 +116,12 @@ try {
   await sleep(200);
   await shot("inventory.jpg");
 
+  /* Receive-delivery form (B4) */
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.click("#btn-delivery");
+  await sleep(300);
+  await shot("delivery.jpg");
+
   /* Offline state (A6): second page, data requests blocked */
   const page2 = await browser.newPage();
   await page2.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
