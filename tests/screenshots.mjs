@@ -121,6 +121,9 @@ try {
   await page.click("#btn-delivery");
   await sleep(300);
   await shot("delivery.jpg");
+  await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
+  await sleep(500);
+  await shot("settings.jpg");
 
   /* Offline state (A6): second page, data requests blocked */
   const page2 = await browser.newPage();
