@@ -367,7 +367,12 @@ try {
   await page.click("#btn-bulk-add");
   await sleep(200);
   eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 3, "Bulk: third order queued");
-  await page.evaluate(() => document.querySelector('#bulk-lines [data-remove="2"]').click());
+  /* A REAL click here, not .click(): the app dismisses an action toast on
+     the pointerdown of the user's next control press (so its UNDO button
+     can never swallow a click) — a synthetic click fires no pointer
+     events, so it would leave the toast sitting on the Record button.
+     A hand always produces pointerdown; the test models the hand. */
+  await page.click('#bulk-lines [data-remove="2"]');
   await sleep(200);
   eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 2, "Bulk: queued order removed");
   const putsBeforeBatch = putCount;
