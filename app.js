@@ -1196,6 +1196,9 @@
     $("print-area").innerHTML = html;
     setTimeout(function () { window.print(); }, 60);
   }
+  function printDate() {
+    return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
   function printPackSheet() {
     var cur = currentPack(); if (!cur) { showError("Pick a craft and a valid number of kits first."); return; }
     clearError();
@@ -1210,59 +1213,60 @@
         return ba < bb ? -1 : ba > bb ? 1 : 0;
       });
     }
+    var per6 = {};
+    cur.craft.items.forEach(function (ln) { per6[ln.item] = L.lineQty(ln, 6); });
     var rows = sheetPack.map(function (r) {
       return '<tr><td class="tick"><span class="tick-box"></span></td><td>' + esc(r.name) + "</td>" +
         (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), r.item)) + "</td>" : "") +
-        '<td class="qty">' + r.qty + "</td></tr>";
+        '<td class="qty regular">' + per6[r.item] + '</td><td class="qty">' + r.qty + "</td></tr>";
     }).join("");
     var boxes = currentBoxes();
     printHtml(
-      "<table><thead>" +
-      '<tr><th colspan="' + (binsOn ? 4 : 3) + '"><div class="label-title">' + esc(cur.craft.name) + "</div>" +
-      '<div class="label-sub">SKU ' + esc(L.sku(cur.craft.id, cur.kits)) + " · " + cur.kits + " kits · " +
-      new Date().toLocaleDateString() + "</div>" +
-      (boxes && boxes.length ? '<div class="label-sub"><strong>BOXES: ' + esc(boxes.join(" + ")) + "</strong></div>" : "") +
-      '<div class="order-id">Order ID: ____________________</div></th></tr>' +
-      "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Qty</th></tr></thead>" +
-      "<tbody>" + rows + "</tbody></table>"
+      '<section class="print-page with-foot"><table><thead>' +
+      '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title">' + esc(cur.craft.name) + "</div>" +
+      '<div class="label-sub">Total kits: ' + cur.kits + " &nbsp;&nbsp; Order ID: ____________</div>" +
+      (boxes && boxes.length ? '<div class="label-sub">BOXES: ' + esc(boxes.join(" + ")) + "</div>" : "") +
+      "</th></tr>" +
+      "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody></table>" +
+      '<div class="print-foot">Packed by: ____________________ &nbsp; Date: ____________</div></section>'
     );
   }
   function printInventory(mode) {
-    var groupsHtml = L.inventoryGroups().map(function (g) {
-      var rows = g.items.map(function (itemId) {
-        if (mode === "count") {
-          return "<tr><td>" + esc(L.ITEMS[itemId]) + '</td><td class="qty">' + qtyOf(itemId) + '</td><td class="counted-blank"></td></tr>';
-        }
-        return "<tr><td>" + esc(L.ITEMS[itemId]) + '</td><td class="qty">' + qtyOf(itemId) + "</td></tr>";
-      }).join("");
-      return '<div class="group-head">' + esc(g.name) + "</div><table>" + rows + "</table>";
-    }).join("");
-    var title = mode === "count" ? "Count Sheet" : "Current Inventory";
-    var head =
-      '<div class="label-title">Alooma — ' + title + "</div>" +
-      '<div class="label-sub">' + new Date().toLocaleString() + "</div>";
-    if (mode === "count") {
-      head = '<div class="label-title">Alooma — Count Sheet</div><div class="label-sub">' +
-        new Date().toLocaleString() + " · Write the counted number, then type it back in under Inventory → Enter counted numbers</div>" +
-        '<div class="label-sub">Columns: Item · Should be · Counted</div>';
-      var binsOn = settings().features.bins;
-      groupsHtml = L.inventoryGroups().map(function (g) {
-        var cItems = g.items.slice();
-        if (binsOn && invSortBin) {
-          cItems.sort(function (a, b) {
-            var ba = L.binFor(settings(), a), bb = L.binFor(settings(), b);
-            return ba < bb ? -1 : ba > bb ? 1 : 0;
-          });
-        }
-        var rows = cItems.map(function (itemId) {
-          return "<tr><td>" + esc(L.ITEMS[itemId]) + "</td>" +
-            (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), itemId)) + "</td>" : "") +
-            '<td class="qty">' + qtyOf(itemId) + '</td><td class="counted-blank">&nbsp;</td></tr>';
-        }).join("");
-        return '<div class="group-head">' + esc(g.name) + "</div><table>" + rows + "</table>";
-      }).join("");
+    var binsOn = settings().features.bins;
+    var date = printDate();
+    function isLow(itemId) {
+      var rec = state.data.inventory[itemId];
+      return !!(rec && rec.threshold !== null && rec.threshold !== undefined && rec.qty < rec.threshold);
     }
-    printHtml(head + groupsHtml);
+    var sections = L.inventoryGroups().map(function (g) {
+      var items = g.items.slice();
+      if (mode === "count" && binsOn && invSortBin) {
+        items.sort(function (a, b) {
+          var ba = L.binFor(settings(), a), bb = L.binFor(settings(), b);
+          return ba < bb ? -1 : ba > bb ? 1 : 0;
+        });
+      }
+      var rows = items.map(function (itemId) {
+        var low = isLow(itemId);
+        var name = (low ? '<span class="low-tag">LOW</span> ' : "") + esc(L.ITEMS[itemId]);
+        if (mode === "count") {
+          return '<tr' + (low ? ' class="low"' : "") + "><td>" + name + "</td>" +
+            (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), itemId)) + "</td>" : "") +
+            '<td class="qty regular">' + qtyOf(itemId) + '</td><td class="counted-cell"></td></tr>';
+        }
+        return '<tr' + (low ? ' class="low"' : "") + "><td>" + name + '</td><td class="qty">' + qtyOf(itemId) + "</td></tr>";
+      }).join("");
+      var cols = mode === "count" ? (binsOn ? 4 : 3) : 2;
+      var headRow = mode === "count"
+        ? "<tr><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Should be</th><th>Counted</th></tr>"
+        : "<tr><th>Item</th><th class='qty'>On hand</th></tr>";
+      var foot = mode === "count" ? '<div class="print-foot">Counted by: ____________________ &nbsp; Date: ____________</div>' : "";
+      return '<section class="print-page' + (mode === "count" ? " with-foot" : "") + '"><table><thead>' +
+        '<tr class="p-title"><th colspan="' + cols + '"><div class="label-title">' + esc(g.name) + '</div><div class="label-sub">' + (mode === "count" ? "Count sheet · " : "Inventory · ") + date + "</div></th></tr>" +
+        headRow + "</thead><tbody>" + rows + "</tbody></table>" + foot + "</section>";
+    }).join("");
+    printHtml(sections);
   }
 
   /* ---------- v3 E2: reorder list ---------- */
@@ -1310,15 +1314,16 @@
       if (!groups[r.group]) { groups[r.group] = []; order.push(r.group); }
       groups[r.group].push(r);
     });
-    var html = '<div class="label-title">Alooma — Reorder List</div>' +
-      '<div class="label-sub">' + new Date().toLocaleString() + "</div>" +
-      '<div class="label-sub">Order qty = 2 × warning level − on hand, unless edited before printing.</div>';
-    order.forEach(function (g) {
+    var date = printDate();
+    var html = order.map(function (g) {
       var rows = groups[g].map(function (r) {
-        return "<tr><td>" + esc(r.name) + '</td><td class="qty">' + r.qty + '</td><td class="qty">' + r.level + '</td><td class="qty">' + (qtys[r.item] != null ? qtys[r.item] : r.order) + "</td></tr>";
+        return "<tr><td>" + esc(r.name) + '</td><td class="qty">' + r.qty + '</td><td class="qty regular">' + r.level + '</td><td class="qty">' + (qtys[r.item] != null ? qtys[r.item] : r.order) + "</td></tr>";
       }).join("");
-      html += '<div class="group-head">' + esc(g) + '</div><table><tr><th>Item</th><th>On hand</th><th>Warning level</th><th>Order qty</th></tr>' + rows + "</table>";
-    });
+      return '<section class="print-page"><table><thead>' +
+        '<tr class="p-title"><th colspan="4"><div class="label-title">' + esc(g) + '</div><div class="label-sub">Reorder list · ' + date + "</div></th></tr>" +
+        "<tr><th>Item</th><th class='qty'>On hand</th><th class='qty'>Warning level</th><th class='qty'>Order qty</th></tr></thead>" +
+        "<tbody>" + rows + "</tbody></table></section>";
+    }).join("");
     printHtml(html);
   }
 
