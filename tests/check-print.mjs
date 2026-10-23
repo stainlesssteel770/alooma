@@ -56,12 +56,39 @@ async function pageTexts(pdf) {
   }
   return out;
 }
-function checkPagination(texts, label) {
+/* Rendered-geometry check (Mark's thermal-print findings): text alone
+   can't see an overlap — the old checks passed while the footer was
+   drawn through the last rows. From the glyph positions in the PDF:
+   (a) nothing may sit inside a 14pt bottom margin (thermal cutoff zone);
+   (b) two text runs whose x-ranges overlap may not come within 12pt
+   vertically — that's a collision (legit neighbours are a full line
+   apart; a vertically-centred cell sits in a different column). */
+async function checkGeometry(pdf, label) {
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(pdf)) }).promise;
+  const problems = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const pg = await doc.getPage(i);
+    const tc = await pg.getTextContent();
+    const items = tc.items.filter(it => it.str.trim()).map(it => ({ s: it.str, x: it.transform[4], y: it.transform[5], w: it.width, h: it.height || 12 }));
+    for (const it of items) {
+      if (it.y - 0.3 * it.h < 14) problems.push("p" + i + ": '" + it.s.slice(0, 30) + "' inside the bottom margin");
+    }
+    for (let a = 0; a < items.length; a++) for (let b = a + 1; b < items.length; b++) {
+      const A = items[a], B = items[b];
+      if (Math.min(A.x + A.w, B.x + B.w) - Math.max(A.x, B.x) <= 1) continue;
+      if (Math.abs(A.y - B.y) < 12) problems.push("p" + i + ": '" + A.s.slice(0, 26) + "' collides with '" + B.s.slice(0, 26) + "'");
+    }
+  }
+  ok(problems.length === 0, label + ": rendered geometry clean (no collisions, nothing in the bottom margin)" + (problems.length ? " — " + [...new Set(problems)].slice(0, 3).join("; ") : ""));
+  return problems.length === 0;
+}
+function checkPagination(texts, label, footerWord) {
   ok(texts.length >= groups.length, label + ": at least one page per group (" + texts.length + " pages)");
   let allPure = true, seen = new Set();
   texts.forEach(t => {
     const found = DISTINCT.filter(tok => t.includes(tok));
-    if (found.length !== 1) allPure = false;
+    if (found.length === 0 && footerWord && t.includes(footerWord)) { /* a footer that flowed onto its own page is legal */ }
+    else if (found.length !== 1) allPure = false;
     found.forEach(f => seen.add(f));
     if (t.trim().length < 30) allPure = false; /* blank page */
   });
@@ -130,8 +157,9 @@ try {
      "pack sheet: every row's Per 6 and Total match the recipe (Scissors 2/12, Printed Posters 1/6, boxes 6/36)");
   await page.pdf({ path: "/tmp/alooma-packsheet.pdf", preferCSSPageSize: true, printBackground: true });
   const packTexts = await pageTexts("/tmp/alooma-packsheet.pdf");
+  await checkGeometry("/tmp/alooma-packsheet.pdf", "pack sheet CAK-36");
   ok(packTexts.length >= 2, "pack sheet CAK-36: big rows spill to a 2nd page rather than shrinking (" + packTexts.length + " pages)");
-  ok(packTexts.every(t => t.includes("Cakery") && t.trim().length > 30), "pack sheet: craft title repeats on every page, none blank");
+  ok(packTexts.every((t, i) => (t.includes("Cakery") || (i === packTexts.length - 1 && t.includes("Packed by"))) && t.trim().length > 30), "pack sheet: craft title repeats on every page, none blank (a footer flowed to its own last page is allowed)");
   const packedByPages = packTexts.map((t, i) => t.includes("Packed by") ? i : -1).filter(i => i >= 0);
   ok(packedByPages.length === 1 && packedByPages[0] === packTexts.length - 1, "pack sheet: 'Packed by' footer lands once, on the last page");
   ok(!packTexts[0].includes("BOXES") && packTexts[packTexts.length - 1].includes("BOXES: Big Box + Small Box"), "pack sheet PDF: BOXES appears only on the last page, with the footer");
@@ -148,6 +176,7 @@ try {
   }
   await page.pdf({ path: "/tmp/alooma-packsheet12.pdf", preferCSSPageSize: true, printBackground: true });
   const pack12Texts = await pageTexts("/tmp/alooma-packsheet12.pdf");
+  await checkGeometry("/tmp/alooma-packsheet12.pdf", "pack sheet CAK-12");
   ok(pack12Texts.every(t => t.trim().length > 30), "pack sheet CAK-12: no blank pages (" + pack12Texts.length + " pages)");
 
   /* Evidence for Mark's thermal test: a SHORT craft's pack sheet (HCB-12).
@@ -162,6 +191,7 @@ try {
   const hcbTitle = await page.evaluate(() => { const t = document.querySelector("#print-area .label-title"); return t ? t.textContent : ""; });
   ok(hcbTitle.includes("Hafrashat Challah"), "evidence: short-craft pack sheet really is Hafrashat Challah");
   await page.pdf({ path: "/tmp/alooma-packsheet-hcb.pdf", preferCSSPageSize: true, printBackground: true });
+  await checkGeometry("/tmp/alooma-packsheet-hcb.pdf", "pack sheet HCB-12");
 
   /* ---- Inventory report ---- */
   await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); document.querySelector("#btn-print-inventory").click(); });
@@ -183,6 +213,7 @@ try {
   ok(noLvlRow && !noLvlRow.low, "LOW flag: no level set -> never flagged");
   await page.pdf({ path: "/tmp/alooma-invreport.pdf", preferCSSPageSize: true, printBackground: true });
   checkPagination(await pageTexts("/tmp/alooma-invreport.pdf"), "inventory report");
+  await checkGeometry("/tmp/alooma-invreport.pdf", "inventory report");
 
   /* Evidence for Mark's thermal test: single-craft inventory PDFs (the
      full build above is trimmed harness-side, after its asserts ran) */
@@ -197,6 +228,7 @@ try {
       });
     }, name);
     await page.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
+    await checkGeometry(file, "inventory single-craft (" + name + ")");
   }
 
   /* ---- Count sheet ---- */
@@ -215,7 +247,8 @@ try {
   ok(cLow && cLow.low && cLow.text.includes("LOW"), "count sheet: LOW flag applies too");
   await page.pdf({ path: "/tmp/alooma-countsheet.pdf", preferCSSPageSize: true, printBackground: true });
   const cntTexts = await pageTexts("/tmp/alooma-countsheet.pdf");
-  checkPagination(cntTexts, "count sheet");
+  checkPagination(cntTexts, "count sheet", "Counted by");
+  await checkGeometry("/tmp/alooma-countsheet.pdf", "count sheet");
   ok(cntTexts.filter(t => t.includes("Counted by")).length === groups.length, "count sheet: every craft's sheet carries its own 'Counted by' footer");
 
   console.log(fail ? "PRINT CHECKS FAILED (" + fail + ")" : "all print checks passed");
