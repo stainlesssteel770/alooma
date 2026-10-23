@@ -28,14 +28,14 @@ body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, san
 @media (max-width: 380px) { .save-status { display: none; } .save-status.fresh { display: inline; } }
 
 /* tabs */
-.tabs { display: flex; gap: 6px; padding: 10px 12px 0; max-width: 920px; margin: 0 auto; }
+.tabs { display: flex; gap: 6px; padding: 10px 12px 0; max-width: 1024px; margin: 0 auto; }
 .tabs button { border: 1px solid var(--line); background: #EEF1F4; padding: 10px 16px; font-size: 15.5px; font-weight: 600; border-radius: 10px; cursor: pointer; min-height: 48px; color: var(--ink); }
 .tab-ic { display: inline-flex; }
 .tab-ic svg { width: 24px; height: 24px; }
 .btn svg.ic { width: 20px; height: 20px; vertical-align: -4px; margin-right: 6px; }
 .tabs button.active { background: var(--surface); color: var(--accent); border-color: var(--accent); }
 .tab-ic { margin-right: 6px; }
-main { max-width: 920px; margin: 10px auto 24px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 26px; }
+main { max-width: 1024px; margin: 10px auto 24px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 26px; }
 .load-failed { text-align: center; padding: 48px 16px; }
 .load-failed .btn { min-height: 54px; padding: 12px 34px; font-size: 17px; }
 body.load-failed main > section { display: none !important; }
@@ -202,7 +202,7 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 .repo-row { display: flex; gap: 14px; flex-wrap: wrap; }
 .repo-row label { flex: 1 1 200px; }
 .help-list li { margin: 6px 0; font-size: 15px; }
-.error-banner { background: var(--red-bg); border: 1px solid #E3B6B1; color: #7C1D16; max-width: 920px; margin: 10px auto 0; padding: 12px 16px; border-radius: 10px; font-weight: 600; font-size: 16px; }
+.error-banner { background: var(--red-bg); border: 1px solid #E3B6B1; color: #7C1D16; max-width: 1024px; margin: 10px auto 0; padding: 12px 16px; border-radius: 10px; font-weight: 600; font-size: 16px; }
 .toast[hidden] { display: none !important; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 76px; background: var(--ink); color: #fff; padding: 12px 18px; border-radius: var(--radius); font-weight: 600; font-size: 15.5px; box-shadow: 0 6px 22px rgba(0,0,0,.28); z-index: 60; max-width: min(92vw, 560px); display: flex; align-items: center; gap: 14px; pointer-events: none; }
 .toast button { background: none; border: none; color: #FFD94D; font-weight: 800; font-size: 15.5px; cursor: pointer; min-height: 44px; padding: 4px 6px; letter-spacing: .03em; pointer-events: auto; }
@@ -224,6 +224,24 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 .sheet-lines { margin: 0 0 14px; padding-left: 18px; font-size: 16px; line-height: 1.55; text-align: left; }
 .sheet-lines .flag { color: var(--amber); font-weight: 700; }
 @media (min-width: 701px) { .sheet-backdrop { align-items: center; } .sheet { border-radius: 18px; } }
+/* Desktop brief item 1 (wider screens): the header's CONTENTS align with
+   the 1024px column (the bar itself still spans the window), the toast
+   sits 24px off the bottom (no phone tab bar to clear), and in the
+   tablet band the card keeps side margins instead of touching the edges */
+@media (min-width: 701px) {
+  .app-header { padding-left: max(31px, calc((100% - 1024px) / 2 + 19px)); padding-right: max(31px, calc((100% - 1024px) / 2 + 19px)); }
+  .toast { bottom: 24px; }
+}
+@media (min-width: 701px) and (max-width: 1051px) {
+  main, .error-banner { margin-left: 12px; margin-right: 12px; }
+}
+@media (hover: hover) {
+  .btn:not(:disabled):hover { filter: brightness(0.96); }
+  .tabs button:hover { color: var(--accent); }
+  .craft-btn:hover { border-color: var(--accent); }
+  .kits-chip:hover, .chip:hover { background: var(--accent-soft); }
+  .inv-item:hover, .history-entry:hover { background: #FAFBFC; }
+}
 #print-area { display: none; }
 
 /* phone: bottom tab bar, sticky pack action bar */
