@@ -9,8 +9,15 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const require = createRequire(import.meta.url);
-const puppeteer = require("/home/hatch/workspace/steady/tests/node_modules/puppeteer-core");
-const EXE = "/home/hatch/.cache/puppeteer/chrome-headless-shell/linux-155.0.8059.84/chrome-headless-shell-linux64/chrome-headless-shell";
+/* Portable browser loading: full `puppeteer` if installed (CI installs it);
+   otherwise the sandbox's puppeteer-core + chrome-headless-shell.
+   Override with PUPPETEER_CORE_PATH / CHROME_PATH. */
+let puppeteer, EXE;
+try { puppeteer = require("puppeteer"); }
+catch (e) {
+  puppeteer = require(process.env.PUPPETEER_CORE_PATH || "/home/hatch/workspace/steady/tests/node_modules/puppeteer-core");
+  EXE = process.env.CHROME_PATH || "/home/hatch/.cache/puppeteer/chrome-headless-shell/linux-155.0.8059.84/chrome-headless-shell-linux64/chrome-headless-shell";
+}
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PORT = 8907;
 
