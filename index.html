@@ -128,11 +128,20 @@
   <section id="tab-inventory" class="tab-panel">
     <h2>Inventory</h2>
     <input type="search" id="inv-search" class="search-box" placeholder="Search items…" aria-label="Search items">
-    <div class="btn-row">
-      <button id="btn-lowfilter" class="btn chip-btn" aria-pressed="false">⚠ Low stock · <span id="low-count">0</span></button>
-      <button id="btn-print-inventory" class="btn">🖨 Print inventory report (4×6)</button>
-      <button id="btn-print-count" class="btn">🖨 Print count sheet (4×6)</button>
-      <button id="btn-enter-counts" class="btn editor-only">✎ Enter counted numbers</button>
+    <div class="inv-filters" role="group" aria-label="Inventory filters">
+      <button type="button" id="btn-filter-all" class="btn chip-btn" aria-pressed="true">All · <span id="all-count">0</span></button>
+      <button type="button" id="btn-lowfilter" class="btn chip-btn" aria-pressed="false">Low · <span id="low-count">0</span></button>
+      <button type="button" id="btn-outfilter" class="btn chip-btn" aria-pressed="false">Out · <span id="out-count">0</span></button>
+    </div>
+    <div class="btn-row inv-actions">
+      <button id="btn-enter-counts" class="btn editor-only">✎ Count</button>
+      <span class="print-menu-wrap">
+        <button type="button" id="btn-print-menu" class="btn" aria-haspopup="true" aria-expanded="false">🖨 Print ▾</button>
+        <span id="print-menu" class="print-menu" hidden>
+          <button type="button" id="btn-print-inventory" class="btn">Inventory report (4×6)</button>
+          <button type="button" id="btn-print-count" class="btn">Count sheet (4×6)</button>
+        </span>
+      </span>
     </div>
     <p class="hint editor-only">Tap an item to receive stock, fix its count, or set its low-stock warning.</p>
     <div id="count-entry" class="count-entry" hidden>
