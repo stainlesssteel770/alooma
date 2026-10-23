@@ -373,10 +373,10 @@
         return ba < bb ? -1 : ba > bb ? 1 : 0;
       });
     }
-    var shortages = [];
+    var shortages = [], shortNames = [];
     rowsPack.forEach(function (r, idx) {
       var onHand = qtyOf(r.item);
-      if (onHand < r.qty) shortages.push(r.name + " (need " + r.qty + ", have " + onHand + ")");
+      if (onHand < r.qty) { shortages.push(r.name + " (need " + r.qty + ", have " + onHand + ")"); shortNames.push(r.name); }
       var tr = document.createElement("tr");
       tr.innerHTML =
         '<td><input type="checkbox" data-idx="' + idx + '" aria-label="Packed: ' + esc(r.name) + '"></td>' +
@@ -394,11 +394,20 @@
       tbody.appendChild(tr);
     });
     if (shortages.length) {
+      /* v2 B1: the warning collapses to one tappable line — "2 short · A · B" */
+      var lineText = shortages.length + " short · " + shortNames.slice(0, 2).join(" · ") + (shortages.length > 2 ? " · +" + (shortages.length - 2) + " more" : "");
       var shown = shortages.slice(0, 3).map(esc).join(" · ");
       var more = shortages.length > 3 ? " · +" + (shortages.length - 3) + " more" : "";
       var full = shortages.length > 3 ? "<details><summary>Show all " + shortages.length + " shortages</summary>" + shortages.map(esc).join(" · ") + "</details>" : "";
-      warn.innerHTML = "<strong>Not enough on hand for:</strong> " + shown + more + full +
-        "<br>You can still record this — counts will go below zero so the shortage stays visible.";
+      warn.innerHTML = '<button type="button" class="warn-toggle" aria-expanded="false">' + esc(lineText) + '</button>' +
+        '<div class="warn-full" hidden><strong>Not enough on hand for:</strong> ' + shown + more + full +
+        "<br>You can still record this — counts will go below zero so the shortage stays visible.</div>";
+      var wt = warn.querySelector(".warn-toggle"), wf = warn.querySelector(".warn-full");
+      wt.addEventListener("click", function () {
+        var open = wf.hidden;
+        wf.hidden = !open;
+        wt.setAttribute("aria-expanded", open ? "true" : "false");
+      });
       warn.hidden = false;
     }
     updatePackProgress();
