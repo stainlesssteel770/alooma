@@ -307,7 +307,7 @@
     if (!state.packCraft) btn.textContent = "Choose a craft";
     else if (!L.validKits(kitsNow)) btn.textContent = "Choose kits";
     else if (!ready) btn.textContent = "Check " + (total - checked) + " more";
-    else btn.textContent = "Complete " + L.sku(state.packCraft, kitsNow);
+    else btn.textContent = "Complete " + L.sku(state.packCraft, kitsNow) + (printed && checked < total ? " · from sheet" : "");
     $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
   }
   var packFoldOverride = false;
@@ -1350,11 +1350,21 @@
     $("btn-check-all").addEventListener("click", function () {
       var boxes = $("pack-table").querySelectorAll("tbody input[type=checkbox]");
       var allChecked = boxes.length > 0 && Array.prototype.every.call(boxes, function (cb) { return cb.checked; });
-      boxes.forEach(function (cb) {
-        cb.checked = !allChecked;
-        cb.closest("tr").classList.toggle("checked-row", cb.checked);
+      var setAll = function (val) {
+        boxes.forEach(function (cb) {
+          cb.checked = val;
+          cb.closest("tr").classList.toggle("checked-row", val);
+        });
+        updatePackProgress();
+      };
+      if (allChecked) { setAll(false); return; } /* unchecking is safe — no confirm */
+      /* v2 A5: checking everything in one tap is the risky direction — ask first */
+      openSheet({
+        title: "Check all",
+        summary: "Mark all " + boxes.length + " packed?",
+        primary: "Mark all",
+        onConfirm: function () { setAll(true); }
       });
-      updatePackProgress();
     });
     $("inv-search").addEventListener("input", function (ev) { invQuery = ev.target.value.trim().toLowerCase(); applyInvFilters(); filterEntryList($("delivery-entry-list")); filterEntryList($("count-entry-list")); });
     $("btn-filter-all").addEventListener("click", function () { invFilter = "all"; applyInvFilters(); });
