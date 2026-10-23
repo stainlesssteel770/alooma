@@ -246,16 +246,21 @@
       <p class="hint">When an order's craft and kit count exactly match a rule, Packing shows which boxes to use — and prints them on the packing sheet. Off by default; rules are saved in the shared data, so every device sees the same ones.</p>
       <label class="toggle-row editor-only"><input type="checkbox" id="set-boxes-on"> Show default boxes on Packing</label>
       <div id="boxes-editor" class="editor-only" hidden>
-        <h4>Box names &amp; sizes</h4>
-        <div id="box-meta"></div>
+        <h4>Your boxes</h4>
+        <div id="box-list"></div>
+        <div class="box-add-row">
+          <input type="text" id="new-box-name" placeholder="Box name — e.g. Large mailer" aria-label="Name for a new box">
+          <button type="button" id="btn-box-add" class="btn btn-secondary">Add box</button>
+        </div>
         <h4>Rules</h4>
         <div id="box-rules-list"></div>
         <div class="box-add">
           <select id="rule-craft" aria-label="Craft for the new rule"></select>
-          <select id="rule-kits" aria-label="Kit count for the new rule"></select>
-          <span id="rule-boxes" class="rule-boxes"></span>
+          <input type="number" id="rule-kits" min="6" step="6" placeholder="Kits (multiple of 6)" inputmode="numeric" aria-label="Kit count for the new rule">
+          <select id="rule-boxes" aria-label="Box for the new rule"></select>
           <button type="button" id="btn-rule-add" class="btn">Add rule</button>
         </div>
+        <p id="rule-error" class="field-error"></p>
       </div>
     </div>
 
