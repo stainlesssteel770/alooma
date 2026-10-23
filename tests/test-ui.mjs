@@ -363,6 +363,7 @@ try {
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
   await page.click("#set-boxes-on");
   await waitRemote(() => remoteData.settings && remoteData.settings.features.boxes === true, "boxes toggle saved");
+  await waitDom(() => !document.querySelector("#boxes-editor").hidden, "boxes editor opens");
   eq(remoteData.settings.features.boxes === true, true, "C1: boxes toggle saved to the shared data");
   eq(await page.evaluate(() => !document.querySelector("#boxes-editor").hidden), true, "C1: boxes editor opens with the toggle");
   await page.select("#rule-craft", "cak");
@@ -407,14 +408,17 @@ try {
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
   await page.click("#set-bins-on");
   await waitRemote(() => remoteData.settings && remoteData.settings.features.bins === true, "bins toggle saved");
+  await waitDom(() => !document.querySelector("#btn-binfilter").hidden, "By bin chip shows");
   eq(remoteData.settings.features.bins === true, true, "C2: bins toggle saved to the shared data");
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
   eq(await page.evaluate(() => !document.querySelector("#btn-binfilter").hidden), true, "C2: By bin chip appears with the feature");
+  await waitDom(() => document.querySelectorAll("#inventory-groups .inv-bin").length >= 60, "placeholder bins render");
   eq((await page.evaluate(() => document.querySelectorAll("#inventory-groups .inv-bin").length)) >= 60, true, "C2: inventory rows show placeholder bins");
   await page.evaluate(() => document.querySelector('.inv-item[data-item="scissors"] .inv-main').click());
   await sleep(300);
   eq(await page.evaluate(() => [...document.querySelectorAll(".inv-panel .seg button")].map(b => b.textContent).includes("Bin")), true, "C2: item panel gains a Bin mode");
   await page.evaluate(() => [...document.querySelectorAll(".inv-panel .seg button")].find(b => b.textContent === "Bin").click());
+  await sleep(250);
   await page.type(".inv-panel-input", "BIN-99");
   await page.click(".inv-panel-go");
   await waitRemote(() => remoteData.settings.bins && remoteData.settings.bins.scissors === "BIN-99", "custom bin saved");
