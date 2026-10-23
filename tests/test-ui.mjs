@@ -3,7 +3,6 @@
    save-per-change, disconnect) run end to end without a real token.
    Run: node tests/test-ui.mjs   (needs the steady testbed's puppeteer-core) */
 import { createRequire } from "module";
-import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -35,8 +34,18 @@ let putCount = 0;
 const b64e = s => Buffer.from(s, "utf8").toString("base64");
 const b64d = s => Buffer.from(s, "base64").toString("utf8");
 
-const server = spawn("python3", ["-m", "http.server", String(PORT), "--bind", "127.0.0.1"], { cwd: ROOT, stdio: "ignore" });
-await sleep(700);
+import http from "http";
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png" };
+const server = http.createServer((req, res) => {
+  const rel = decodeURIComponent(req.url.split("?")[0]);
+  const file = path.join(ROOT, rel === "/" ? "index.html" : rel.replace(/^\/+/, ""));
+  fs.readFile(file, (err, data) => {
+    if (err) { res.writeHead(404); res.end("not found"); return; }
+    res.writeHead(200, { "Content-Type": MIME[path.extname(file)] || "application/octet-stream" });
+    res.end(data);
+  });
+});
+await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 
 const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 try {
@@ -276,6 +285,6 @@ try {
   console.log(pass + " passed, " + fail + " failed; mock-repo PUTs: " + putCount);
 } finally {
   await browser.close();
-  server.kill();
+  server.close();
 }
 process.exit(fail ? 1 : 0);
