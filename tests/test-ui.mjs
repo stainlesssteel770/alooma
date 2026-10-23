@@ -94,29 +94,41 @@ try {
   eq(await page.$eval("#pack-mode", e => e.hidden), true, "Merge: no Print / Hand pack choice before craft+kits");
   eq(await page.$eval("#pack-sku", e => e.textContent), "—", "A1: no SKU until craft+kits chosen");
   eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Choose a craft|true", "A1/A4: Complete disabled, reason inside button");
-  eq(await page.$eval("#btn-record-all", e => e.disabled), true, "Merge: Record all disabled until a hand-pack line is added");
+  eq(await page.$eval('[data-tab="pack"]', e => e.hidden), true, "View-only: Packing tab hidden");
+  eq(await page.$eval('[data-tab="bulk"]', e => e.hidden), true, "View-only: Bulk import tab hidden");
+  eq(await page.$eval('[data-tab="settings"]', e => e.hidden), true, "View-only: Settings tab hidden");
+  eq(await page.$eval('[data-tab="inventory"]', e => e.hidden), false, "View-only: Inventory tab stays visible");
+  eq(await page.$eval('[data-tab="history"]', e => e.hidden), false, "View-only: History tab stays visible");
+  eq(await page.$eval("#tab-inventory", e => e.classList.contains("active")), true, "View-only: app opens on Inventory");
   eq(await page.$$eval("#pack-table tbody tr", els => els.length), 0, "A1: no pack list before choosing");
 
-  /* Choose The Cakery + 18 kits -> the pack list appears */
+  /* Connect with a (mock) token — reached by tapping the header badge,
+     the view-only door into Settings */
+  await page.click("#conn-badge");
+  await sleep(200);
+  eq(await page.$eval("#tab-settings", e => e.classList.contains("active")), true, "View-only: badge tap opens Settings to connect");
+  await page.type("#gh-token", "fake-token-for-test");
+  await page.click("#btn-connect");
+  await sleep(600);
+  eq(await page.$eval("#conn-badge", e => e.textContent.trim()), "Editor — @testeditor", "connected as editor");
+  eq(await page.$eval('[data-tab="pack"]', e => e.hidden), false, "Editor: all tabs appear once connected");
+  const ls = await page.evaluate(() => localStorage.getItem("alooma.editor.v1"));
+  eq(JSON.parse(ls).login, "testeditor", "editor saved on this device only (localStorage)");
+
+  /* Choose The Cakery + 18 kits -> rows are computed; nothing shows under
+     the Print / Hand pack choice until a path is picked */
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await sleep(150);
   eq(await page.$eval("#btn-complete-pack", e => e.textContent), "Choose kits", "A4: after craft, reason becomes Choose kits");
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await sleep(200);
   eq(await page.$eval("#pack-sku", e => e.textContent), "CAK-18", "SKU CAK-18 after choosing craft+kits");
+  eq(await page.$eval("#pack-order", e => e.hidden), true, "Flow: nothing under Print / Hand pack until a path is picked");
   const packRows = await page.$$eval("#pack-table tbody tr", trs => trs.map(tr => [...tr.children].map(td => td.textContent.trim()).join("|")));
   eq(packRows.length, 19, "CAK pack list 19 rows");
   eq(packRows.find(r => r.includes("Heart Jewelry Box")), "|Heart Jewelry Box|18|0", "CAK18 heart box row");
   eq(packRows.find(r => r.includes("Poster stands")), "|Poster stands (for quotes)|9|0", "CAK18 poster stands row");
-
-  /* Connect with a (mock) token */
-  await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
-  await page.type("#gh-token", "fake-token-for-test");
-  await page.click("#btn-connect");
-  await sleep(600);
-  eq(await page.$eval("#conn-badge", e => e.textContent.trim()), "Editor — @testeditor", "connected as editor");
-  const ls = await page.evaluate(() => localStorage.getItem("alooma.editor.v1"));
-  eq(JSON.parse(ls).login, "testeditor", "editor saved on this device only (localStorage)");
 
   /* Receive: 200 scissors via the new item panel (tap item -> Receive -> qty -> Add) */
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
@@ -168,7 +180,12 @@ try {
   await page.evaluate(() => { window.print = () => {}; });
   await page.click("#btn-print-sheet");
   await sleep(200);
+  eq(await page.$eval("#pack-order", e => e.hidden), false, "Flow: Print reveals the order area (Complete)");
+  eq(await page.$eval("#pack-checklist", e => e.hidden), true, "Flow: no checklist under Print");
   eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Complete CAK-18|false", "A4: printing the sheet unlocks Complete for this order");
+  await page.click("#btn-mode-hand");
+  await sleep(200);
+  eq(await page.$eval("#pack-checklist", e => e.hidden), false, "Flow: checklist appears only under Hand pack");
   await page.click("#btn-check-all");
   await sleep(150);
   eq(await page.$eval("#pack-progress", e => e.textContent), "19 of 19 checked", "check-all progress text");
@@ -202,60 +219,84 @@ try {
   eq(remoteData.inventory["heart-jewelry-box"].qty, 0, "undo pack restored heart boxes");
   eq(remoteData.history.find(h => h.type === "packed").undone, true, "entry marked undone");
 
-  /* Hand-packed HCB 18 through the merged batch flow (was its own tab):
-     queue two lines, remove one, record the rest in ONE save.
-     Heat gun 1 (tier: up to and including 18 = 1), wood board 18. */
+  /* Hand pack on the Packing tab = the checklist: pick HCB-18, tap Hand pack,
+     check everything off, Complete. Heat gun 1 (tier: up to 18 = 1), board 18. */
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
   await page.evaluate(() => document.querySelector("#btn-pack-change").click());
   await sleep(150);
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat")).click());
   await sleep(200);
-  eq(await page.$eval("#pack-sku", e => e.textContent), "HCB-18", "Merge: the pack picker drives hand-packing too (HCB-18)");
-  eq(await page.$eval("#pack-mode", e => e.hidden), false, "Merge: Print / Hand pack choice appears once craft+kits are chosen");
+  eq(await page.$eval("#pack-sku", e => e.textContent), "HCB-18", "Flow: pack picker set to HCB-18");
+  eq(await page.$eval("#pack-mode", e => e.hidden), false, "Flow: Print / Hand pack choice appears once craft+kits are chosen");
+  eq(await page.$eval("#pack-order", e => e.hidden), true, "Flow: a new order starts unchosen — nothing under the choice until a path is tapped");
   await page.click("#btn-mode-hand");
   await sleep(200);
-  eq(await page.$eval("#hand-batch", e => e.hidden), false, "Merge: Hand pack shows the batch panel");
-  eq(await page.$eval("#pack-list-wrap", e => e.hidden), true, "Merge: pack list hidden in Hand pack mode");
-  eq(await page.$eval("#btn-hand-add", e => e.textContent + "|" + e.disabled), "Add HCB-18|false", "Merge: Add button names the current order");
-  await page.click("#btn-hand-add");
-  await sleep(200);
-  eq(await page.$$eval("#hand-lines .hand-line", els => els.length), 1, "Merge: first line queued");
-  /* The picker reopens after Add: queue a second order (Cakery 6), then remove it */
-  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+  eq(await page.$eval("#pack-checklist", e => e.hidden), false, "Flow: Hand pack reveals the checklist");
+  eq(await page.$$eval("#pack-table tbody tr", els => els.length), 7, "Flow: HCB checklist has its 7 items");
+  await page.click("#btn-check-all");
   await sleep(150);
-  await page.evaluate(() => document.querySelector("#btn-pack-change").click());
-  await sleep(150);
-  await page.click('.kits-chip[data-for="pack"][data-kits="6"]');
-  await sleep(200);
-  await page.click("#btn-hand-add");
-  await sleep(200);
-  eq(await page.$$eval("#hand-lines .hand-line", els => els.length), 2, "Merge: second line queued");
-  eq(await page.$eval("#btn-record-all", e => e.textContent + "|" + e.disabled), "Record all · 2 orders|false", "Merge: Record all counts the queued orders");
-  await page.evaluate(() => document.querySelector('#hand-lines [data-remove="1"]').click());
-  await sleep(200);
-  eq(await page.$$eval("#hand-lines .hand-line", els => els.length), 1, "Merge: queued line removed");
-  const putsBeforeBatch = putCount;
-  await page.click("#btn-record-all");
+  eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Complete HCB-18|false", "Flow: Complete names the order once all checked");
+  await page.click("#btn-complete-pack");
   await sleep(250);
-  eq(await page.$eval("#sheet-title", e => e.textContent), "Hand-packed", "Merge: batch confirm sheet");
-  eq(await page.$eval("#sheet-sub", e => e.textContent.includes("HCB-18")), true, "Merge: sheet names the recorded order");
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Hafrashat Challah", "Flow: checklist Complete uses the confirm sheet");
   await page.click("#sheet-primary");
   await sleep(600);
-  eq(putCount, putsBeforeBatch + 1, "Merge: the whole batch saved in ONE commit");
-  eq(remoteData.inventory["heat-gun"].qty, -1, "hand-packed HCB-18 heat gun tier = 1");
-  eq(remoteData.inventory["wood-burning-cream"].qty, -1, "hand-packed HCB-18 wood cream tier = 1");
-  eq(remoteData.inventory["wood-board"].qty, -18, "hand-packed HCB-18 wood board 18");
-  eq(remoteData.history[0].type, "hand-packed", "Merge: batch line logged as a hand-packed entry");
-  eq(await page.$$eval("#hand-lines .hand-line", els => els.length), 0, "Merge: queue cleared after recording");
-  /* Leave the tab as the old flow did: print path, Cakery 18 selected */
+  eq(remoteData.inventory["heat-gun"].qty, -1, "hand-pack checklist HCB-18 heat gun tier = 1");
+  eq(remoteData.inventory["wood-burning-cream"].qty, -1, "hand-pack checklist HCB-18 wood cream tier = 1");
+  eq(remoteData.inventory["wood-board"].qty, -18, "hand-pack checklist HCB-18 wood board 18");
+  eq(remoteData.history[0].type, "packed", "Flow: checklist completion logs a packed entry");
+  /* Leave the pack tab as later sections expect: Cakery 18, print path */
   await page.evaluate(() => document.querySelector("#btn-pack-change").click());
   await sleep(150);
-  await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await sleep(150);
   await page.click("#btn-print-sheet");
   await sleep(200);
-  eq(await page.$eval("#pack-list-wrap", e => e.hidden), false, "Merge: Print switches back to the pack list");
+
+  /* Bulk import tab: queue BM-6 + TAM-12, add-then-remove a JCA-6,
+     record the rest in ONE save */
+  await page.evaluate(() => document.querySelector('[data-tab="bulk"]').click());
+  await sleep(200);
+  eq(await page.$$eval("#bulk-crafts .craft-btn.selected", els => els.length), 0, "Bulk: no craft pre-selected");
+  eq(await page.$eval("#btn-bulk-record", e => e.disabled), true, "Bulk: Record all disabled with an empty queue");
+  await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("Blooming")).click());
+  await page.click('.kits-chip[data-for="bulk"][data-kits="6"]');
+  await sleep(200);
+  eq(await page.$eval("#bulk-sku", e => e.textContent), "BM-6", "Bulk: SKU BM-6");
+  eq(await page.$eval("#btn-bulk-add", e => e.textContent + "|" + e.disabled), "Add BM-6|false", "Bulk: Add names the current order");
+  await page.click("#btn-bulk-add");
+  await sleep(200);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 1, "Bulk: first order queued");
+  await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("Tambourines")).click());
+  await page.click('.kits-chip[data-for="bulk"][data-kits="12"]');
+  await sleep(200);
+  await page.click("#btn-bulk-add");
+  await sleep(200);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 2, "Bulk: second order queued");
+  eq(await page.$eval("#btn-bulk-record", e => e.textContent + "|" + e.disabled), "Record all · 2 orders|false", "Bulk: Record all counts the queue");
+  await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("Judaic")).click());
+  await page.click('.kits-chip[data-for="bulk"][data-kits="6"]');
+  await sleep(200);
+  await page.click("#btn-bulk-add");
+  await sleep(200);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 3, "Bulk: third order queued");
+  await page.evaluate(() => document.querySelector('#bulk-lines [data-remove="2"]').click());
+  await sleep(200);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 2, "Bulk: queued order removed");
+  const putsBeforeBatch = putCount;
+  await page.click("#btn-bulk-record");
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Hand-packed", "Bulk: batch confirm sheet");
+  eq(await page.$eval("#sheet-sub", e => e.textContent.includes("BM-6") && e.textContent.includes("TAM-12")), true, "Bulk: sheet names both orders");
+  await page.click("#sheet-primary");
+  await sleep(600);
+  eq(putCount, putsBeforeBatch + 1, "Bulk: the whole batch saved in ONE commit");
+  eq(remoteData.inventory["tree-mirror"].qty, -6, "Bulk: BM-6 deducted 6 tree mirrors");
+  eq(remoteData.inventory["tambourines"].qty, -12, "Bulk: TAM-12 deducted 12 tambourines");
+  eq(remoteData.history[0].type, "hand-packed", "Bulk: first batch entry logged as hand-packed");
+  eq(remoteData.history[1].type, "hand-packed", "Bulk: second batch entry logged as hand-packed");
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 0, "Bulk: queue cleared after recording");
 
   /* Count fix via Enter counts: scissors counted 190 */
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
@@ -327,13 +368,17 @@ try {
   eq(await page.$eval("#pack-picker-summary", e => e.hidden), false, "B1: picker folded into summary line after choosing");
   eq(await page.$eval("#pack-summary-text", e => e.textContent), "The Cakery · 18 kits", "B1: summary line names craft + kits");
   eq(await page.$eval("#pack-picker", e => e.hidden), true, "B1: full picker hidden once folded");
-  const firstRowTop = await page.evaluate(() => Math.round(document.querySelector("#pack-table tbody tr").getBoundingClientRect().top + window.scrollY));
-  console.log("B1 measured: first pack row top =", firstRowTop, "px");
+  await page.click("#btn-mode-hand");
+  await sleep(200);
+  const firstRow = await page.evaluate(() => { const r = document.querySelector("#pack-table tbody tr").getBoundingClientRect(); return { top: Math.round(r.top + window.scrollY), h: Math.round(r.height) }; });
+  const firstRowTop = firstRow.top;
+  console.log("B1 measured: first pack row top =", firstRowTop, "px, height =", firstRow.h);
   const diagTops = await page.evaluate(() => {
     const t = s => { const e = document.querySelector(s); if (!e) return s + ":missing"; const r = e.getBoundingClientRect(); return s + " top=" + Math.round(r.top + window.scrollY) + " h=" + Math.round(r.height) + " disp=" + getComputedStyle(e).display; };
     return [t("#tab-pack"), t("#pack-picker-summary"), t("#pack-picker"), t("#pack-warning"), t(".list-head"), t("#pack-table thead"), t(".app-header"), t("main")].join(" | ");
   });
   console.log("B1 diag:", diagTops);
+  eq(firstRow.h > 0, true, "B1: first pack row is actually rendered (not a hidden-element measurement)");
   eq(firstRowTop < 420, true, "B1: first pack row near the top (was ~857px before B1)");
   await page.click("#btn-pack-change");
   await sleep(200);
@@ -415,6 +460,7 @@ try {
   await page.evaluate(() => document.querySelector("#btn-pack-change").click());
   await sleep(150);
   await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
+  await page.click("#btn-mode-hand");
   await waitDom(() => !document.querySelector("#pack-boxes").hidden, "boxes line shows");
   eq((await page.$eval("#pack-boxes-text", e => e.textContent)).includes("Box A + Box B"), true, "C1: boxes line shows the rule's boxes");
   await page.click("#btn-pack-change");
@@ -424,6 +470,7 @@ try {
   // Change override for this order only: back to 12, add Box C
   await page.click("#btn-pack-change");
   await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
+  await page.click("#btn-mode-hand");
   await waitDom(() => !document.querySelector("#pack-boxes").hidden, "boxes line shows again");
   await page.click("#btn-boxes-change");
   await page.evaluate(() => [...document.querySelectorAll("#pack-boxes-chips .kits-chip")].find(x => x.textContent === "C").click());
@@ -432,6 +479,8 @@ try {
   await page.evaluate(() => document.querySelector("#btn-print-sheet").click());
   await sleep(250);
   eq((await page.evaluate(() => document.querySelector("#print-area").textContent)).includes("BOXES: A + B + C"), true, "C1+C3: packing sheet prints BOXES: A + B + C");
+  await page.click("#btn-mode-hand");
+  await sleep(200);
   await page.click("#btn-check-all");
   await sleep(200);
   await page.click("#btn-complete-pack");
@@ -463,6 +512,7 @@ try {
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await page.click("#btn-pack-change");
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
+  await page.click("#btn-mode-hand");
   await sleep(300);
   eq((await page.evaluate(() => document.querySelector("#pack-table").textContent)).includes("BIN-99"), true, "C2: pack list shows the custom bin for Scissors");
   eq(await page.evaluate(() => !document.querySelector("#btn-pack-sort").hidden), true, "C2: Sort by bin button appears with the feature");
@@ -487,6 +537,8 @@ try {
   await page.click("#btn-disconnect");
   await sleep(600);
   eq(await page.$eval("#conn-badge", e => e.textContent.trim()), "View only", "disconnect returns to view-only");
+  eq(await page.$eval('[data-tab="pack"]', e => e.hidden), true, "View-only: Packing tab hidden again after disconnect");
+  eq(await page.$eval("#tab-inventory", e => e.classList.contains("active")), true, "View-only: disconnect lands on Inventory");
   eq(await page.evaluate(() => localStorage.getItem("alooma.editor.v1")), null, "token removed from device on disconnect");
 
   /* Export produces the current data */
