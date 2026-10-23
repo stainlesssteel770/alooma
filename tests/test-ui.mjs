@@ -653,6 +653,20 @@ try {
   await page.select("#rule-boxes", "Box A");
   await page.select("#rule-boxes", "Box B");
   await page.select("#rule-boxes", "Mailer box");
+  const ruleDiag = await page.evaluate(() => {
+    const b = document.querySelector("#btn-rule-add");
+    const r = b.getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return {
+      craft: document.querySelector("#rule-craft").value,
+      kits: document.querySelector("#rule-kits").value,
+      picked: document.querySelectorAll("#rule-boxes-picked > *").length,
+      error: (document.querySelector("#rule-error") || {}).textContent || "",
+      coveredBy: top ? (top.id || top.className || top.tagName) : "none",
+      btnText: b.textContent.trim()
+    };
+  });
+  console.log("rule diag:", JSON.stringify(ruleDiag));
   await page.click("#btn-rule-add");
   await waitRemote(() => (remoteData.settings.boxRules || []).length === 2, "3-box rule saved");
   eq(remoteData.settings.boxRules[1].boxes.join(","), "Box A,Box B,Mailer box", "Boxes: a rule holds three boxes (any number works)");
