@@ -130,7 +130,7 @@ tr.checked-row td .row-name { text-decoration: line-through; }
 .picker-summary[hidden] { display: none !important; }
 .picker-summary span { flex: 1; }
 .action-bar { display: flex; gap: 8px; margin-top: 10px; }
-.action-bar .btn { min-height: 48px; font-size: 16.5px; white-space: nowrap; }
+.action-bar .btn { min-height: 48px; font-size: 16.5px; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .action-bar .btn-primary { flex: 1; }
 
 /* inventory */
