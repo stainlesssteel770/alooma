@@ -6,6 +6,8 @@ import { createRequire } from "module";
 import fs from "fs";
 import path from "path";
 const require = createRequire(import.meta.url);
+import { fileURLToPath } from "url";
+const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 /* Portable browser loading: full `puppeteer` if installed (CI installs it);
    otherwise the sandbox's puppeteer-core + chrome-headless-shell.
    Override with PUPPETEER_CORE_PATH / CHROME_PATH. */
