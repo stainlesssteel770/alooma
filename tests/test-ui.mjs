@@ -253,6 +253,14 @@ try {
   await page.click("#btn-mode-hand");
   await sleep(200);
   eq(await page.$eval("#pack-checklist", e => e.hidden), false, "Flow: checklist appears only under Hand pack");
+  /* v3 E1: the pack-list warning totals the shorts, then lists each one
+     with have / need / short, biggest shortage first */
+  eq(await page.$eval("#pack-warning .warn-toggle", e => e.textContent.startsWith("⚠") && e.textContent.includes("items short")), true, "v3 E1: warning toggle totals the short items");
+  await page.click("#pack-warning .warn-toggle");
+  await sleep(200);
+  eq(await page.$eval("#pack-warning .warn-full", e => e.textContent.includes("Heart Jewelry Box: have 0, need 18, short 18")), true, "v3 E1: list shows heart box have/need/short");
+  eq(await page.$eval("#pack-warning .warn-full", e => e.textContent.includes("Poster stands (for quotes): have 0, need 9, short 9")), true, "v3 E1: list shows poster stands have/need/short");
+  eq(await page.$eval("#pack-warning .short-list li", e => e.textContent.includes("short 18")), true, "v3 E1: biggest shortage is listed first");
   await page.click("#btn-check-all");
   await sleep(150);
   eq(await page.$eval("#sheet-summary", e => e.textContent), "Mark all 19 packed?", "v2 A5: Check all asks first");
@@ -273,7 +281,7 @@ try {
   eq(await page.$eval("#sheet-sub", e => e.textContent), "18 kits · CAK-18", "A5: sheet shows kits + SKU");
   /* v2 A2: this order IS short (most CAK items sit at 0 here) — the sheet must shout it */
   eq(await page.$eval("#sheet-extra", e => !e.hidden && e.textContent.includes("items short")), true, "v2 A2: red short block shows on a short order");
-  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heart Jewelry Box: need 18, have 0. Its count will go to -18.")), true, "v2 A2: block names the shortage and where its count lands");
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heart Jewelry Box: have 0, need 18, short 18")), true, "v3 E1: sheet line gives have / need / short");
   eq(/^Subtract anyway \(\d+ short\)$/.test(await page.$eval("#sheet-primary", e => e.textContent)), true, "v2 A2: primary becomes Subtract anyway (N short)");
   eq(await page.$eval("#sheet-primary", e => e.classList.contains("danger")), true, "v2 A2: primary is the danger outline style");
   eq(await page.$eval("#sheet-cancel", e => e.textContent + "|" + e.classList.contains("btn-primary")), "Go back|true", "v2 A2: Go back becomes the filled button");
@@ -607,6 +615,38 @@ try {
   await sleep(700);
   eq(remoteData.inventory["scissors"].qty, 245, "v2 A3: UNDO reverses the count batch too");
 
+  /* v3 E2: Reorder list — scissors (245 on hand, warning at 250) is on it
+     with the default order qty; editing the qty changes the printed list;
+     receiving above the level takes it off again (and Undo restores it) */
+  eq(await page.$eval("#btn-reorder", e => e.textContent + "|" + e.disabled), "Reorder · 1|false", "v3 E2: button counts the low items");
+  await page.click("#btn-reorder");
+  await sleep(250);
+  eq(await page.$eval("#reorder-panel", e => e.hidden), false, "v3 E2: panel opens");
+  eq(await page.$eval('#reorder-list input[data-item="scissors"]', e => e.value), "255", "v3 E2: default order qty = 2 × level − on hand (500 − 245)");
+  await page.evaluate(() => { document.querySelector('#reorder-list input[data-item="scissors"]').value = "300"; });
+  await page.evaluate(() => { window.print = () => {}; });
+  await page.click("#btn-print-reorder");
+  await sleep(250);
+  const reorderPrint = await page.$eval("#print-area", e => e.innerHTML);
+  eq(reorderPrint.includes("Reorder List") && reorderPrint.includes("Scissors") && reorderPrint.includes("300"), true, "v3 E2: printed list carries the edited qty");
+  eq(reorderPrint.includes("2 × warning level"), true, "v3 E2: report says how the qty was worked out");
+  await page.click("#btn-close-reorder");
+  await sleep(150);
+  await openPanel("#delivery-entry", "#btn-delivery");
+  await sleep(250);
+  await page.evaluate(() => { document.querySelector('#delivery-entry-list input[data-item="scissors"]').value = "10"; });
+  await page.click("#btn-apply-delivery");
+  await sleep(250);
+  await page.click("#sheet-primary");
+  await sleep(700);
+  eq(remoteData.inventory["scissors"].qty, 255, "v3 E2 setup: delivery lands (245 + 10)");
+  eq(await page.$eval("#btn-reorder", e => e.textContent + "|" + e.disabled), "Reorder · 0|true", "v3 E2: back above the level — off the list, button disabled");
+  await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
+  await sleep(700);
+  eq(remoteData.inventory["scissors"].qty, 245, "v3 E2: UNDO restores 245");
+  eq(await page.$eval("#btn-reorder", e => e.textContent), "Reorder · 1", "v3 E2: and it is back on the list");
+  await closePanel("#delivery-entry", "#btn-cancel-delivery");
+
   /* ---------- Batch C: default boxes + bin locations ---------- */
   const waitRemote = async (fn, label) => { for (let i = 0; i < 40; i++) { if (fn()) return; await sleep(150); } throw new Error("timeout waiting: " + label); };
   const waitDom = async (fn, label) => { for (let i = 0; i < 40; i++) { if (await page.evaluate(fn)) return; await sleep(150); } throw new Error("timeout waiting: " + label); };
@@ -793,7 +833,7 @@ try {
   await page.click("#btn-complete-pack");
   await sleep(250);
   eq(await page.$eval("#sheet-extra", e => !e.hidden && e.textContent.includes("1 item short")), true, "v2 A2: one-short order shows the block");
-  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heat gun: need 1, have 0. Its count will go to -1.")), true, "v2 A2: block line names item, need, have, and the landing count");
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heat gun: have 0, need 1, short 1")), true, "v3 E1: sheet line gives have / need / short");
   eq(await page.$eval("#sheet-primary", e => e.textContent), "Subtract anyway (1 short)", "v2 A2: primary label for one short");
   const histBeforeA2 = remoteData.history.length;
   await page.click("#sheet-cancel"); /* Go back */
@@ -803,6 +843,23 @@ try {
   await sleep(250);
   await page.click("#sheet-primary"); /* Subtract anyway */
   await waitRemote(() => remoteData.inventory["heat-gun"].qty === -1, "short pack applied anyway");
+
+  /* v3 E3: backup reminder — Settings shows the last backup taken on this
+     device, and a gentle nudge once it is over a week old */
+  await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
+  await sleep(250);
+  eq(await page.$eval("#last-backup", e => e.textContent.includes("never")), true, "v3 E3: no backup yet on this device");
+  await page.click("#btn-export");
+  await sleep(300);
+  eq(await page.$eval("#last-backup", e => e.textContent.includes("never")), false, "v3 E3: exporting stamps the last-backup line");
+  eq(await page.$eval("#backup-stale", e => e.hidden), true, "v3 E3: a fresh backup shows no nudge");
+  await page.evaluate(() => {
+    localStorage.setItem("alooma.lastBackup.v1", new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString());
+    document.querySelector('[data-tab="inventory"]').click();
+    document.querySelector('[data-tab="settings"]').click();
+  });
+  await sleep(250);
+  eq(await page.$eval("#backup-stale", e => e.hidden), false, "v3 E3: over a week old shows the nudge");
 
   /* Disconnect: back to view-only, token gone from this device */
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
