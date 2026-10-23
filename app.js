@@ -1222,14 +1222,14 @@
     }).join("");
     var boxes = currentBoxes();
     printHtml(
-      '<section class="print-page with-foot"><table><thead>' +
+      '<section class="print-page"><table><thead>' +
       '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title">' + esc(cur.craft.name) + "</div>" +
       '<div class="label-sub">Total kits: ' + cur.kits + " &nbsp;&nbsp; Order ID: ____________</div>" +
       "</th></tr>" +
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>" +
       '<div class="print-foot">' + (boxes && boxes.length ? '<div class="foot-boxes">BOXES: ' + esc(boxes.join(" + ")) + "</div>" : "") +
-      "Packed by: ____________________ &nbsp; Date: ____________</div></section>"
+      "<div>Packed by: ____________________</div><div>Date: ____________</div></div></section>"
     );
   }
   function printInventory(mode) {
@@ -1261,8 +1261,8 @@
       var headRow = mode === "count"
         ? "<tr><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Should be</th><th>Counted</th></tr>"
         : "<tr><th>Item</th><th class='qty'>On hand</th></tr>";
-      var foot = mode === "count" ? '<div class="print-foot">Counted by: ____________________ &nbsp; Date: ____________</div>' : "";
-      return '<section class="print-page' + (mode === "count" ? " with-foot" : "") + '"><table><thead>' +
+      var foot = mode === "count" ? '<div class="print-foot"><div>Counted by: ____________________</div><div>Date: ____________</div></div>' : "";
+      return '<section class="print-page"><table><thead>' +
         '<tr class="p-title"><th colspan="' + cols + '"><div class="label-title">' + esc(g.name) + '</div><div class="label-sub">' + (mode === "count" ? "Count sheet · " : "Inventory · ") + date + "</div></th></tr>" +
         headRow + "</thead><tbody>" + rows + "</tbody></table>" + foot + "</section>";
     }).join("");
