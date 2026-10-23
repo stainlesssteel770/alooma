@@ -196,6 +196,12 @@ tr.checked-row td .row-name { text-decoration: line-through; }
 .sheet-input-wrap[hidden] { display: none !important; }
 .sheet-input-wrap input { width: 100%; height: 54px; font-size: 20px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 12px; margin-top: 6px; }
 .sheet .btn { width: 100%; min-height: 54px; font-size: 17px; margin-top: 8px; }
+#sheet-primary.danger { background: #fff; color: var(--red); border-color: var(--red); }
+.sheet-short { background: var(--red-bg); border: 2px solid var(--red); color: var(--red); border-radius: 12px; padding: 10px 12px; margin: 0 0 14px; text-align: left; }
+.sheet-short-title { font-size: 17px; font-weight: 700; margin: 0 0 4px; }
+.sheet-short ul { margin: 0; padding-left: 18px; font-size: 15.5px; line-height: 1.45; }
+.sheet-lines { margin: 0 0 14px; padding-left: 18px; font-size: 16px; line-height: 1.55; text-align: left; }
+.sheet-lines .flag { color: var(--amber); font-weight: 700; }
 @media (min-width: 701px) { .sheet-backdrop { align-items: center; } .sheet { border-radius: 18px; } }
 #print-area { display: none; }
 
