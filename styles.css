@@ -136,6 +136,8 @@ tr.checked-row td .row-name { text-decoration: line-through; }
 .inv-group { margin: 18px 0; }
 .inv-group h3 { border-bottom: 2px solid var(--accent); padding: 8px 2px 4px; position: sticky; top: 0; z-index: 5; background: var(--bg); display: flex; justify-content: space-between; align-items: baseline; }
 .inv-onhand { font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.inv-bin { color: var(--muted); font-size: 13.5px; font-weight: 700; white-space: nowrap; margin-left: 6px; }
+.row-bin { color: var(--muted); font-size: 13.5px; font-weight: 700; white-space: nowrap; }
 .inv-item { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 8px; background: var(--surface); }
 .inv-main { display: flex; align-items: center; gap: 10px; padding: 12px 14px; min-height: 60px; cursor: pointer; width: 100%; background: none; border: none; text-align: left; font: inherit; color: inherit; }
 .inv-name { font-weight: 550; font-size: 16.5px; }
@@ -229,6 +231,7 @@ tr.checked-row td .row-name { text-decoration: line-through; }
   #print-area .group-head { font-size: 11pt; font-weight: 800; margin: 7pt 0 1pt; text-transform: uppercase; border-bottom: 1pt solid #000; }
   #print-area td.counted-blank { border: 1.5pt solid #000; width: 0.95in; height: 15pt; }
   #print-area td.tick, #print-area th.tick { width: 16pt; }
+  #print-area td.bin { font-weight: 700; }
   #print-area .tick-box { display: inline-block; width: 10pt; height: 10pt; border: 1.5pt solid #000; }
   #print-area thead { display: table-header-group; }
 }
