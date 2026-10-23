@@ -111,6 +111,18 @@ try {
   };
   const tab = async name => { await page.evaluate(n => document.querySelector('[data-tab="' + n + '"]').click(), name); await sleep(250); };
   const pickCraft = async (grid, text) => page.evaluate((g, t) => [...document.querySelectorAll(g + " .craft-btn")].find(b => b.textContent.includes(t)).click(), grid, text);
+  /* The audit measures GEOMETRY; the UI suite already proves real clicks.
+     Drive state changes with DOM clicks (scrolling into view first) so a
+     below-the-fold button can't crash the tour before it measures. */
+  const clickEl = async sel => {
+    await page.evaluate(s => {
+      const el = document.querySelector(s);
+      if (!el) throw new Error("missing element " + s);
+      el.scrollIntoView({ block: "center" });
+      el.click();
+    }, sel);
+    await sleep(150);
+  };
 
   for (const width of [360, 390]) {
     await page.setViewport({ width, height: 844 });
@@ -118,57 +130,57 @@ try {
     await sleep(400);
     /* View-only pass: Inventory + History + the Print menu (reachable view-only) */
     await check(width + " view-only: inventory");
-    await page.click("#btn-print-menu"); await sleep(200);
+    await clickEl("#btn-print-menu"); await sleep(200);
     await check(width + " view-only: print menu open");
     await page.evaluate(() => document.body.click()); await sleep(150);
     await tab("history");
     await check(width + " view-only: history");
     /* Connect (real path: badge -> Settings -> token) */
-    await page.click("#conn-badge"); await sleep(200);
+    await clickEl("#conn-badge"); await sleep(200);
     await page.type("#gh-token", "fake-token-for-test");
-    await page.click("#btn-connect"); await sleep(700);
+    await clickEl("#btn-connect"); await sleep(700);
     await check(width + " editor: settings after connect");
     /* Packing states */
     await tab("pack");
     await check(width + " pack: empty");
     await pickCraft("#pack-crafts", "The Cakery");
-    await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
+    await clickEl('.kits-chip[data-for="pack"][data-kits="12"]');
     await sleep(250);
     await check(width + " pack: CAK-12 chosen, no path yet");
-    await page.click("#btn-print-sheet"); await sleep(250);
+    await clickEl("#btn-print-sheet"); await sleep(250);
     await check(width + " pack: print path (boxes line + Complete)");
-    await page.click("#btn-mode-hand"); await sleep(250);
+    await clickEl("#btn-mode-hand"); await sleep(250);
     await check(width + " pack: hand path checklist");
-    await page.click("#btn-check-all"); await sleep(200);
-    await page.click("#btn-complete-pack"); await sleep(300);
+    await clickEl("#btn-check-all"); await sleep(200);
+    await clickEl("#btn-complete-pack"); await sleep(300);
     await check(width + " pack: confirm sheet open");
     await page.evaluate(() => document.querySelector("#sheet-cancel").click()); await sleep(250);
     /* Bulk states */
     await tab("bulk");
     await check(width + " bulk: empty");
     await pickCraft("#bulk-crafts", "Blooming");
-    await page.click('.kits-chip[data-for="bulk"][data-kits="36"]');
-    await page.click("#btn-bulk-add"); await sleep(250);
+    await clickEl('.kits-chip[data-for="bulk"][data-kits="36"]');
+    await clickEl("#btn-bulk-add"); await sleep(250);
     await pickCraft("#bulk-crafts", "Hafrashat");
-    await page.click('.kits-chip[data-for="bulk"][data-kits="36"]');
-    await page.click("#btn-bulk-add"); await sleep(250);
+    await clickEl('.kits-chip[data-for="bulk"][data-kits="36"]');
+    await clickEl("#btn-bulk-add"); await sleep(250);
     await check(width + " bulk: two queued orders");
-    await page.click("#btn-bulk-record"); await sleep(300);
+    await clickEl("#btn-bulk-record"); await sleep(300);
     await check(width + " bulk: confirm sheet open");
     await page.evaluate(() => document.querySelector("#sheet-cancel").click()); await sleep(250);
     /* Inventory states */
     await tab("inventory");
     await check(width + " inventory: list");
-    await page.click("#btn-print-menu"); await sleep(200);
+    await clickEl("#btn-print-menu"); await sleep(200);
     await check(width + " inventory: print menu open");
-    await page.click("#btn-print-menu"); await sleep(150);
+    await clickEl("#btn-print-menu"); await sleep(150);
     await page.evaluate(() => { const m = document.querySelector('.inv-item[data-item="colored-clay-tool-tray"] .inv-main'); if (m) m.click(); });
     await sleep(300);
     await check(width + " inventory: item panel open (longest name)");
-    await page.click("#btn-delivery"); await sleep(300);
+    await clickEl("#btn-delivery"); await sleep(300);
     await check(width + " inventory: delivery form open");
     await page.evaluate(() => document.querySelector("#btn-cancel-delivery").click()); await sleep(200);
-    await page.click("#btn-enter-counts"); await sleep(300);
+    await clickEl("#btn-enter-counts"); await sleep(300);
     await check(width + " inventory: count entry open");
     await page.evaluate(() => document.querySelector("#btn-cancel-counts").click()); await sleep(200);
     /* History + Settings */
@@ -184,7 +196,7 @@ try {
   await page.goto("http://127.0.0.1:8911/index.html", { waitUntil: "networkidle0", timeout: 30000 });
   await sleep(400);
   await tab("inventory");
-  await page.click("#btn-print-menu"); await sleep(200);
+  await clickEl("#btn-print-menu"); await sleep(200);
   await check("1280 inventory: print menu open");
 
   console.log(pass + " passed, " + fail + " failed");
