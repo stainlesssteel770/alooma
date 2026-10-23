@@ -49,6 +49,10 @@ remoteData.history = [
 ];
 let remoteSha = "sha-1";
 let putCount = 0;
+/* v2 A6: the app must never fall back to the phone's own pop-ups */
+const appSrc = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+ok(!appSrc.includes("window.confirm("), "v2 A6: no window.confirm left in app.js");
+ok(!appSrc.includes("window.prompt("), "v2 A6: no window.prompt left in app.js");
 const b64e = s => Buffer.from(s, "utf8").toString("base64");
 const b64d = s => Buffer.from(s, "base64").toString("utf8");
 
