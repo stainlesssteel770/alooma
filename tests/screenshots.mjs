@@ -87,7 +87,9 @@ try {
   await page.evaluate(() => window.scrollTo(0, 0));
   await shot("pack-selected.jpg");
 
-  /* Confirm sheet (A5): check all, open Complete */
+  /* Confirm sheet (A5): pick the Hand pack path, check all, open Complete */
+  await page.click("#btn-mode-hand");
+  await sleep(200);
   await page.click("#btn-check-all");
   await sleep(200);
   await page.click("#btn-complete-pack");
@@ -101,16 +103,16 @@ try {
   await sleep(300);
   await shot("history.jpg");
 
-  /* Hand-pack batch mode on the Packing tab (merged flow): queue the same
-     CAK-18 as a hand-packed line and show the batch panel */
-  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  /* Bulk import tab: queue the same CAK-18 as a hand-packed order */
+  await page.evaluate(() => document.querySelector('[data-tab="bulk"]').click());
   await sleep(300);
-  await page.evaluate(() => document.querySelector("#btn-mode-hand").click());
+  await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+  await page.click('.kits-chip[data-for="bulk"][data-kits="18"]');
   await sleep(200);
-  await page.evaluate(() => document.querySelector("#btn-hand-add").click());
+  await page.evaluate(() => document.querySelector("#btn-bulk-add").click());
   await sleep(300);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await shot("hand-batch.jpg");
+  await shot("bulk.jpg");
 
   /* Inventory with an item panel open */
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
