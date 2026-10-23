@@ -54,6 +54,7 @@ h3 { margin: 16px 0 8px; font-size: 17px; }
 .kits-chip.selected { background: var(--ink); color: #fff; border-color: var(--ink); }
 .sku-box { font-size: 16.5px; margin-top: 10px; }
 .field-error { color: var(--red); font-weight: 600; min-height: 1.2em; font-size: 15px; }
+.field-error:empty { min-height: 0; margin: 0; }
 .warning { background: var(--amber-bg); border: 1px solid #E7C46A; border-radius: 10px; padding: 10px 14px; margin: 10px 0; font-size: 15px; }
 
 /* buttons */

@@ -44,7 +44,7 @@
         <label for="pack-kits">Number of kits</label>
         <div class="stepper">
           <button type="button" id="pack-minus" aria-label="6 fewer kits">−</button>
-          <input type="number" id="pack-kits" min="6" step="6" value="18" inputmode="numeric" aria-label="Number of kits">
+          <input type="number" id="pack-kits" min="6" step="6" value="" placeholder="—" inputmode="numeric" aria-label="Number of kits">
           <button type="button" id="pack-plus" aria-label="6 more kits">+</button>
         </div>
       </div>
@@ -73,7 +73,7 @@
       <label class="override-row"><input type="checkbox" id="pack-override"> I packed from the printed sheet</label>
       <div class="action-bar">
         <button id="btn-print-sheet" class="btn btn-secondary">🖨 Print packing sheet (4×6)</button>
-        <button id="btn-complete-pack" class="btn btn-primary editor-only" disabled>✓ Completed packing</button>
+        <button id="btn-complete-pack" class="btn btn-primary editor-only" disabled>Choose a craft</button>
       </div>
       <p class="hint editor-note" hidden>View-only on this device — connect a GitHub token in Settings to record packing.</p>
     </div>
@@ -89,7 +89,7 @@
         <label for="hand-kits">Number of kits</label>
         <div class="stepper">
           <button type="button" id="hand-minus" aria-label="6 fewer kits">−</button>
-          <input type="number" id="hand-kits" min="6" step="6" value="6" inputmode="numeric" aria-label="Number of kits">
+          <input type="number" id="hand-kits" min="6" step="6" value="" placeholder="—" inputmode="numeric" aria-label="Number of kits">
           <button type="button" id="hand-plus" aria-label="6 more kits">+</button>
         </div>
       </div>
@@ -108,7 +108,7 @@
       <tbody></tbody>
     </table>
     <div class="action-bar">
-      <button id="btn-record-hand" class="btn btn-primary editor-only">✓ Record hand-packed</button>
+      <button id="btn-record-hand" class="btn btn-primary editor-only" disabled>Choose a craft</button>
     </div>
     <p class="hint editor-note" hidden>View-only on this device — connect a GitHub token in Settings to record hand-packing.</p>
   </section>

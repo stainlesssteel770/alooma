@@ -12,7 +12,7 @@
 
   var state = {
     data: null, sha: null, editor: null, /* {token, owner, repo, login} */
-    packCraft: "cak", handCraft: "cak", loadedAt: null
+    packCraft: null, handCraft: null, loadedAt: null
   };
 
   /* ---------- small helpers ---------- */
@@ -202,7 +202,7 @@
     var err = $("pack-error"), warn = $("pack-warning");
     err.textContent = ""; warn.hidden = true;
     var valid = L.validKits(kits);
-    $("pack-sku").textContent = valid ? L.sku(state.packCraft, kits) : "—";
+    $("pack-sku").textContent = valid && state.packCraft ? L.sku(state.packCraft, kits) : "—";
     var tbody = $("pack-table").querySelector("tbody");
     tbody.innerHTML = "";
     if (!valid) {
@@ -210,6 +210,7 @@
       updatePackProgress();
       return;
     }
+    if (!state.packCraft) { updatePackProgress(); return; }
     var pack = L.computePack(state.packCraft, kits);
     var shortages = [];
     pack.forEach(function (r, idx) {
@@ -239,6 +240,7 @@
     updatePackProgress();
   }
   function currentPack() {
+    if (!state.packCraft) return null;
     var kits = parseInt($("pack-kits").value, 10);
     if (!L.validKits(kits)) return null;
     return { craft: L.craftById(state.packCraft), kits: kits, pack: L.computePack(state.packCraft, kits) };
@@ -266,10 +268,11 @@
     markChips("hand", kits);
     var err = $("hand-error"); err.textContent = "";
     var valid = L.validKits(kits);
-    $("hand-sku").textContent = valid ? L.sku(state.handCraft, kits) : "—";
+    $("hand-sku").textContent = valid && state.handCraft ? L.sku(state.handCraft, kits) : "—";
     var tbody = $("hand-table").querySelector("tbody");
     tbody.innerHTML = "";
-    if (!valid) { err.textContent = kits ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : "Enter the number of kits — orders are multiples of 6."; return; }
+    $("btn-record-hand").disabled = !(valid && state.handCraft);
+    if (!valid || !state.handCraft) { err.textContent = kits && state.handCraft ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : ""; return; }
     L.computePack(state.handCraft, kits).forEach(function (r) {
       var tr = document.createElement("tr");
       tr.innerHTML = "<td>" + esc(r.name) + '</td><td class="num">' + r.qty + '</td><td class="num">' + qtyOf(r.item) + "</td>";
@@ -279,7 +282,7 @@
   function recordHand() {
     if (!requireEditor()) return;
     var kits = parseInt($("hand-kits").value, 10);
-    if (!L.validKits(kits)) return;
+    if (!state.handCraft || !L.validKits(kits)) return;
     var craft = L.craftById(state.handCraft);
     var pack = L.computePack(craft.id, kits);
     var lines = pack.map(function (r) { return r.name + " −" + r.qty; }).join("\n");
