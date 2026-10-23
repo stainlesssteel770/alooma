@@ -17,13 +17,14 @@
     </div>
   </div>
   <div class="header-status">
-    <span id="conn-badge" class="badge badge-view">View only</span>
+    <button type="button" id="conn-badge" class="badge badge-view" title="Connect this device">View only</button>
     <span id="save-status" class="save-status"></span>
   </div>
 </header>
 
 <nav class="tabs" id="tabs" role="tablist" aria-label="Main">
   <button data-tab="pack" class="active" role="tab" aria-selected="true"><span class="tab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5v-9z"/><path d="M3.5 7.5L12 12l8.5-4.5"/><path d="M12 12v9"/></svg></span>Packing</button>
+  <button data-tab="bulk" role="tab" aria-selected="false"><span class="tab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 18l9 5 9-5"/></svg></span>Bulk import</button>
   <button data-tab="inventory" role="tab" aria-selected="false"><span class="tab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="17" rx="2"/><path d="M9 4.5V2.8h6v1.7"/><path d="M9 11h6M9 15h6"/></svg></span>Inventory</button>
   <button data-tab="history" role="tab" aria-selected="false"><span class="tab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-5.9"/><path d="M3.5 3.8v4.7h4.7"/><path d="M12 8v4.2l3 1.8"/></svg></span>History</button>
   <button data-tab="settings" role="tab" aria-selected="false"><span class="tab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5h9.5M19.5 7.5H21M4 16.5h3.5M13.5 16.5H21"/><circle cx="16.5" cy="7.5" r="2.3"/><circle cx="10.5" cy="16.5" r="2.3"/></svg></span>Settings</button>
@@ -73,7 +74,7 @@
     </div>
     <p id="pack-error" class="field-error"></p>
     <div id="pack-warning" class="warning" hidden></div>
-    <div id="pack-list-wrap">
+    <div id="pack-order" hidden>
       <div id="pack-boxes" class="boxes-line" hidden>
         <span>Boxes for this order: <strong id="pack-boxes-text"></strong></span>
         <button type="button" id="btn-boxes-change" class="btn btn-quiet">Change</button>
@@ -83,6 +84,7 @@
         <span id="pack-boxes-chips" class="chips"></span>
         <button type="button" id="btn-boxes-done" class="btn btn-quiet">Done</button>
       </div>
+      <div id="pack-checklist">
       <div class="list-head">
         <h3>Pack list</h3>
         <span id="pack-progress" class="progress-text"></span>
@@ -94,20 +96,45 @@
         <thead><tr><th><span class="sr-only">Done</span></th><th>Item</th><th class="num">Need</th><th class="num">On hand</th></tr></thead>
         <tbody></tbody>
       </table>
+      </div>
       <div class="action-bar">
         <button id="btn-complete-pack" class="btn btn-primary editor-only" disabled>Choose a craft</button>
       </div>
       <p class="hint editor-note" hidden>View-only on this device — connect a GitHub token in Settings to record packing.</p>
     </div>
-    <div id="hand-batch" hidden>
-      <p class="hint">Orders already packed by hand: add each craft and kit amount, then record them all at once — inventory updates in a single save.</p>
-      <div id="hand-lines"></div>
-      <div class="action-bar">
-        <button id="btn-hand-add" class="btn btn-secondary editor-only" disabled>Choose a craft</button>
-        <button id="btn-record-all" class="btn btn-primary editor-only" disabled>Record all</button>
+  </section>
+
+  <!-- BULK IMPORT -->
+  <section id="tab-bulk" class="tab-panel">
+    <h2>Bulk hand-packed import</h2>
+    <p class="hint">For orders already packed by hand: add each craft and kit amount, then record them all at once — inventory updates in a single save.</p>
+    <div class="craft-grid" id="bulk-crafts"></div>
+    <div class="kits-block">
+      <div class="kits-row">
+        <label for="bulk-kits">Number of kits</label>
+        <div class="stepper">
+          <button type="button" id="bulk-minus" aria-label="6 fewer kits">−</button>
+          <input type="number" id="bulk-kits" min="6" step="6" value="" placeholder="—" inputmode="numeric" aria-label="Number of kits">
+          <button type="button" id="bulk-plus" aria-label="6 more kits">+</button>
+        </div>
       </div>
-      <p class="hint editor-note" hidden>View-only on this device — connect a GitHub token in Settings to record hand-packing.</p>
+      <div class="chips" id="bulk-chips">
+        <button type="button" class="kits-chip" data-for="bulk" data-kits="6">6</button>
+        <button type="button" class="kits-chip" data-for="bulk" data-kits="12">12</button>
+        <button type="button" class="kits-chip" data-for="bulk" data-kits="18">18</button>
+        <button type="button" class="kits-chip" data-for="bulk" data-kits="24">24</button>
+        <button type="button" class="kits-chip" data-for="bulk" data-kits="30">30</button>
+        <button type="button" class="kits-chip" data-for="bulk" data-kits="36">36</button>
+      </div>
+      <div class="sku-box">Order SKU: <strong id="bulk-sku">—</strong></div>
     </div>
+    <p id="bulk-error" class="field-error"></p>
+    <div id="bulk-lines"></div>
+    <div class="action-bar">
+      <button id="btn-bulk-add" class="btn btn-secondary editor-only" disabled>Choose a craft</button>
+      <button id="btn-bulk-record" class="btn btn-primary editor-only" disabled>Record all</button>
+    </div>
+    <p class="hint editor-note" hidden>View-only on this device — connect in Settings to record hand-packing.</p>
   </section>
 
   <!-- INVENTORY -->
@@ -168,6 +195,22 @@
       <h3>Editor access on this device</h3>
       <p id="settings-conn-status" class="hint"></p>
       <div id="connect-form">
+        <div id="device-login" hidden>
+          <div class="btn-row">
+            <button id="btn-gh-login" class="btn btn-primary">Connect with GitHub</button>
+          </div>
+          <div id="device-login-wait" hidden>
+            <p class="hint">On any device signed into GitHub, open <strong>github.com/login/device</strong> and enter this code:</p>
+            <p class="device-code" id="device-code">————</p>
+            <p class="hint">Waiting for you to approve… this page checks on its own.</p>
+            <div class="btn-row">
+              <button id="btn-gh-login-cancel" class="btn btn-quiet">Cancel sign-in</button>
+            </div>
+          </div>
+          <p class="hint">No token to create or paste — the GitHub App can only reach the alooma repo.</p>
+          <hr class="card-sep">
+          <p class="hint">…or connect with a token instead:</p>
+        </div>
         <label>GitHub token
           <input type="password" id="gh-token" autocomplete="off" placeholder="Paste a GitHub token">
         </label>
@@ -192,7 +235,7 @@
       </div>
       <div id="disconnect-wrap" hidden>
         <div class="btn-row">
-          <button id="btn-disconnect" class="btn btn-danger">Disconnect token from this device</button>
+          <button id="btn-disconnect" class="btn btn-danger">Disconnect this device</button>
         </div>
         <p class="hint">Disconnecting removes the saved token from this device only. The site goes back to view-only here; your data in the repo is untouched.</p>
       </div>
