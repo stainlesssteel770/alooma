@@ -103,6 +103,21 @@ try {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) return;
       if (r.left < -1 || r.right > W + 1) {
+        /* Content inside a sideways-scrolling row (the v2 B2 filter chips)
+           is SUPPOSED to extend past the edge — it is clipped by its
+           scroller, which must itself be in bounds. The page-level
+           scrollWidth check above still catches real sideways scroll. */
+        let sc = el.parentElement, clipped = false;
+        while (sc && sc !== document.body) {
+          const ox = getComputedStyle(sc).overflowX;
+          if (ox === "auto" || ox === "scroll") {
+            const sr = sc.getBoundingClientRect();
+            if (sr.left >= -1 && sr.right <= W + 1) clipped = true;
+            break;
+          }
+          sc = sc.parentElement;
+        }
+        if (clipped) return;
         const tag = el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (typeof el.className === "string" && el.className ? "." + el.className.split(" ").join(".") : "");
         bad.push(tag + " left=" + Math.round(r.left) + " right=" + Math.round(r.right) + " (viewport " + W + ")");
       }
