@@ -188,6 +188,11 @@ try {
     /* Inventory states */
     await tab("inventory");
     await check(width + " inventory: list");
+    /* v2 B2: stock starts near the top — first row at/above the target */
+    await page.evaluate(() => window.scrollTo(0, 0)); await sleep(100);
+    const invTop = await page.evaluate(() => { const el = document.querySelector(".inv-item"); return el ? Math.round(el.getBoundingClientRect().top + window.scrollY) : -1; });
+    console.log("v2 B2 first inventory row top at", width, "=", invTop);
+    ok(invTop > 0 && invTop <= (width === 390 ? 300 : 320), "v2 B2: first inventory row at/above target at " + width + "px (saw " + invTop + ")");
     await clickEl("#btn-print-menu"); await sleep(200);
     await check(width + " inventory: print menu open");
     await clickEl("#btn-print-menu"); await sleep(150);
