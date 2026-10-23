@@ -303,8 +303,11 @@
       tbody.appendChild(tr);
     });
     if (shortages.length) {
-      warn.innerHTML = "<strong>Not enough on hand for:</strong> " + shortages.map(esc).join(" · ") +
-        "<br>You can still record the packing — those counts will go below zero so the shortage stays visible.";
+      var shown = shortages.slice(0, 3).map(esc).join(" · ");
+      var more = shortages.length > 3 ? " · +" + (shortages.length - 3) + " more" : "";
+      var full = shortages.length > 3 ? "<details><summary>Show all " + shortages.length + " shortages</summary>" + shortages.map(esc).join(" · ") + "</details>" : "";
+      warn.innerHTML = "<strong>Not enough on hand for:</strong> " + shown + more + full +
+        "<br>You can still record this — counts will go below zero so the shortage stays visible.";
       warn.hidden = false;
     }
     updatePackProgress();
