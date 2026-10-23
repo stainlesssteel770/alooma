@@ -3,7 +3,6 @@
    labels, inventory/count 7, most of them blank).
    Run: node tests/check-print.mjs */
 import { createRequire } from "module";
-import { spawn } from "child_process";
 import fs from "fs";
 const require = createRequire(import.meta.url);
 /* Portable browser loading: full `puppeteer` if installed (CI installs it);
@@ -16,8 +15,18 @@ catch (e) {
   EXE = process.env.CHROME_PATH || "/home/hatch/.cache/puppeteer/chrome-headless-shell/linux-155.0.8059.84/chrome-headless-shell-linux64/chrome-headless-shell";
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const server = spawn("python3", ["-m", "http.server", "8908", "--bind", "127.0.0.1"], { cwd: "/home/hatch/workspace/alooma-repo", stdio: "ignore" });
-await sleep(700);
+import http from "http";
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png" };
+const server = http.createServer((req, res) => {
+  const rel = decodeURIComponent(req.url.split("?")[0]);
+  const file = path.join(ROOT, rel === "/" ? "index.html" : rel.replace(/^\/+/, ""));
+  fs.readFile(file, (err, data) => {
+    if (err) { res.writeHead(404); res.end("not found"); return; }
+    res.writeHead(200, { "Content-Type": MIME[path.extname(file)] || "application/octet-stream" });
+    res.end(data);
+  });
+});
+await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 let fail = 0;
 function pages(pdf) { return fs.readFileSync(pdf, "latin1").match(/\/MediaBox/g).length; }
@@ -43,5 +52,5 @@ try {
   expectPages("/tmp/alooma-packsheet.pdf", 1, "pack sheet CAK-18");
   expectPages("/tmp/alooma-invreport.pdf", 3, "inventory report (62 items)");
   expectPages("/tmp/alooma-countsheet.pdf", 3, "count sheet (62 items)");
-} finally { await browser.close(); server.kill(); }
+} finally { await browser.close(); server.close(); }
 process.exit(fail ? 1 : 0);
