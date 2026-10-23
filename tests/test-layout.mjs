@@ -227,7 +227,9 @@ try {
     await page.evaluate(() => window.scrollTo(0, 0)); await sleep(100);
     const invTop = await page.evaluate(() => { const el = document.querySelector(".inv-item"); return el ? Math.round(el.getBoundingClientRect().top + window.scrollY) : -1; });
     console.log("v2 B2 first inventory row top at", width, "=", invTop);
-    ok(invTop > 0 && invTop <= (width === 390 ? 300 : 320), "v2 B2: first inventory row at/above target at " + width + "px (saw " + invTop + ")");
+    /* The brief's 300 target didn't reconcile with its own changes (489 -> 363);
+       the user's pick 2026-10-23: drop the Inventory title too and accept ~331. */
+    ok(invTop > 0 && invTop <= 340, "v2 B2: first inventory row at/above the agreed 340 at " + width + "px (saw " + invTop + ")");
     await clickEl("#btn-print-menu"); await sleep(200);
     await check(width + " inventory: print menu open");
     await clickEl("#btn-print-menu"); await sleep(150);
