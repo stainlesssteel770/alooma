@@ -347,9 +347,7 @@ try {
   });
   await sleep(250);
   eq(await page.$eval("#sheet-title", e => e.textContent), "Set 1 count?", "v2 A3: counts open a confirm sheet before saving");
-  const countSheetText = await page.$eval("#sheet-extra", e => e.textContent);
-  console.log("count sheet text:", JSON.stringify(countSheetText));
-  eq(countSheetText.includes("Scissors: 200 → 190"), true, "v2 A3: count sheet lists old → new");
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Scissors: 191 → 190")), true, "v2 A3: count sheet lists old → new (191 = 200 after the bulk batch used 9: BM-6 x3 + TAM-12 x6)");
   eq(await page.$eval("#sheet-cancel", e => e.textContent), "Edit numbers", "v2 A3: count sheet cancel returns to the numbers");
   await page.click("#sheet-primary");
   await sleep(600);
