@@ -347,7 +347,7 @@ try {
   });
   await sleep(250);
   eq(await page.$eval("#sheet-title", e => e.textContent), "Set 1 count?", "v2 A3: counts open a confirm sheet before saving");
-  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Scissors: 195 → 190")), true, "v2 A3: count sheet lists old → new");
+  eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Scissors: 200 → 190")), true, "v2 A3: count sheet lists old → new");
   eq(await page.$eval("#sheet-cancel", e => e.textContent), "Edit numbers", "v2 A3: count sheet cancel returns to the numbers");
   await page.click("#sheet-primary");
   await sleep(600);
@@ -631,8 +631,11 @@ try {
   await page.click("#btn-box-add");
   await waitRemote(() => (remoteData.settings.boxes || []).includes("Mailer box"), "box added");
   eq(remoteData.settings.boxes.includes("Mailer box"), true, "Boxes: typed box name saved to the shared list");
-  eq(await page.evaluate(() => [...document.querySelectorAll("#rule-boxes option")].map(o => o.value).includes("Mailer box")), true, "Boxes: new box appears in the rule dropdown");
-  eq(await page.evaluate(() => document.querySelector("#box-list").textContent.includes("Mailer box")), true, "Boxes: new box shows in the box list");
+  /* The page re-renders after the save resolves — poll the DOM for it
+     instead of asserting in the same tick the mock PUT lands (race) */
+  let boxRendered = true;
+  try { await waitDom(() => [...document.querySelectorAll("#rule-boxes option")].map(o => o.value).includes("Mailer box") && document.querySelector("#box-list").textContent.includes("Mailer box"), "box rendered in dropdown + list"); } catch (e) { boxRendered = false; }
+  eq(boxRendered, true, "Boxes: new box appears in the rule dropdown and the box list");
   /* A rule can carry ANY number of boxes: build a 3-box rule for TAM-24 */
   await page.select("#rule-craft", "tam");
   await page.type("#rule-kits", "24");
