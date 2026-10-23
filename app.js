@@ -186,7 +186,7 @@
   function relAgo(d) {
     if (!d) return "";
     var s = Math.max(0, (Date.now() - d.getTime()) / 1000);
-    if (s < 45) return "just now";
+    if (s < 45) return "now";
     var m = Math.round(s / 60);
     if (m < 60) return m + " min ago";
     return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -246,7 +246,13 @@
       throw e;
     });
   }
-  function updateSaveStatus(txt) { $("save-status").textContent = txt || ""; }
+  function updateSaveStatus(txt) {
+    var el = $("save-status");
+    el.textContent = txt || "";
+    /* v3 D7: at 360 the line only takes header room when it matters —
+       a save just landed, is in flight, or failed */
+    el.classList.toggle("fresh", /^(Saved|Saving|NOT saved|Couldn)/.test(txt || ""));
+  }
 
   /* ---------- mutations (editor only) ---------- */
   function newEntry(type, title, effects, extra) {
@@ -512,8 +518,34 @@
     if (!requireEditor()) return;
     var kits = parseInt($("bulk-kits").value, 10);
     if (!state.bulkCraft || !L.validKits(kits)) return;
-    bulkLines.push({ craftId: state.bulkCraft, kits: kits });
+    var craftId = state.bulkCraft;
+    var sku = L.sku(craftId, kits);
+    /* v3 D1: the same order twice is almost always a double tap — ask first */
+    var dup = bulkLines.some(function (ln) { return ln.craftId === craftId && ln.kits === kits; });
+    if (dup) {
+      openSheet({
+        title: sku + " is already in the list.",
+        summary: "Add another " + sku + " to the queue?",
+        primary: "Add another",
+        cancelLabel: "Keep one",
+        onConfirm: function () { queueBulkLine(craftId, kits); }
+      });
+      return;
+    }
+    queueBulkLine(craftId, kits);
+  }
+  function queueBulkLine(craftId, kits) {
+    var line = { craftId: craftId, kits: kits };
+    bulkLines.push(line);
+    /* v3 D1: clear the picker after each Add, so a second tap on Add
+       can't quietly queue the same order twice */
+    state.bulkCraft = null;
+    $("bulk-kits").value = "";
     renderBulk();
+    showToast("Added " + esc(L.sku(craftId, kits)), "UNDO", function () {
+      var i = bulkLines.indexOf(line);
+      if (i >= 0) { bulkLines.splice(i, 1); renderBulk(); }
+    }, 8000);
   }
   function recordAllBulk() {
     if (!requireEditor()) return;
@@ -622,7 +654,7 @@
           var seg = modes.map(function (m) {
             return '<button type="button" data-mode="' + m[0] + '"' + (invPanelMode === m[0] ? ' class="on"' : "") + ">" + m[1] + "</button>";
           }).join("");
-          var placeholder = invPanelMode === "receive" ? "How many arrived?"
+          var placeholder = invPanelMode === "receive" ? "Amount"
             : invPanelMode === "set" ? "Actual count (now " + rec.qty + ")"
             : invPanelMode === "bin" ? "Bin label (now " + L.binFor(settings(), itemId) + ")"
             : "Warn at or below (blank = off)";
@@ -796,7 +828,11 @@
        delivery is flagged amber in the list */
     var lines = received.map(function (r) {
       var last = lastDeliveryFor(r.item);
-      var flag = last > 0 && r.amount > 5 * last ? ' <span class="flag">(' + Math.round(r.amount / last) + "× usual)</span>" : "";
+      var onHand = qtyOf(r.item);
+      var flag = "";
+      if (last > 0 && r.amount > 5 * last) flag = ' <span class="flag">(' + Math.round(r.amount / last) + "× usual)</span>";
+      /* v3 D5: no earlier delivery to compare with — flag against on-hand instead */
+      else if (last <= 0 && onHand > 0 && r.amount > 5 * onHand) flag = ' <span class="flag">(' + Math.round(r.amount / onHand) + "× on hand)</span>";
       return "<li>" + esc(L.ITEMS[r.item]) + " +" + r.amount + flag + "</li>";
     }).join("");
     openSheet({
@@ -1073,6 +1109,11 @@
       $("connect-form").hidden = false;
       $("disconnect-wrap").hidden = true;
     }
+    /* v3 D6: viewers get the Print button at the right end of the chip
+       row — the 48px editor action row is not spent on one icon for them */
+    var pwrap = document.querySelector(".print-menu-wrap");
+    var ptarget = state.editor ? document.querySelector(".inv-actions") : document.querySelector(".inv-filters");
+    if (pwrap && ptarget && pwrap.parentElement !== ptarget) ptarget.appendChild(pwrap);
     $("device-login").hidden = !GH_APP_CLIENT_ID;
     applyTabAccess();
     $("about-repo").textContent = repoCfg().owner + "/" + repoCfg().repo;
