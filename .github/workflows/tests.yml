@@ -23,7 +23,7 @@ jobs:
           node-version: 20
 
       - name: Install Puppeteer (downloads its Chrome)
-        run: npm install --no-save puppeteer
+        run: npm install --no-save puppeteer axe-core
 
       - name: Logic tests (stock math, recipes, history)
         run: node tests/test-logic.js
@@ -34,6 +34,8 @@ jobs:
       - name: Offline test (data blocked -> single empty state -> Retry)
         run: node tests/test-offline.mjs
 
+      - name: Accessibility scan (axe)
+        run: node tests/test-a11y.mjs
       - name: Print checks (4x6 PDFs, no blank labels)
         run: node tests/check-print.mjs
 
