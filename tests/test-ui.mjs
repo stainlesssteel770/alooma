@@ -399,10 +399,10 @@ try {
   eq((await page.evaluate(() => document.querySelector("#print-area").textContent)).includes("BOXES: A + B + C"), true, "C1+C3: packing sheet prints BOXES: A + B + C");
   await page.click("#btn-check-all");
   await sleep(200);
-  await page.click("#btn-complete");
+  await page.click("#btn-complete-pack");
   await waitDom(() => !document.querySelector("#sheet-backdrop").hidden, "confirm sheet opens");
   eq((await page.$eval("#sheet-summary", e => e.textContent)).includes("Box C"), true, "C1: confirm sheet names the boxes");
-  await page.click("#sheet-confirm");
+  await page.click("#sheet-primary");
   await waitRemote(() => remoteData.inventory.scissors.qty === 241, "CAK-12 pack saved");
   eq(remoteData.inventory.scissors.qty === 241, true, "C1: completing CAK-12 still deducts exactly (scissors 245 -> 241)");
 
