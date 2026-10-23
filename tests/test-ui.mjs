@@ -208,11 +208,15 @@ try {
   await sleep(200);
   eq(await page.$eval("#pack-order", e => e.hidden), false, "Flow: Print reveals the order area (Complete)");
   eq(await page.$eval("#pack-checklist", e => e.hidden), true, "Flow: no checklist under Print");
-  eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Complete CAK-18|false", "A4: printing the sheet unlocks Complete for this order");
+  eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Complete CAK-18 · from sheet|false", "v2 A5: after Print, Complete says 'from sheet'");
   await page.click("#btn-mode-hand");
   await sleep(200);
   eq(await page.$eval("#pack-checklist", e => e.hidden), false, "Flow: checklist appears only under Hand pack");
   await page.click("#btn-check-all");
+  await sleep(150);
+  eq(await page.$eval("#sheet-summary", e => e.textContent), "Mark all 19 packed?", "v2 A5: Check all asks first");
+  eq(await page.$eval("#pack-progress", e => e.textContent), "0 of 19 checked", "v2 A5: nothing is checked until the sheet confirms");
+  await page.click("#sheet-primary");
   await sleep(150);
   eq(await page.$eval("#pack-progress", e => e.textContent), "19 of 19 checked", "check-all progress text");
   eq(await page.$eval("#btn-complete-pack", e => e.disabled), false, "complete enabled after check-all");
@@ -266,6 +270,8 @@ try {
   eq(await page.$eval("#pack-checklist", e => e.hidden), false, "Flow: Hand pack reveals the checklist");
   eq(await page.$$eval("#pack-table tbody tr", els => els.length), 7, "Flow: HCB checklist has its 7 items");
   await page.click("#btn-check-all");
+  await sleep(150);
+  await page.click("#sheet-primary"); /* v2 A5: confirm check-all */
   await sleep(150);
   eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Complete HCB-18|false", "Flow: Complete names the order once all checked");
   await page.click("#btn-complete-pack");
@@ -578,6 +584,8 @@ try {
   await sleep(200);
   await page.click("#btn-check-all");
   await sleep(200);
+  await page.click("#sheet-primary"); /* v2 A5: confirm check-all */
+  await sleep(150);
   await page.click("#btn-complete-pack");
   await waitDom(() => !document.querySelector("#sheet-backdrop").hidden, "confirm sheet opens");
   eq((await page.$eval("#sheet-summary", e => e.textContent)).includes("Box C"), true, "C1: confirm sheet names the boxes");
