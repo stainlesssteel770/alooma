@@ -18,17 +18,20 @@ Live site: https://stainlesssteel770.github.io/alooma/
 
 - **Packing** — pick a craft, type the number of kits (orders are multiples of 6), then
   choose a path: **Print** — print a 4×6 packing sheet for a thermal label printer (with a
-  blank `Order ID` line), pack from the paper or the on-screen pack list (digital
-  checklist), and hit **Complete** to subtract the craft's items from inventory; or
-  **Hand pack** — for orders already packed by hand off a label: queue each craft + kit
+  blank `Order ID` line) and hit **Complete** when the order is packed (printing unlocks
+  it); or **Hand pack** — the on-screen pack list (digital checklist) appears, check items
+  off, then **Complete**. Either way the craft's items come off inventory.
+- **Bulk import** — for orders already packed by hand off a label: queue each craft + kit
   amount and record them all at once (one save; each order still lands in History as its
-  own entry). One craft at a time, one sheet per craft.
+  own entry).
 - **Inventory** — everything starts at 0. Receive stock, fix counts, set a low-stock warning
   level per item (shown when an item is at or below it). Prints a 4×6 current-inventory
   report and a 4×6 count sheet (`Item | Should be | Counted`); counted numbers are typed
   back in via **Enter counted numbers**.
 - **History** — every change with date and amounts; any entry can be edited or undone.
-- **Settings** — GitHub token connect/disconnect, export/import backup.
+- **Settings** — GitHub sign-in or token connect/disconnect, export/import backup.
+  A device that isn't connected is **view-only**: it sees only the Inventory and History
+  tabs (tap the "View only" badge in the header to reach the connect screen).
 
 ## Quantity rules (per 6 kits, from the old site + owner, 2026-10-22)
 
@@ -56,7 +59,7 @@ paper ≠ parchment circle, Clay Tray A ≠ B).
   "Can't reach the stock data" empty state and that Retry recovers (9 checks).
 - `node tests/check-print.mjs` — renders the prints to PDF and verifies the page size is
   exactly 4×6 in and the page count equals the content (no blank labels).
-- `node tests/test-a11y.mjs` — runs axe-core over all four tabs and fails on any
+- `node tests/test-a11y.mjs` — runs axe-core over all five tabs and fails on any
   serious or critical accessibility violation (Batch C: 0 on every tab).
 - `node tests/screenshots.mjs` — captures the main screens at 390px for batch reports.
 
