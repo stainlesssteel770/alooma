@@ -95,6 +95,9 @@ tr.checked-row td { color: var(--muted); }
 tr.checked-row td .row-name { text-decoration: line-through; }
 .short { color: var(--red); font-weight: 800; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.picker-summary { display: flex; align-items: center; gap: 10px; background: #F4F6F3; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 6px 6px 14px; margin: 4px 0 10px; font-size: 16.5px; font-weight: 600; }
+.picker-summary[hidden] { display: none !important; }
+.picker-summary span { flex: 1; }
 .action-bar { display: flex; gap: 8px; margin-top: 10px; }
 .action-bar .btn { min-height: 54px; font-size: 16.5px; }
 .action-bar .btn-primary { flex: 1; }
