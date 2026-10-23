@@ -89,6 +89,13 @@ body.view-only .editor-note { display: block; }
 .progress-text { color: var(--muted); font-size: 14.5px; }
 .list-head .btn-quiet { margin-left: auto; font-size: 15px; }
 .progress-bar { height: 6px; background: var(--line); border-radius: 3px; margin: 4px 0 10px; }
+.progress-line { display: flex; align-items: center; gap: 10px; margin: 2px 0 8px; }
+.progress-line .progress-bar { flex: 1; margin: 0; }
+.list-tools { display: flex; gap: 8px; margin-bottom: 8px; }
+.list-tools .btn { flex: 1; min-height: 44px; white-space: nowrap; }
+#pack-warning { padding: 0 14px; }
+.warn-toggle { display: flex; align-items: center; width: 100%; min-height: 44px; background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: inherit; text-align: left; cursor: pointer; }
+.warn-full { padding-bottom: 10px; }
 .progress-bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width .15s; }
 .data-table { border-collapse: collapse; width: 100%; margin: 6px 0; }
 .data-table th, .data-table td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; font-size: 16.5px; }
