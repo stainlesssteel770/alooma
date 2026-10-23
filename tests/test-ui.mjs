@@ -50,6 +50,8 @@ await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 try {
   const page = await browser.newPage();
+  page.on("console", m => console.log("[page]", m.type(), m.text()));
+  page.on("pageerror", e => console.log("[pageerror]", String(e)));
   await page.setRequestInterception(true);
   const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
   page.on("request", req => {
@@ -121,6 +123,10 @@ try {
   /* Receive: 200 scissors via the new item panel (tap item -> Receive -> qty -> Add) */
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
   await sleep(200);
+  console.log("[probe] inv items:", await page.evaluate(() => document.querySelectorAll(".inv-item").length),
+    "loadFailed:", await page.evaluate(() => document.body.classList.contains("load-failed")),
+    "groups children:", await page.evaluate(() => document.querySelector("#inventory-groups").children.length),
+    "badge:", await page.evaluate(() => document.querySelector("#conn-badge").textContent));
   await page.evaluate(() => {
     document.querySelector('.inv-item[data-item="scissors"] .inv-main').click();
   });
