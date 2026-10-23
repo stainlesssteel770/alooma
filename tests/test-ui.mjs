@@ -306,7 +306,8 @@ try {
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await sleep(200);
   eq(await page.$eval("#pack-picker", e => e.hidden), true, "B1: picking again re-folds the picker");
-  eq(await page.$eval("#btn-print-sheet", e => e.textContent.trim()), "🖨 Print", "B2: print button is one short label");
+  eq(await page.$eval("#btn-print-sheet", e => e.textContent.trim()), "Print", "B2: print button is one short label");
+  eq(await page.$eval("#btn-print-sheet", e => !!e.querySelector("svg")), true, "C4: print button carries the SVG printer icon");
   const barBg = await page.evaluate(() => getComputedStyle(document.querySelector("#tab-pack .action-bar")).backgroundColor);
   eq(barBg, "rgb(255, 255, 255)", "B2: action bar is solid white, not see-through");
   const btnH = await page.$eval("#btn-print-sheet", e => Math.round(e.getBoundingClientRect().height));
@@ -349,37 +350,37 @@ try {
   // Both features OFF (the default): screens look exactly like before Batch C
   await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = ""; s.dispatchEvent(new Event("input", { bubbles: true })); document.querySelector("#btn-filter-all").click(); });
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
-  check("C off: boxes line hidden by default", await page.evaluate(() => document.querySelector("#pack-boxes").hidden));
-  check("C off: no bin labels on pack rows", (await page.evaluate(() => document.querySelectorAll("#pack-table .row-bin").length)) === 0);
-  check("C off: Sort by bin button hidden", await page.evaluate(() => document.querySelector("#btn-pack-sort").hidden));
+  eq(await page.evaluate(() => document.querySelector("#pack-boxes").hidden, true, "C off: boxes line hidden by default");
+  eq((await page.evaluate(() => document.querySelectorAll("#pack-table .row-bin").length)) === , true, "C off: no bin labels on pack rows");
+  eq(await page.evaluate(() => document.querySelector("#btn-pack-sort").hidden, true, "C off: Sort by bin button hidden");
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
-  check("C off: By bin chip hidden", await page.evaluate(() => document.querySelector("#btn-binfilter").hidden));
-  check("C off: no bin labels on inventory rows", (await page.evaluate(() => document.querySelectorAll("#inventory-groups .inv-bin").length)) === 0);
+  eq(await page.evaluate(() => document.querySelector("#btn-binfilter").hidden, true, "C off: By bin chip hidden");
+  eq((await page.evaluate(() => document.querySelectorAll("#inventory-groups .inv-bin").length)) === , true, "C off: no bin labels on inventory rows");
 
   // Boxes ON in Settings + a rule: The Cakery, 12 kits = Box A + Box B
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
   await page.click("#set-boxes-on");
   await waitFor(() => remoteData.settings && remoteData.settings.features.boxes === true);
-  check("C1: boxes toggle saved to the shared data", true);
-  check("C1: boxes editor opens with the toggle", await page.evaluate(() => !document.querySelector("#boxes-editor").hidden));
+  eq(tru, true, "C1: boxes toggle saved to the shared data");
+  eq(await page.evaluate(() => !document.querySelector("#boxes-editor").hidden, true, "C1: boxes editor opens with the toggle");
   await page.select("#rule-craft", "cak");
   await page.select("#rule-kits", "12");
   await page.click('#rule-boxes input[value="A"]');
   await page.click('#rule-boxes input[value="B"]');
   await page.click("#btn-rule-add");
   await waitFor(() => (remoteData.settings.boxRules || []).length === 1);
-  check("C1: rule saved (CAK 12 = A + B)", remoteData.settings.boxRules[0].boxes.join(",") === "A,B");
+  eq(remoteData.settings.boxRules[0].boxes.join(",") === "A,B, true, "C1: rule saved (CAK 12 = A + B)");
 
   // Packing: an exact match shows the boxes; 18 kits (no rule) does not
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
   await waitFor(() => !document.querySelector("#pack-boxes").hidden);
-  check("C1: boxes line shows the rule's boxes", (await txt(page, "#pack-boxes-text")).includes("Box A + Box B"));
+  eq((await txt(page, "#pack-boxes-text")).includes("Box A + Box B", true, "C1: boxes line shows the rule's boxes");
   await page.click("#btn-pack-change");
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await sleep(200);
-  check("C1: no boxes line for 18 kits (no exact rule)", await page.evaluate(() => document.querySelector("#pack-boxes").hidden));
+  eq(await page.evaluate(() => document.querySelector("#pack-boxes").hidden, true, "C1: no boxes line for 18 kits (no exact rule)");
   // Change override for this order only: back to 12, add Box C
   await page.click("#btn-pack-change");
   await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
@@ -387,45 +388,45 @@ try {
   await page.click("#btn-boxes-change");
   await page.evaluate(() => [...document.querySelectorAll("#pack-boxes-chips .kits-chip")].find(x => x.textContent === "C").click());
   await page.click("#btn-boxes-done");
-  check("C1: Change override adds Box C for this order", (await txt(page, "#pack-boxes-text")).includes("Box C"));
+  eq((await txt(page, "#pack-boxes-text")).includes("Box C", true, "C1: Change override adds Box C for this order");
   await page.evaluate(() => document.querySelector("#btn-print-sheet").click());
   await sleep(250);
-  check("C1+C3: packing sheet prints BOXES: A + B + C", (await page.evaluate(() => document.querySelector("#print-area").textContent)).includes("BOXES: A + B + C"));
+  eq((await page.evaluate(() => document.querySelector("#print-area").textContent)).includes("BOXES: A + B + C", true, "C1+C3: packing sheet prints BOXES: A + B + C");
   await page.click("#btn-check-all");
   await sleep(200);
   await page.click("#btn-complete");
   await waitFor(() => !document.querySelector("#sheet-backdrop").hidden);
-  check("C1: confirm sheet names the boxes", (await txt(page, "#sheet-summary")).includes("Box C"));
+  eq((await txt(page, "#sheet-summary")).includes("Box C", true, "C1: confirm sheet names the boxes");
   await page.click("#sheet-confirm");
   await waitFor(() => remoteData.inventory.scissors.qty === 241);
-  check("C1: completing CAK-12 still deducts exactly (scissors 245 -> 241)", true);
+  eq(tru, true, "C1: completing CAK-12 still deducts exactly (scissors 245 -> 241)");
 
   // Bins ON: placeholders, a custom bin via the item panel, and the sort
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
   await page.click("#set-bins-on");
   await waitFor(() => remoteData.settings && remoteData.settings.features.bins === true);
-  check("C2: bins toggle saved to the shared data", true);
+  eq(tru, true, "C2: bins toggle saved to the shared data");
   await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
-  check("C2: By bin chip appears with the feature", await page.evaluate(() => !document.querySelector("#btn-binfilter").hidden));
-  check("C2: inventory rows show placeholder bins", (await page.evaluate(() => document.querySelectorAll("#inventory-groups .inv-bin").length)) >= 60);
+  eq(await page.evaluate(() => !document.querySelector("#btn-binfilter").hidden, true, "C2: By bin chip appears with the feature");
+  eq((await page.evaluate(() => document.querySelectorAll("#inventory-groups .inv-bin").length)) >= 6, true, "C2: inventory rows show placeholder bins");
   await page.evaluate(() => invRow(page, "scissors").querySelector(".inv-main").click());
   await sleep(300);
-  check("C2: item panel gains a Bin mode", await page.evaluate(() => [...document.querySelectorAll(".inv-panel .seg button")].map(b => b.textContent).includes("Bin")));
+  eq(await page.evaluate(() => [...document.querySelectorAll(".inv-panel .seg button")].map(b => b.textContent).includes("Bin"), true, "C2: item panel gains a Bin mode");
   await page.evaluate(() => [...document.querySelectorAll(".inv-panel .seg button")].find(b => b.textContent === "Bin").click());
   await page.type(".inv-panel-input", "BIN-99");
   await page.click(".inv-panel-go");
   await waitFor(() => remoteData.settings.bins && remoteData.settings.bins.scissors === "BIN-99");
-  check("C2: custom bin saved to the shared data", true);
+  eq(tru, true, "C2: custom bin saved to the shared data");
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await page.click("#btn-pack-change");
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await sleep(300);
-  check("C2: pack list shows the custom bin for Scissors", (await page.evaluate(() => document.querySelector("#pack-table").textContent)).includes("BIN-99"));
-  check("C2: Sort by bin button appears with the feature", await page.evaluate(() => !document.querySelector("#btn-pack-sort").hidden));
+  eq((await page.evaluate(() => document.querySelector("#pack-table").textContent)).includes("BIN-99", true, "C2: pack list shows the custom bin for Scissors");
+  eq(await page.evaluate(() => !document.querySelector("#btn-pack-sort").hidden, true, "C2: Sort by bin button appears with the feature");
   await page.click("#btn-pack-sort");
   await sleep(200);
   const binOrder = await page.evaluate(() => [...document.querySelectorAll("#pack-table tbody tr .row-bin")].map(e => e.textContent));
-  check("C2: pack list sorts by bin (BIN-99 last)", binOrder.length === 19 && binOrder.every((b, i) => i === 0 || binOrder[i - 1] <= b) && binOrder[18] === "BIN-99");
+  eq(binOrder.length === 19 && binOrder.every((b, i) => i === 0 || binOrder[i - 1] <= b) && binOrder[18] === "BIN-99, true, "C2: pack list sorts by bin (BIN-99 last)");
 
   // Both features back OFF: today's screens again
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
@@ -434,8 +435,8 @@ try {
   await waitFor(() => remoteData.settings.features.bins === false && remoteData.settings.features.boxes === false);
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(300);
-  check("C off again: boxes line hidden", await page.evaluate(() => document.querySelector("#pack-boxes").hidden));
-  check("C off again: no bin labels on pack rows", (await page.evaluate(() => document.querySelectorAll("#pack-table .row-bin").length)) === 0);
+  eq(await page.evaluate(() => document.querySelector("#pack-boxes").hidden, true, "C off again: boxes line hidden");
+  eq((await page.evaluate(() => document.querySelectorAll("#pack-table .row-bin").length)) === , true, "C off again: no bin labels on pack rows");
 
   /* Disconnect: back to view-only, token gone from this device */
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
