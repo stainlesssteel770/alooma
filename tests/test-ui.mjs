@@ -273,6 +273,20 @@ try {
 
   /* Batch B: picker folds (B1), solid action bar (B2), inventory filters + print menu (B3), receive delivery (B4) */
   await page.setViewport({ width: 390, height: 844 });
+  /* Stock up first (via the B4 delivery form) so the pack list shows no shortage warning:
+     the B1 measurement is the normal stocked case the spec targets (~300px). */
+  await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
+  await sleep(250);
+  await page.click("#btn-delivery");
+  await sleep(250);
+  await page.evaluate(() => {
+    document.querySelectorAll('#delivery-entry-list input[data-item]').forEach(inp => {
+      const id = inp.getAttribute("data-item");
+      if (id !== "scissors" && id !== "wood-board") inp.value = "999";
+    });
+  });
+  await page.click("#btn-apply-delivery");
+  await sleep(700);
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
   eq(await page.$eval("#pack-picker-summary", e => e.hidden), false, "B1: picker folded into summary line after choosing");
@@ -285,7 +299,7 @@ try {
     return [t("#tab-pack"), t("#pack-picker-summary"), t("#pack-picker"), t("#pack-warning"), t(".list-head"), t("#pack-table thead"), t(".app-header"), t("main")].join(" | ");
   });
   console.log("B1 diag:", diagTops);
-  eq(firstRowTop < 460, true, "B1: first pack row near the top (was ~857px before B1)");
+  eq(firstRowTop < 420, true, "B1: first pack row near the top (was ~857px before B1)");
   await page.click("#btn-pack-change");
   await sleep(200);
   eq(await page.$eval("#pack-picker", e => e.hidden), false, "B1: Change reopens the picker");
