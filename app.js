@@ -1730,6 +1730,15 @@
         $("btn-print-menu").setAttribute("aria-expanded", "false");
       }
     });
+    /* Desktop brief item 1: Esc closes the topmost layer (sheet, then menu) */
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Escape") return;
+      if (!$("sheet-backdrop").hidden) { dismissSheet(); return; }
+      if (!$("print-menu").hidden) {
+        $("print-menu").hidden = true;
+        $("btn-print-menu").setAttribute("aria-expanded", "false");
+      }
+    });
     $("sheet-primary").addEventListener("click", function () {
       var cb = sheetCb;
       if (!cb) { closeSheet(); return; }
