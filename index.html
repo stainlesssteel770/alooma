@@ -181,6 +181,18 @@
         <button id="btn-cancel-delivery" class="btn">Cancel</button>
       </div>
     </div>
+    <div class="btn-row editor-only">
+      <button id="btn-reorder" class="btn" disabled>Reorder · 0</button>
+    </div>
+    <div id="reorder-panel" class="count-entry" hidden>
+      <h3>Reorder list</h3>
+      <p class="hint">Everything at or under its low-stock warning level. The order quantity starts at 2 × warning level − on hand — change any number before printing.</p>
+      <div id="reorder-list"></div>
+      <div class="btn-row">
+        <button id="btn-print-reorder" class="btn btn-primary">Print reorder list</button>
+        <button id="btn-close-reorder" class="btn">Close</button>
+      </div>
+    </div>
     <div id="inventory-groups"></div>
   </section>
 
@@ -284,6 +296,8 @@
           <input type="file" id="import-file" accept="application/json,.json" hidden>
         </label>
       </div>
+      <p class="hint" id="last-backup" style="margin-top:8px">Last backup (this device): never</p>
+      <p class="hint" id="backup-stale" hidden>It's been over a week since the last backup from this device — worth exporting one now.</p>
     </div>
 
     <div class="card">
