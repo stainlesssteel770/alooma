@@ -77,7 +77,7 @@ try {
   await sleep(800);
   eq(await page.$eval("#load-failed", e => e.hidden), true, "A6: empty state gone after Retry");
   eq(await page.$$eval("#pack-crafts .craft-btn", els => els.length), 6, "A6: crafts render after Retry");
-  eq(await page.$eval("#save-status", e => e.textContent), "Loaded · just now", "A6: header freshness after load");
+  eq(await page.$eval("#save-status", e => e.textContent), "Loaded · now", "A6: header freshness after load (v3 D7 short form)");
 
   console.log(pass + " passed, " + fail + " failed");
 } finally {
