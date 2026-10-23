@@ -35,7 +35,7 @@ try {
   await page.setViewport({ width: 390, height: 780 });
   await page.goto("http://127.0.0.1:8911/index.html", { waitUntil: "networkidle0", timeout: 30000 });
   await sleep(400);
-  for (const tab of ["pack", "inventory", "history", "settings"]) {
+  for (const tab of ["pack", "bulk", "inventory", "history", "settings"]) {
     await page.evaluate(t => document.querySelector('[data-tab="' + t + '"]').click(), tab);
     await sleep(300);
     await page.evaluate(axeSrc);
