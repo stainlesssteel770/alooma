@@ -1718,7 +1718,26 @@
       var open = menu.hidden;
       menu.hidden = !open;
       $("btn-print-menu").setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) positionPrintMenu();
     });
+    /* The menu is position:fixed, placed from the button's rect at open
+       time. It used to be absolute inside the chip row — but that row
+       scrolls (overflow-x: auto makes overflow-y clip too), so for
+       view-only devices, where the button lives in the chip row, the
+       open menu was clipped to a sliver of the row and never showed.
+       Fixed positioning escapes any clipping ancestor, for both roles. */
+    function positionPrintMenu() {
+      var btn = $("btn-print-menu").getBoundingClientRect();
+      var menu = $("print-menu");
+      menu.style.top = (btn.bottom + 6) + "px";
+      menu.style.right = Math.max(8, window.innerWidth - btn.right) + "px";
+    }
+    window.addEventListener("resize", function () {
+      if (!$("print-menu").hidden) { $("print-menu").hidden = true; $("btn-print-menu").setAttribute("aria-expanded", "false"); }
+    });
+    window.addEventListener("scroll", function () {
+      if (!$("print-menu").hidden) { $("print-menu").hidden = true; $("btn-print-menu").setAttribute("aria-expanded", "false"); }
+    }, true);
     $("print-menu").addEventListener("click", function () {
       $("print-menu").hidden = true;
       $("btn-print-menu").setAttribute("aria-expanded", "false");
@@ -1739,6 +1758,17 @@
         $("btn-print-menu").setAttribute("aria-expanded", "false");
       }
     });
+    /* An action toast's UNDO button is clickable, so it can sit on top of
+       another control and swallow its click (at 800x600 it landed on the
+       Bulk Record button and the batch sheet never opened). A press
+       anywhere outside the toast dismisses it first, so the press reaches
+       the control it was aimed at. Plain toasts have no button and never
+       block, so they are left alone; Undo also lives on every History
+       entry, so dismissing the toast loses nothing. */
+    document.addEventListener("pointerdown", function (ev) {
+      var t = $("toast");
+      if (t && !t.hidden && t.querySelector("button") && !t.contains(ev.target)) t.hidden = true;
+    }, true);
     $("sheet-primary").addEventListener("click", function () {
       var cb = sheetCb;
       if (!cb) { closeSheet(); return; }
