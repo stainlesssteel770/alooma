@@ -337,13 +337,6 @@ try {
     await tab("inventory");
     await page.click("#btn-print-menu");
     await sleep(250);
-    console.log("MENU DIAG", vw2, JSON.stringify(await page.evaluate(() => {
-      const m = document.querySelector("#print-menu");
-      const b = document.querySelector("#btn-print-menu");
-      const r = b.getBoundingClientRect();
-      const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      return { hidden: m.hidden, btnAt: [Math.round(r.left), Math.round(r.top)], btnHit: el ? (el.id || String(el.className)) : "none", wrapParent: (b.closest(".print-menu-wrap") || {}).parentElement ? b.closest(".print-menu-wrap").parentElement.className : "?", menuStyle: m.getAttribute("style") };
-    })));
     const hit = await page.evaluate(() => {
       const menu = document.querySelector("#print-menu");
       if (menu.hidden) return { open: false, items: 0, hits: [] };
