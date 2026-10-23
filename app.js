@@ -607,7 +607,7 @@
       items.forEach(function (itemId) {
         var rec = state.data.inventory[itemId];
         var badge = "";
-        if (rec.qty === 0 && rec.threshold !== null && rec.threshold !== undefined) badge = '<span class="low-badge out-badge">Out of stock</span>';
+        if (rec.qty === 0) badge = '<span class="low-badge out-badge">Out of stock</span>';
         else if (isLow(itemId)) badge = '<span class="low-badge">Low · ≤' + rec.threshold + "</span>";
         html +=
           '<div class="inv-item" data-item="' + itemId + '">' +
@@ -1057,7 +1057,7 @@
     var status = $("settings-conn-status");
     var badge = $("conn-badge");
     if (state.editor) {
-      badge.textContent = "Editor — " + (state.editor.login ? "@" + state.editor.login : "connected");
+      badge.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg> Editor';
       badge.className = "badge badge-editor";
       document.body.classList.remove("view-only");
       status.innerHTML = "This device is connected as editor" +
