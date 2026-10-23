@@ -714,6 +714,9 @@ try {
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
   await sleep(150);
   await page.click("#btn-disconnect");
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Disconnect this device?", "v2 A6: disconnect uses the in-app sheet, not a pop-up");
+  await page.click("#sheet-primary");
   await sleep(600);
   eq(await page.$eval("#conn-badge", e => e.textContent.trim()), "View only", "disconnect returns to view-only");
   eq(await page.$eval('[data-tab="pack"]', e => e.hidden), true, "View-only: Packing tab hidden again after disconnect");
