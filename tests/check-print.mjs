@@ -104,19 +104,22 @@ try {
   await sleep(300);
   const pack = await page.evaluate(() => {
     const pa = document.querySelector("#print-area");
-    const heatRow = [...pa.querySelectorAll("tbody tr")].find(tr => tr.textContent.includes("Heat gun"));
     return {
       rows: pa.querySelectorAll("tbody tr").length,
       ticks: pa.querySelectorAll(".tick-box").length,
       text: pa.textContent,
-      heat: heatRow ? [...heatRow.querySelectorAll("td")].map(td => td.textContent.trim()) : null
+      rowCells: [...pa.querySelectorAll("tbody tr")].map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent.trim()))
     };
   });
   ok(pack.rows === 19 && pack.ticks === 19, "pack sheet CAK-36: 19 rows, 19 tick boxes");
   ok(pack.text.includes("Total kits: 36") && pack.text.includes("Order ID:"), "pack sheet: subtitle is 'Total kits: 36   Order ID: ___'");
   ok(pack.text.includes("Per 6") && pack.text.includes("Total"), "pack sheet: Per 6 + Total columns");
   ok(!pack.text.includes("SKU"), "pack sheet: no SKU line (mockup)");
-  ok(pack.heat && pack.heat[pack.heat.length - 2] === "1" && pack.heat[pack.heat.length - 1] === "2", "pack sheet: Heat Gun Per 6 = 1, Total = 2 at 36 kits (tier rule)");
+  const cakCraft = Object.values(L.CRAFTS).find(c => c.name === "The Cakery");
+  const expectCells = {};
+  cakCraft.items.forEach(ln => { expectCells[L.ITEMS[ln.item]] = [String(L.lineQty(ln, 6)), String(L.lineQty(ln, 36))]; });
+  ok(pack.rowCells.every(cells => { const e = expectCells[cells[1]]; return e && cells[cells.length - 2] === e[0] && cells[cells.length - 1] === e[1]; }),
+     "pack sheet: every row's Per 6 and Total match the recipe (Scissors 2/12, Printed Posters 1/6, boxes 6/36)");
   await page.pdf({ path: "/tmp/alooma-packsheet.pdf", preferCSSPageSize: true, printBackground: true });
   const packTexts = await pageTexts("/tmp/alooma-packsheet.pdf");
   ok(packTexts.length >= 2, "pack sheet CAK-36: big rows spill to a 2nd page rather than shrinking (" + packTexts.length + " pages)");
