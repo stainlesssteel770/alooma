@@ -83,6 +83,7 @@
       <div class="list-head">
         <h3>Pack list</h3>
         <span id="pack-progress" class="progress-text"></span>
+        <button type="button" id="btn-pack-sort" class="btn btn-quiet" hidden>Sort by bin</button>
         <button type="button" id="btn-check-all" class="btn btn-quiet">Check all</button>
       </div>
       <div class="progress-bar" aria-hidden="true"><i id="pack-progress-fill"></i></div>
@@ -141,6 +142,7 @@
       <button type="button" id="btn-filter-all" class="btn chip-btn" aria-pressed="true">All · <span id="all-count">0</span></button>
       <button type="button" id="btn-lowfilter" class="btn chip-btn" aria-pressed="false">Low · <span id="low-count">0</span></button>
       <button type="button" id="btn-outfilter" class="btn chip-btn" aria-pressed="false">Out · <span id="out-count">0</span></button>
+      <button type="button" id="btn-binfilter" class="btn chip-btn" aria-pressed="false" hidden>By bin</button>
     </div>
     <div class="btn-row inv-actions">
       <button id="btn-delivery" class="btn btn-primary editor-only"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 13.5L5.8 5h12.4l2.3 8.5V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19v-5.5z"/><path d="M3.5 13.5H9l1.2 2.2h3.6L15 13.5h5.5"/></svg>Receive delivery</button>
@@ -236,6 +238,12 @@
           <button type="button" id="btn-rule-add" class="btn">Add rule</button>
         </div>
       </div>
+    </div>
+
+    <div class="card">
+      <h3>Bin locations</h3>
+      <p class="hint">Each item's shelf bin — shown on the pack list, the packing sheet and the count sheet, and used by the "By bin" sort. Off by default. To set one: Inventory → tap the item → Bin.</p>
+      <label class="toggle-row editor-only"><input type="checkbox" id="set-bins-on"> Show bin locations</label>
     </div>
 
     <div class="card">
