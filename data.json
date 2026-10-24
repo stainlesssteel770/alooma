@@ -253,23 +253,14 @@
   "history": [],
   "settings": {
     "features": {
-      "boxes": true,
+      "boxes": false,
       "bins": false
     },
-    "boxes": {
-      "A": {
-        "name": "Box A",
-        "size": ""
-      },
-      "B": {
-        "name": "Box B",
-        "size": ""
-      },
-      "C": {
-        "name": "Box C",
-        "size": ""
-      }
-    },
+    "boxes": [
+      "Box A",
+      "Box B",
+      "Box C"
+    ],
     "boxRules": [],
     "bins": {}
   }
