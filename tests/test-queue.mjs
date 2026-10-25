@@ -364,7 +364,10 @@ try {
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Tambourines")).click());
   await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="12"]').click(); });
   await sleep(200);
-  await page.click("#btn-queue-add");
+  /* After Done we are back in single mode, where Add lives in the
+     hidden queue row — run 3 threw clicking it there. Queue both
+     adds this pick as line 2 and re-enters queue mode. */
+  await page.click("#btn-pack-queue");
   await sleep(300);
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 2, "item1-walk: two lines queued");
   await page.click("#btn-queue-hand");
