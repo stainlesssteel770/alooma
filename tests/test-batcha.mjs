@@ -94,14 +94,19 @@ try {
     await sleep(250);
   }
   /* Rects of the Bulk form/list vs the visible parts of the sticky bar and
-     the fixed bottom nav. Returns an array of overlap descriptions. */
-  async function bulkOverlaps() {
-    return page.evaluate(() => {
+     (optionally) the fixed bottom nav. Returns an array of overlap
+     descriptions. At top scroll the nav is NOT checked: a fixed nav
+     covers the viewport bottom on every page, so a list tailing past it
+     is normal — the brief's check is "none sits under the BAR", and the
+     bottom-scroll check (nav included) proves every line clears the nav
+     once scrolled there, which the padding guarantees. */
+  async function bulkOverlaps(withNav = true) {
+    return page.evaluate((withNav) => {
       const vp = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
       const rect = el => { if (!el) return null; const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
       const inter = (a, b) => { if (!a || !b) return null; const x = { left: Math.max(a.left, b.left), top: Math.max(a.top, b.top), right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom) }; return (x.right - x.left > 1 && x.bottom - x.top > 1) ? x : null; };
       const bar = inter(rect(document.querySelector("#tab-bulk .action-bar")), vp);
-      const nav = inter(rect(document.querySelector("#tabs")), vp);
+      const nav = withNav ? inter(rect(document.querySelector("#tabs")), vp) : null;
       const out = [];
       ["#bulk-crafts", "#bulk-lines", "#tab-bulk .clear-row"].forEach(sel => {
         const r = rect(document.querySelector(sel));
@@ -110,7 +115,7 @@ try {
         if (nav && inter(r, nav)) out.push(sel + " under bottom nav");
       });
       return out;
-    });
+    }, withNav);
   }
   async function scrollTop() { await page.evaluate(() => window.scrollTo(0, 0)); await sleep(200); }
   async function scrollBottom() { await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await sleep(200); }
@@ -132,12 +137,12 @@ try {
   /* ---- 1. Bulk form/list never under the sticky bar or bottom nav ---- */
   await tab("bulk");
   await scrollTop();
-  eq(await bulkOverlaps(), [], "1: top scroll, empty list — nothing under bar/nav");
+  eq(await bulkOverlaps(false), [], "1: top scroll, empty list — nothing under the sticky bar");
   await scrollBottom();
   eq(await bulkOverlaps(), [], "1: bottom scroll, empty list — nothing under bar/nav");
   await bulkAdd("Blooming Mirrors", 6);
   await scrollTop();
-  eq(await bulkOverlaps(), [], "1: top scroll, 1 line — nothing under bar/nav");
+  eq(await bulkOverlaps(false), [], "1: top scroll, 1 line — nothing under the sticky bar");
   await scrollBottom();
   eq(await bulkOverlaps(), [], "1: bottom scroll, 1 line — nothing under bar/nav");
 
@@ -187,9 +192,11 @@ try {
   await sleep(200);
   await page.click("#btn-check-all");
   await sleep(200);
+  await page.click("#sheet-primary"); /* "Mark all" confirm */
+  await sleep(200);
   await page.click("#btn-complete-pack");
   await sleep(300);
-  await page.click("#sheet-primary");
+  await page.click("#sheet-primary"); /* "Subtract from inventory" confirm */
   await sleep(300);
   const packToastOk = await page.evaluate(() => {
     const t = document.querySelector("#toast");
