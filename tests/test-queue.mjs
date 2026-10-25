@@ -303,6 +303,24 @@ try {
   eq(await rowVisible("pack-single-actions"), false, "item1: single row hides in Queue mode");
   eq(await page.$eval("#pack-queue-count", e => e.textContent), "1", "item1: queue holds the picked line");
   await page.screenshot({ path: path.join(SHOT, "queue-row-queuemode.jpg"), type: "jpeg", quality: 74 });
+  /* Run 1 failed here only: at 390x664 Done sits low enough that the
+     fixed phone tab bar (bottom, z-50) can cover its center, so the tap
+     hit the tab bar instead — same interception family as the toast
+     lesson. Probe the geometry (Node-side log, since page console is
+     not forwarded), then scroll Done to center — a real tap, the same
+     pattern as the test-ui stale-coordinate fix — before clicking. */
+  const doneDiag = await page.evaluate(() => {
+    var b = document.getElementById("btn-queue-done");
+    var r = b.getBoundingClientRect();
+    var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    var top = document.elementFromPoint(cx, cy);
+    var tabs = document.getElementById("tabs");
+    var tr = tabs ? tabs.getBoundingClientRect() : null;
+    return { doneTop: Math.round(r.top), doneBottom: Math.round(r.bottom), doneCenterY: Math.round(cy), topEl: top ? (top.id || top.className || top.tagName) : null, tabsTop: tr ? Math.round(tr.top) : null, hidden: document.getElementById("pack-queue-actions").hidden };
+  });
+  console.log("ITEM1-DIAG before Done click: " + JSON.stringify(doneDiag));
+  await page.evaluate(() => { document.getElementById("btn-queue-done").scrollIntoView({ block: "center" }); });
+  await sleep(150);
   await page.click("#btn-queue-done");
   await sleep(300);
   eq(await rowVisible("pack-queue-actions"), false, "item1: Done hides the queue row again");
