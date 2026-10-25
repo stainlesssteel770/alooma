@@ -155,6 +155,15 @@ try {
   await sleep(150);
   await page.evaluate(() => { const i = document.querySelector("#pack-kits"); i.focus(); i.value = "120"; i.dispatchEvent(new Event("input", { bubbles: true })); });
   await sleep(200);
+  /* Batch C item 12: typing above 96 kits asks first — the confirm is
+     guarded so the suite fails red (not crashes) on old code, where no
+     sheet opens. */
+  const largeOpen7 = await page.evaluate(() => {
+    const bd = document.querySelector("#sheet-backdrop");
+    return bd && !bd.hidden && document.querySelector("#sheet-title").textContent.includes("Large order");
+  });
+  eq(largeOpen7, true, "7: typing 120 opens the large-order confirm");
+  if (largeOpen7) { await page.click("#sheet-primary"); await sleep(200); }
   eq(await page.$eval("#pack-kits", e => e.value), "120", "7: manual box types 120 (no collapse at 12)");
   await page.evaluate(() => document.querySelector("#pack-kits-chips").click());
   await sleep(150);
@@ -303,8 +312,11 @@ try {
   eq(remote.history.length, 1, "10: the undone entry stays in History");
   eq(remote.history[0].undone, true, "10: the undone entry is marked undone");
   /* Finish the walk, then undo its last entry from History: the line
-     comes back and the walk steps back to it, on the Pack tab. */
+     comes back and the walk steps back to it, on the Pack tab. The loop
+     guards on lines remaining so it can't crash on old code (where the
+     toast undo above doesn't restore the line, leaving fewer to finish). */
   for (let c = 0; c < 4; c++) {
+    if (!(await page.$$eval("#pack-queue .queue-line", els => els.length))) break;
     await page.click("#btn-check-all");
     await sleep(200);
     await page.click("#sheet-primary"); /* Mark all */
@@ -325,6 +337,42 @@ try {
   eq(await page.$eval("#tab-pack", e => e.classList.contains("active")), true, "10: History undo steps back to the Pack tab");
   eq(await txt("#pack-queue-progress"), "Craft 1 of 1", "10: restored walk is Craft 1 of 1");
   eq(await txt("#pack-sku"), "BM-6", "10: restored line is the last BM-6");
+
+  /* ---- 12: manual kits validation on the Pack manual box ---- */
+  /* Leave the restored walk first (Done is only clickable while walking;
+     the guard keeps this crash-free on old code, where the walk above
+     never restored and Done is hidden). */
+  if (await vis("#btn-queue-done")) {
+    await page.evaluate(() => document.querySelector("#btn-queue-done").scrollIntoView({ block: "center" }));
+    await sleep(200);
+    await page.click("#btn-queue-done");
+    await sleep(300);
+  }
+  await packCraft("Blooming Mirrors");
+  await page.evaluate(() => document.querySelector("#pack-kits-plus").click());
+  await sleep(150);
+  async function typePackKits(v) {
+    await page.evaluate(x => { const i = document.querySelector("#pack-kits"); i.focus(); i.value = x; i.dispatchEvent(new Event("input", { bubbles: true })); }, v);
+    await sleep(250);
+  }
+  async function sheetIsOpen() { return page.$eval("#sheet-backdrop", e => !e.hidden); }
+  await typePackKits("6.5");
+  eq(await txt("#pack-error"), "Kits must be a whole number — decimals aren't allowed.", "12: decimals rejected, not silently treated as 6");
+  eq(await vis("#pack-single-actions"), false, "12: no action buttons for a decimal kits value");
+  await typePackKits("0");
+  eq(await txt("#pack-error"), "Kits must be at least 6.", "12: zero rejected with 'must be at least 6'");
+  eq(await vis("#pack-single-actions"), false, "12: no action buttons for zero kits");
+  await typePackKits("150");
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: kits above 96 ask first");
+  eq(await page.$eval("#sheet-summary", e => e.textContent.includes("150 kits")), true, "12: large-order sheet names the amount");
+  if (await sheetIsOpen()) { await page.click("#sheet-cancel"); await sleep(250); }
+  eq(await page.$eval("#pack-kits", e => e.value), "0", "12: Go back reverts to the previous value");
+  await typePackKits("150");
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: retyping asks again after Go back");
+  if (await sheetIsOpen()) { await page.click("#sheet-primary"); await sleep(250); }
+  eq(await page.$eval("#pack-kits", e => e.value), "150", "12: confirming keeps the large value");
+  eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "12: confirming closes the sheet");
+  eq(await vis("#pack-single-actions"), true, "12: action buttons appear for a confirmed large order");
 
   console.log("REDESIGN TESTS: " + passes + " passed, " + failures + " failed");
   process.exit(failures ? 1 : 0);
