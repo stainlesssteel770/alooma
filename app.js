@@ -703,6 +703,9 @@
     $("btn-queue-add").hidden = walking;
     $("btn-queue-print").hidden = walking;
     $("btn-queue-hand").hidden = walking;
+    /* Item 1 fold-in: the pinned queue row unpins during a walk so it
+       never covers the sticky Complete bar (same bottom band). */
+    $("pack-queue-actions").classList.toggle("walking", walking);
     $("pack-queue-progress").textContent = walking
       ? "Craft " + (queueHandTotal - packQueue.length + 1) + " of " + queueHandTotal : "";
   }
