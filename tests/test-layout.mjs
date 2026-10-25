@@ -189,9 +189,7 @@ try {
     await clickEl('.kits-chip[data-for="pack"][data-kits="12"]');
     await sleep(250);
     await check(width + " pack: CAK-12 chosen, no path yet");
-    await clickEl("#btn-print-sheet"); await sleep(250);
-    await check(width + " pack: print path (boxes line + Complete)");
-    await clickEl("#btn-mode-hand"); await sleep(250);
+    await clickEl("#btn-pack-hand"); await sleep(250);
     await check(width + " pack: hand path checklist");
     if (width === 390) {
       /* v2 B1: with the checklist scrolled into work position, at least 5
@@ -205,6 +203,13 @@ try {
       console.log("v2 B1 visible rows at 390x844:", visRows);
       ok(visRows >= 5, "v2 B1: at least 5 pack rows visible at 390x844 (saw " + visRows + ")");
     }
+    /* A4: Print completes the order (and clears the pick) — it runs last
+       here so the checklist measurements above see the live order. A short
+       order asks "Print anyway" first. */
+    await clickEl("#btn-pack-print"); await sleep(250);
+    const printSheetOpen = await page.$eval("#sheet-backdrop", e => !e.hidden).catch(() => false);
+    if (printSheetOpen) { await clickEl("#sheet-primary"); await sleep(250); }
+    await check(width + " pack: print path (sheet printed + order completed)");
     await clickEl("#btn-check-all"); await sleep(200);
     await clickEl("#sheet-primary"); await sleep(200); /* v2 A5: confirm the check-all */
     await clickEl("#btn-complete-pack"); await sleep(300);
