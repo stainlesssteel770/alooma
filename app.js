@@ -154,7 +154,7 @@
     if (head) head.style.display = headVisible ? "" : "none";
   }
   /* ---------- in-app confirm sheet (no window.confirm / window.prompt) ---------- */
-  var sheetCb = null, sheetCancelCb = null;
+  var sheetCb = null, sheetCancelCb = null, sheetSticky = false;
   function openSheet(opts) {
     $("sheet-title").textContent = opts.title || "";
     $("sheet-sub").textContent = opts.sub || "";
@@ -181,9 +181,10 @@
     } else { wrap.hidden = true; }
     sheetCb = opts.onConfirm;
     sheetCancelCb = opts.onCancel || null;
+    sheetSticky = !!opts.stickyBackdrop;
     $("sheet-backdrop").hidden = false;
   }
-  function closeSheet() { $("sheet-backdrop").hidden = true; sheetCb = null; sheetCancelCb = null; editSheetOriginal = null; }
+  function closeSheet() { $("sheet-backdrop").hidden = true; sheetCb = null; sheetCancelCb = null; sheetSticky = false; editSheetOriginal = null; }
   function dismissSheet() { var cb = sheetCancelCb; closeSheet(); if (cb) cb(); }
   function packSummary(pack) {
     var shorts = [];
@@ -2678,27 +2679,67 @@
       b.addEventListener("click", function () { requestTab(b.getAttribute("data-tab")); });
     });
     $("conn-badge").addEventListener("click", function () { if (!state.editor) requestTab("settings"); });
-    /* Batch C item 12: a manually typed order above 96 kits asks first.
-       prev is the focus-time value, so Go back restores what was there
-       before this typing run; confirming remembers the amount so
-       retyping the same amount doesn't ask again. */
+    /* Item 5: large orders ask on blur/submit, never per keystroke
+       (threshold 240, was 96). The blur-vs-tap race: tapping an action
+       button blurs the field (the sheet opens) and the tap's click then
+       lands on the sheet backdrop, dismissing it as cancel. So the
+       large sheet is sticky (backdrop taps cannot dismiss it) and every
+       action that submits the kits field gates on it too. Stepper taps
+       set a flag (mousedown + touchstart both fire before blur) so
+       stepper moves never trigger the confirm; the submit gate still
+       catches a stepper-set large value. Go back restores the
+       focus-time value; confirming remembers the amount so retyping
+       the same amount doesn't ask again. */
+    var blurFromStepper = false;
+    ["pack-minus", "pack-plus", "bulk-minus", "bulk-plus"].forEach(function (id) {
+      var b = $(id);
+      if (!b) return;
+      b.addEventListener("mousedown", function () { blurFromStepper = true; });
+      b.addEventListener("touchstart", function () { blurFromStepper = true; });
+    });
+    function largeNeedsCheck(which) {
+      var raw = which === "pack" ? $("pack-kits").value : $("bulk-kits").value;
+      var n = strictKits(raw);
+      var confirmed = which === "pack" ? packLargeConfirmed : bulkLargeConfirmed;
+      if (!Number.isInteger(n) || n <= 240 || n === confirmed) return null;
+      return { n: n, raw: raw, prev: which === "pack" ? packPrevKits : bulkPrevKits };
+    }
+    function openLargeConfirm(which, chk, onYes) {
+      var isPack = which === "pack";
+      openSheet({
+        title: "Large order",
+        summary: chk.n + " kits is unusually large — is that the right amount?",
+        primary: "Yes, use " + chk.n + " kits",
+        cancelLabel: "Go back",
+        stickyBackdrop: true,
+        onConfirm: function () {
+          if (isPack) { packLargeConfirmed = chk.n; packPrevKits = chk.raw; renderPack(); }
+          else { bulkLargeConfirmed = chk.n; bulkPrevKits = chk.raw; renderBulk(); }
+          if (onYes) onYes();
+        },
+        onCancel: function () {
+          if (isPack) { $("pack-kits").value = chk.prev; packPrevKits = chk.prev; renderPack(); }
+          else { $("bulk-kits").value = chk.prev; bulkPrevKits = chk.prev; renderBulk(); }
+        }
+      });
+    }
+    function gateLarge(which, proceed) {
+      var chk = largeNeedsCheck(which);
+      if (!chk) { proceed(); return; }
+      openLargeConfirm(which, chk, proceed);
+    }
+    function blurLarge(which) {
+      if (blurFromStepper) { blurFromStepper = false; return; }
+      var chk = largeNeedsCheck(which);
+      if (chk) openLargeConfirm(which, chk, null);
+    }
     $("pack-kits").addEventListener("focus", function () { packPrevKits = $("pack-kits").value; });
     $("pack-kits").addEventListener("input", function () {
       if (queueHandIdx >= 0) endQueueWalk();
       packKitsTouched = true;
-      var raw = $("pack-kits").value, prev = packPrevKits, n = strictKits(raw);
-      if (Number.isInteger(n) && n > 96 && n !== packLargeConfirmed) {
-        openSheet({
-          title: "Large order",
-          summary: n + " kits is unusually large — is that the right amount?",
-          primary: "Yes, use " + n + " kits",
-          cancelLabel: "Go back",
-          onConfirm: function () { packLargeConfirmed = n; packPrevKits = raw; renderPack(); },
-          onCancel: function () { $("pack-kits").value = prev; packPrevKits = prev; renderPack(); }
-        });
-      }
       renderPack();
     });
+    $("pack-kits").addEventListener("blur", function () { blurLarge("pack"); });
     function wireStepper(inputId, minusId, plusId, renderFn) {
       $(minusId).addEventListener("click", function () {
         var v = parseInt($(inputId).value, 10);
@@ -2838,38 +2879,33 @@
       cb(val);
     });
     $("sheet-cancel").addEventListener("click", dismissSheet);
-    $("sheet-backdrop").addEventListener("click", function (ev) { if (ev.target === $("sheet-backdrop")) dismissSheet(); });
+    /* Item 5: a sticky sheet (the large-order confirm) ignores backdrop
+       taps — otherwise the very tap that blurred the field would dismiss
+       the sheet it just opened, as a cancel. Escape and tab switches
+       still dismiss. */
+    $("sheet-backdrop").addEventListener("click", function (ev) { if (ev.target === $("sheet-backdrop") && !sheetSticky) dismissSheet(); });
     /* Brief 5c: the single-craft action row. Queue enters Queue mode with
        this pick as the first line; Print prints and completes it now;
        Hand pack opens the checklist for this one craft. */
     $("btn-pack-queue").addEventListener("click", function () {
       var cur = currentPack(); if (!cur) return;
-      packQueue.push({ craftId: cur.craft.id, kits: cur.kits });
-      persistPackQueue();
-      state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
-      queueMode = true;
-      renderPack();
+      gateLarge("pack", function () {
+        packQueue.push({ craftId: cur.craft.id, kits: cur.kits });
+        persistPackQueue();
+        state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
+        queueMode = true;
+        renderPack();
+      });
     });
-    $("btn-pack-print").addEventListener("click", printSingle);
-    $("btn-pack-hand").addEventListener("click", function () { packMode = "hand"; renderPack(); });
-    /* Batch C item 12, Bulk side: same above-96 confirm as Packing. */
+    $("btn-pack-print").addEventListener("click", function () { gateLarge("pack", printSingle); });
+    $("btn-pack-hand").addEventListener("click", function () { gateLarge("pack", function () { packMode = "hand"; renderPack(); }); });
     $("bulk-kits").addEventListener("focus", function () { bulkPrevKits = $("bulk-kits").value; });
     $("bulk-kits").addEventListener("input", function () {
-      var raw = $("bulk-kits").value, prev = bulkPrevKits, n = strictKits(raw);
-      if (Number.isInteger(n) && n > 96 && n !== bulkLargeConfirmed) {
-        openSheet({
-          title: "Large order",
-          summary: n + " kits is unusually large — is that the right amount?",
-          primary: "Yes, use " + n + " kits",
-          cancelLabel: "Go back",
-          onConfirm: function () { bulkLargeConfirmed = n; bulkPrevKits = raw; renderBulk(); },
-          onCancel: function () { $("bulk-kits").value = prev; bulkPrevKits = prev; renderBulk(); }
-        });
-      }
       renderBulk();
     });
+    $("bulk-kits").addEventListener("blur", function () { blurLarge("bulk"); });
     wireStepper("bulk-kits", "bulk-minus", "bulk-plus", renderBulk);
-    $("btn-bulk-add").addEventListener("click", addBulkLine);
+    $("btn-bulk-add").addEventListener("click", function () { gateLarge("bulk", addBulkLine); });
     $("btn-bulk-record").addEventListener("click", recordAllBulk);
     $("bulk-lines").addEventListener("click", function (ev) {
       var b = ev.target.closest("[data-remove]");
@@ -2886,17 +2922,19 @@
     /* Multi-craft queue buttons (brief item 1) */
     $("btn-queue-add").addEventListener("click", function () {
       var cur = currentPack(); if (!cur) return;
-      /* No warning for adding the same craft twice — the duplicate pop-up
-         fires at Print all / Hand pack all, not while adding. */
-      packQueue.push({ craftId: cur.craft.id, kits: cur.kits });
-      persistPackQueue();
-      /* Bulk-like: the picker clears for the next line. */
-      state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
-      renderPack();
-      /* Brief item 2, same as Bulk: the new line scrolls fully into view
-         above the bar. */
-      var qel = $("pack-queue").lastElementChild;
-      if (qel) qel.scrollIntoView({ block: "nearest" });
+      gateLarge("pack", function () {
+        /* No warning for adding the same craft twice — the duplicate pop-up
+           fires at Print all / Hand pack all, not while adding. */
+        packQueue.push({ craftId: cur.craft.id, kits: cur.kits });
+        persistPackQueue();
+        /* Bulk-like: the picker clears for the next line. */
+        state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
+        renderPack();
+        /* Brief item 2, same as Bulk: the new line scrolls fully into view
+           above the bar. */
+        var qel = $("pack-queue").lastElementChild;
+        if (qel) qel.scrollIntoView({ block: "nearest" });
+      });
     });
     $("btn-queue-print").addEventListener("click", function () { startQueue(printQueueAll); });
     $("btn-queue-hand").addEventListener("click", function () { startQueue(startHandPackAll); });
