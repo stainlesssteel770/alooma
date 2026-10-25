@@ -78,8 +78,12 @@ try {
   await sleep(500);
 
   async function addLine(craftName, kits) {
+    /* Programmatic clicks for the picker: it folds once a craft + valid kits
+       are chosen, so real clicks would miss hidden chips. The queue buttons
+       themselves live outside the picker and get real clicks. */
+    await page.evaluate(() => { document.querySelector("#btn-pack-change").click(); });
     await page.evaluate(name => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), craftName);
-    await page.click(`.kits-chip[data-for="pack"][data-kits="${kits}"]`);
+    await page.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
     await sleep(150);
     await page.click("#btn-queue-add");
     await sleep(250);
@@ -118,13 +122,13 @@ try {
   await sleep(300);
   const sections = await page.$$eval("#print-area .print-page", els => els.map(e => e.querySelector(".label-title").textContent));
   eq(sections, ["The Cakery", "Tambourines", "Hafrashat Challah"], "Print all: one job, one section per craft, queue order kept");
-  const subtitles = await page.$$eval("#print-area .print-page .label-sub", els => els.map(e => e.textContent));
-  eq(subtitles, ["Total kits: 36   Order ID: ____________", "Total kits: 12   Order ID: ____________", "Total kits: 18   Order ID: ____________"], "Print all: each section keeps its own kit count");
+  const subtitles = await page.$$eval("#print-area .print-page .label-sub", els => els.map(e => e.textContent.replace(/\s+/g, " ").trim()));
+  eq(subtitles, ["Total kits: 36 Order ID: ____________", "Total kits: 12 Order ID: ____________", "Total kits: 18 Order ID: ____________"], "Print all: each section keeps its own kit count");
   const qAfterPrint = await queueLines();
   eq(qAfterPrint.every(l => l.hasComplete), true, "Print all: every line now offers its own Complete");
   /* Complete each line in order */
   for (let i = 0; i < 3; i++) {
-    await page.evaluate(() => { document.querySelector("#pack-queue .queue-line .queue-complete").click(); });
+    await page.click("#pack-queue .queue-line .queue-complete");
     await sleep(300);
     await sheetPrimary();
     await sleep(400);
@@ -219,10 +223,10 @@ try {
   await sleep(300);
   await sheetPrimary(); /* YES */
   await sleep(300);
-  const dupSections = await page.$$eval("#print-area .print-page .label-sub", els => els.map(e => e.textContent));
-  eq(dupSections, ["Total kits: 12   Order ID: ____________", "Total kits: 18   Order ID: ____________"], "duplicates: YES keeps two separate sheets, never merged");
+  const dupSections = await page.$$eval("#print-area .print-page .label-sub", els => els.map(e => e.textContent.replace(/\s+/g, " ").trim()));
+  eq(dupSections, ["Total kits: 12 Order ID: ____________", "Total kits: 18 Order ID: ____________"], "duplicates: YES keeps two separate sheets, never merged");
   for (let i = 0; i < 2; i++) {
-    await page.evaluate(() => { document.querySelector("#pack-queue .queue-line .queue-complete").click(); });
+    await page.click("#pack-queue .queue-line .queue-complete");
     await sleep(300);
     await sheetPrimary();
     await sleep(400);
