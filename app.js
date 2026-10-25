@@ -2992,10 +2992,10 @@
         /* Bulk-like: the picker clears for the next line. */
         state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
         renderPack();
-        /* Brief item 2, same as Bulk: the new line scrolls fully into view
-           above the bar. */
-        var qel = $("pack-queue").lastElementChild;
-        if (qel) qel.scrollIntoView({ block: "nearest" });
+        /* Retest item 2: after Add, back to the TOP — the craft picker
+           and kit chips — not down to the new line. */
+        var top = $("pack-crafts");
+        if (top) top.scrollIntoView({ block: "start" });
       });
     });
     $("btn-queue-print").addEventListener("click", function () { startQueue(printQueueAll); });
