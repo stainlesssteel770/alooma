@@ -60,6 +60,10 @@ try {
   await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
   await sleep(700);
   await page.evaluate(() => { window.print = () => {}; });
+  /* Seed guard: with bulkTab on, Bulk must be visible from the first render.
+     (If this fails, the load itself didn't apply the seed — it is not a
+     mid-run flip.) */
+  eq(await page.$eval('[data-tab="bulk"]', e => !e.hidden), true, "seed: Bulk tab visible at load when bulkTab is on");
   async function tab(name) {
     try {
       await page.click(`[data-tab="${name}"]`);
