@@ -269,6 +269,46 @@ try {
   await sleep(600);
   eq(remoteData.history.length, 0, "duplicates: print UNDO removes both entries");
 
+  /* ---- Retest item 1: the queue-actions row must obey [hidden]. ----
+     .queue-actions{display:flex} used to beat the UA hidden rule, so
+     the row showed on fresh screens (7 buttons at once). Verified at
+     390x664 with screenshots in ./screenshots/ (uploaded as evidence). */
+  await page.setViewport({ width: 390, height: 664 });
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
+  await reloadApp();
+  await page.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 6, { timeout: 15000 });
+  await sleep(300);
+  async function rowVisible(id) {
+    return await page.evaluate(id => {
+      var el = document.getElementById(id);
+      if (!el) return false;
+      var r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    }, id);
+  }
+  const SHOT = path.join(ROOT, "screenshots");
+  fs.mkdirSync(SHOT, { recursive: true });
+  eq(await rowVisible("pack-queue-actions"), false, "item1: fresh screen hides the queue row");
+  eq(await rowVisible("pack-single-actions"), false, "item1: fresh screen hides the single row");
+  await page.screenshot({ path: path.join(SHOT, "queue-row-fresh.jpg"), type: "jpeg", quality: 74 });
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Blooming Mirrors")).click());
+  await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
+  await sleep(200);
+  eq(await rowVisible("pack-single-actions"), true, "item1: single row appears once craft + kits are chosen");
+  eq(await rowVisible("pack-queue-actions"), false, "item1: queue row still hidden with a pick but no Queue tap");
+  await page.screenshot({ path: path.join(SHOT, "queue-row-picked.jpg"), type: "jpeg", quality: 74 });
+  await page.click("#btn-pack-queue");
+  await sleep(300);
+  eq(await rowVisible("pack-queue-actions"), true, "item1: queue row appears in Queue mode");
+  eq(await rowVisible("pack-single-actions"), false, "item1: single row hides in Queue mode");
+  eq(await page.$eval("#pack-queue-count", e => e.textContent), "1", "item1: queue holds the picked line");
+  await page.screenshot({ path: path.join(SHOT, "queue-row-queuemode.jpg"), type: "jpeg", quality: 74 });
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  eq(await rowVisible("pack-queue-actions"), false, "item1: Done hides the queue row again");
+  eq(await page.$eval("#pack-queue-count", e => e.textContent), "1", "item1: Done keeps the saved queue");
+  await page.screenshot({ path: path.join(SHOT, "queue-row-done.jpg"), type: "jpeg", quality: 74 });
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();
