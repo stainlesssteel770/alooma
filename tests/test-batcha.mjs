@@ -177,6 +177,34 @@ try {
   await sleep(150);
   eq(await page.evaluate(() => { const s = document.querySelector("#btn-bulk-add .nowrap"); return s ? s.textContent : null; }), "BM-6", "2: Add button SKU in a nowrap span");
 
+  /* ---- 2b. Packing toast: clear of bar/nav, SKU unbroken ---- */
+  await tab("pack");
+  await page.evaluate(() => { document.querySelector("#btn-pack-change").click(); });
+  await page.evaluate(name => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), "Blooming Mirrors");
+  await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
+  await sleep(150);
+  await page.click("#btn-mode-hand");
+  await sleep(200);
+  await page.click("#btn-check-all");
+  await sleep(200);
+  await page.click("#btn-complete-pack");
+  await sleep(300);
+  await page.click("#sheet-primary");
+  await sleep(300);
+  const packToastOk = await page.evaluate(() => {
+    const t = document.querySelector("#toast");
+    if (!t || t.hidden) return "toast hidden";
+    const tr = t.getBoundingClientRect();
+    const bar = document.querySelector("#tab-pack .action-bar");
+    const nav = document.querySelector("#tabs");
+    const over = (a, b) => { if (!b) return false; const r = b.getBoundingClientRect(); return a.left < r.right - 1 && r.left < a.right - 1 && a.top < r.bottom - 1 && r.top < a.bottom - 1; };
+    if (over(tr, bar)) return "toast over pack bar";
+    if (over(tr, nav)) return "toast over nav";
+    return "ok";
+  });
+  eq(packToastOk, "ok", "2b: pack toast clear of bar/nav");
+  eq(await page.evaluate(() => { const s = document.querySelector("#toast .nowrap"); return s ? s.textContent : null; }), "BM-6", "2b: pack toast SKU in a nowrap span");
+
   /* ---- 8. Tab-switch clear leaves a clean form, no red error ---- */
   await tab("pack");
   await page.evaluate(() => { document.querySelector("#btn-pack-change").click(); });
