@@ -35,7 +35,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
 Object.keys(remoteData.inventory).forEach(k => { remoteData.inventory[k] = { qty: 0, threshold: null }; });
 remoteData.history = [];
-delete remoteData.settings;
+remoteData.settings = { features: { bulkTab: true } };
 let remoteSha = "sha-1";
 let putCount = 0;
 const b64e = s => Buffer.from(s, "utf8").toString("base64");
