@@ -90,14 +90,13 @@ try {
       await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Blooming")).click());
       await page.click('.kits-chip[data-for="pack"][data-kits="6"]');
       await sleep(300);
-      await page.evaluate(() => document.querySelector("#btn-print-sheet").click());
-      await sleep(400);
-      const sheet = await page.evaluate(() => {
-        const s = document.querySelector(".sheet").getBoundingClientRect();
-        return { left: Math.round(s.left), top: Math.round(s.top), width: Math.round(s.width), height: Math.round(s.height), vh: window.innerHeight };
-      });
-      console.log(`SHEET at 1440x900: left=${sheet.left} top=${sheet.top} w=${sheet.width} h=${sheet.height} vh=${sheet.vh}`);
-      await page.evaluate(() => document.querySelector("#btn-sheet-close, .sheet-backdrop, #sheet-cancel")?.click());
+      /* A4: Print would complete the order, so the confirm-sheet shot uses
+         the hand-pack path instead: check all, then Complete. */
+      await page.evaluate(() => document.querySelector("#btn-pack-hand").click());
+      await sleep(300);
+      await page.evaluate(() => document.querySelector("#btn-check-all").click());
+      await sleep(300);
+      await page.evaluate(() => document.querySelector("#sheet-primary").click()); /* Mark all */
       await sleep(300);
       await page.evaluate(() => document.querySelector("#btn-complete-pack").click());
       await sleep(500);
