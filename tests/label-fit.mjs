@@ -175,7 +175,14 @@ try {
   });
   console.log(`PRINTALL BM-6/TAM-12/BM-6/BM-12/CAK-18 pages=${allPages.length} perPage=[${perPage.join(" | ")}]`);
 
-  /* ---- Count sheet ---- */
+  /* ---- Count sheet: with LOW rows (bold + LOW tag), the harder case
+     than the live data right now — if BM fits under LOW rows, it fits live.
+     Mirrors check-print's LOW seed on the first group (Blooming Mirrors). */
+  const groups = L.inventoryGroups();
+  const G0 = groups[0];
+  remote.inventory[G0.items[0]].threshold = 50; remote.inventory[G0.items[0]].qty = 17;
+  remote.inventory[G0.items[1]].threshold = 50; remote.inventory[G0.items[1]].qty = 63;
+  remote.inventory[G0.items[2]].threshold = null; remote.inventory[G0.items[2]].qty = 5;
   await load();
   await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); document.querySelector("#btn-print-count").click(); });
   await sleep(400);
