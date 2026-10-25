@@ -70,6 +70,15 @@ try {
     req.continue();
   });
   const shot = async name => { await page.screenshot({ path: path.join(OUT, name), type: "jpeg", quality: 74 }); console.log("shot", name); };
+  /* A3: a tab switch with unsaved state opens the leave prompt instead of
+     switching — Discard it so the shot shows the target tab, not the
+     prompt, and later real clicks land on a visible tab. */
+  const goTab = async name => {
+    await page.evaluate(n => document.querySelector('[data-tab="' + n + '"]').click(), name);
+    await sleep(300);
+    const prompt = await page.evaluate(() => !document.querySelector("#sheet-backdrop").hidden && document.querySelector("#sheet-title").textContent === "Unsaved changes");
+    if (prompt) { await page.click("#sheet-cancel"); await sleep(300); }
+  };
 
   await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
   await sleep(500);
@@ -109,13 +118,11 @@ try {
   await sleep(800);
 
   /* History with the pack entry + Undo toast */
-  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
-  await sleep(300);
+  await goTab("history");
   await shot("history.jpg");
 
   /* Bulk import tab: queue the same CAK-18 as a hand-packed order */
-  await page.evaluate(() => document.querySelector('[data-tab="bulk"]').click());
-  await sleep(300);
+  await goTab("bulk");
   await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await page.click('.kits-chip[data-for="bulk"][data-kits="18"]');
   await sleep(200);
@@ -125,8 +132,7 @@ try {
   await shot("bulk.jpg");
 
   /* Inventory with an item panel open */
-  await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
-  await sleep(300);
+  await goTab("inventory");
   await page.evaluate(() => { document.querySelector('.inv-item[data-item="heart-jewelry-box"] .inv-main').click(); });
   await sleep(300);
   await page.evaluate(() => { document.querySelector('.inv-item[data-item="heart-jewelry-box"]').scrollIntoView({ block: "center" }); });
@@ -145,8 +151,8 @@ try {
   await shot("delivery-sheet.jpg");
   await page.click("#sheet-cancel");
   await sleep(200);
-  await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
-  await sleep(500);
+  await goTab("settings");
+  await sleep(200);
   await shot("settings.jpg");
 
   /* v3: 360px views of the main screens (the brief asks for 360px evidence) */
