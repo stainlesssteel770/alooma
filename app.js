@@ -98,7 +98,9 @@
   function actionToast(msg, entry) {
     /* A trailing "(SKU)" stays unbroken: a long craft name may wrap the
        toast to a second line, but the SKU itself never splits mid-code. */
-    var html = esc(msg).replace(/\(([^()]*-\d+)\)$/, "(<span class=\"nowrap\">$1</span>)");
+    /* Item 7: the parens sit INSIDE the nowrap span, so "(BM-6)" is one
+       unbreakable unit — the bracket can no longer split across lines. */
+    var html = esc(msg).replace(/\(([^()]*-\d+)\)$/, "<span class=\"nowrap\">($1)</span>");
     showToast(html, "UNDO", function () { undoEntry(entry, true); }, 10000);
   }
   /* v2 A3: batch saves (a whole delivery / count) get one UNDO that
@@ -578,12 +580,15 @@
     var n = Number(raw);
     return Number.isInteger(n) ? n : NaN;
   }
-  function kitsError(raw) {
+  /* Item 7: Pack has no stepper (removed in Batch B), so its message
+     names only a chip; Bulk keeps the stepper mention. Any value below
+     6 (0, negatives like -6, 1–5) says "at least 6", not "multiples". */
+  function kitsError(raw, mentionStepper) {
     if (raw === null || raw === undefined || String(raw).trim() === "") return null;
     var n = Number(raw);
     if (!Number.isInteger(n)) return "Kits must be a whole number — decimals aren't allowed.";
-    if (n === 0) return "Kits must be at least 6.";
-    if (!L.validKits(n)) return "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…).";
+    if (n < 6) return "Kits must be at least 6.";
+    if (!L.validKits(n)) return "Kits are ordered in multiples of 6 — use " + (mentionStepper ? "the stepper or a chip" : "a chip") + " (6, 12, 18, 24…).";
     return null;
   }
 
@@ -1100,7 +1105,7 @@
     $("bulk-sku").textContent = valid && state.bulkCraft ? L.sku(state.bulkCraft, kits) : "—";
     /* Batch C item 12: same strict messages as Packing — decimals and
        zero are named, not coerced or silently ignored. */
-    if (state.bulkCraft && rawBulkKits.trim() !== "" && !valid) err.textContent = kitsError(rawBulkKits) || "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…).";
+    if (state.bulkCraft && rawBulkKits.trim() !== "" && !valid) err.textContent = kitsError(rawBulkKits, true) || "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…).";
     renderBulkLines();
   }
   function renderBulkLines() {
@@ -1932,6 +1937,17 @@
     if (name === "settings") renderBackupNote();
     currentTab = name;
     syncTabHash(name);
+    /* Item 7: Bulk kit chips visible on open (phone) — if the chips row
+       lands under the sticky action bar on activation, scroll just
+       enough to clear it. Activation only, never in renderBulk, so
+       typing never yanks the page. */
+    if (name === "bulk" && window.innerWidth <= 700) {
+      var chips = $("bulk-chips"), bar = document.querySelector("#tab-bulk .action-bar");
+      if (chips && bar) {
+        var cr = chips.getBoundingClientRect(), br = bar.getBoundingClientRect();
+        if (cr.bottom > br.top) window.scrollBy(0, cr.bottom - br.top + 8);
+      }
+    }
   }
   /* ---------- A3: one leave rule for every tab ---------- */
   /* Nothing clears silently anymore. If anything is chosen or unsaved —
