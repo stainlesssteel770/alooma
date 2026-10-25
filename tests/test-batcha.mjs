@@ -370,6 +370,35 @@ try {
   await item4ShortAdd();
   await item4ToastOk("item4-390x844: Added toast clear of the Record bar");
 
+  /* ---- Item 7 smalls (Bulk keeps the stepper, chips visible on open) ---- */
+  await page.evaluate(name => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), "Blooming Mirrors");
+  await bulkType("9");
+  eq(await page.$eval("#bulk-error", e => e.textContent.includes("stepper")), true, "item7: Bulk multiples message still names the stepper");
+  /* Chips visible on open: switch away and back at both heights; the
+     fix scrolls only when the chips row lands under the sticky bar.
+     The 560 height forces the overlap geometry (shorter viewport
+     pulls the sticky bar up over the chips row); 664 is Mark's repro
+     height, where the invariant must hold regardless. */
+  async function chipsVisible(label) {
+    const ok = await page.evaluate(() => {
+      const chips = document.querySelector("#bulk-chips");
+      const bar = document.querySelector("#tab-bulk .action-bar");
+      if (!chips || !bar) return false;
+      return chips.getBoundingClientRect().bottom <= bar.getBoundingClientRect().top + 1;
+    });
+    eq(ok, true, label);
+  }
+  await page.setViewport({ width: 390, height: 664 });
+  await sleep(300);
+  await tab("pack");
+  await tab("bulk");
+  await chipsVisible("item7-390x664: kit chips fully above the bar on open");
+  await page.setViewport({ width: 390, height: 560 });
+  await sleep(300);
+  await tab("pack");
+  await tab("bulk");
+  await chipsVisible("item7-390x560: kit chips fully above the bar on open");
+
   console.log(fail ? "BATCHA TESTS FAILED (" + fail + ")" : "all batcha tests passed (" + pass + ")");
 } finally {
   await browser.close();
