@@ -128,7 +128,17 @@ try {
     const bad = await sweep();
     ok(bad.length === 0, label, bad.join("\n  "));
   };
-  const tab = async name => { await page.evaluate(n => document.querySelector('[data-tab="' + n + '"]').click(), name); await sleep(250); };
+  /* A3: a tab switch with anything chosen or unsaved opens the "Unsaved
+     changes" prompt instead of switching. The audit always takes Discard:
+     the dirty state at its switches (queued Bulk lines left after a Record
+     sheet was measured, never confirmed) is intentionally abandoned, and
+     the tour must reach the tab it is measuring. */
+  const tab = async name => {
+    await page.evaluate(n => document.querySelector('[data-tab="' + n + '"]').click(), name);
+    await sleep(250);
+    const prompt = await page.$eval("#sheet-backdrop", e => !e.hidden && document.querySelector("#sheet-title").textContent === "Unsaved changes").catch(() => false);
+    if (prompt) { await page.click("#sheet-cancel"); await sleep(250); }
+  };
   const pickCraft = async (grid, text) => page.evaluate((g, t) => [...document.querySelectorAll(g + " .craft-btn")].find(b => b.textContent.includes(t)).click(), grid, text);
   /* The audit measures GEOMETRY; the UI suite already proves real clicks.
      Drive state changes with DOM clicks (scrolling into view first) so a
