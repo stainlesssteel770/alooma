@@ -255,6 +255,10 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 @media (min-width: 701px) {
   .app-header { padding-left: max(31px, calc((100% - 1024px) / 2 + 19px)); padding-right: max(31px, calc((100% - 1024px) / 2 + 19px)); }
   .toast { bottom: 24px; }
+  /* The Bulk Add nudge scrolls Record clear of the fixed toast; without
+     bottom padding the desktop Bulk tab is barely taller than the
+     viewport and the scroll clamps short (38px of 87 needed). */
+  #tab-bulk { padding-bottom: 260px; }
 }
 @media (min-width: 701px) and (max-width: 1051px) {
   main, .error-banner { margin-left: 12px; margin-right: 12px; }
