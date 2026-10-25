@@ -15,7 +15,7 @@
   var ITEMS = {
     /* Blooming Mirrors */
     "tree-mirror": "Tree Mirror",
-    "colored-clay-tool-tray": "clay & tool box + 6 toothpicks",
+    "colored-clay-tool-tray": "Clay & Tool Box + 6 Toothpicks",
     "white-clay": "White Clay",
     "grass-pack-of-6": "Grass (pack of 6)",
     "double-sided-tape": "Double Sided tape",
@@ -77,7 +77,7 @@
     "mi-name-label": "MI Name label",
     "mi-placemats": "MI Placemats",
     "mi-instructions": "MI Instructions brochure",
-    "english-ay-printout": "AY - Special request",
+    "english-ay-printout": "AY - Special Request",
     /* Shared (counted once in inventory, used by several crafts) */
     "scissors": "Scissors",
     "tacky-glue": "Tacky Glue",
