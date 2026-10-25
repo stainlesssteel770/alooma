@@ -788,7 +788,10 @@ async function tab(name) {
   await page.click(".inv-panel-go");
   await waitRemote(() => remoteData.settings.bins && remoteData.settings.bins.scissors === "BIN-99", "custom bin saved");
   eq(remoteData.settings.bins.scissors === "BIN-99", true, "C2: custom bin saved to the shared data");
-  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  /* A3: the bin panel stays open after its save with an input that no
+     longer matches its prefill, so leaving Inventory prompts — Discard
+     closes the panel (the bin itself is already saved) and switches. */
+  await tab("pack");
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await page.click("#btn-pack-hand");
   await sleep(300);
