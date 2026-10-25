@@ -440,6 +440,32 @@ try {
   await page.screenshot({ path: path.join(SHOT, "sheet-overflow-phone.jpg"), type: "jpeg", quality: 74 });
   await sheetCancel();
 
+  /* ---- Item 6: a manually typed kits value shows in the dropdown ---- */
+  await page.evaluate(name => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), "Tambourines");
+  await page.evaluate(() => document.querySelector("#pack-kits-plus").click());
+  await sleep(150);
+  await page.evaluate(() => { const i = document.querySelector("#pack-kits"); i.focus(); i.value = "42"; i.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(200);
+  await page.click("#btn-queue-add");
+  await sleep(250);
+  const lines6 = await page.$$eval("#pack-queue .queue-line", els => els.map(e => ({
+    sel: e.querySelector(".queue-kits") ? e.querySelector(".queue-kits").value : null,
+    text: e.textContent.replace(/\s+/g, " ").trim()
+  })));
+  const tam42 = lines6[lines6.length - 1];
+  eq(tam42.sel, "42", "item6: the dropdown shows the typed 42, not 6");
+  eq(tam42.text.includes("TAM-42"), true, "item6: the line still holds TAM-42");
+  /* Force a re-render (change the pick) and confirm nothing silently changed. */
+  await page.evaluate(name => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), "Blooming Mirrors");
+  await sleep(250);
+  const lines6b = await page.$$eval("#pack-queue .queue-line", els => els.map(e => ({
+    sel: e.querySelector(".queue-kits") ? e.querySelector(".queue-kits").value : null,
+    text: e.textContent.replace(/\s+/g, " ").trim()
+  })));
+  const tam42b = lines6b[lines6b.length - 1];
+  eq(tam42b.sel, "42", "item6: the dropdown still shows 42 after a re-render");
+  eq(tam42b.text.includes("TAM-42"), true, "item6: the line still holds TAM-42 after a re-render");
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();
