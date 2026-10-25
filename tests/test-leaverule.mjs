@@ -189,18 +189,15 @@ try {
      The sheet backdrop (z-80) covers the tab bar (z-50), so a tab tap with
      an edit sheet open cannot reach the button at all — there is no leave
      prompt to test here. What must hold: the switch does not happen, the
-     edited value survives the blocked tap, and Cancel restores clean tab
-     switches. */
+     tap dismisses the sheet (backdrop taps cancel, same as Cancel), the
+     edit is not saved, and the next tap switches cleanly. */
   await clickTab("pack");
   eq(await currentTab(), "history", "edit sheet blocks the tab switch");
-  eq(await page.evaluate(() => !document.querySelector("#sheet-backdrop").hidden), true, "edit sheet stays open through the blocked tap");
-  eq(await page.evaluate(() => document.querySelector("#sheet-input").value), String(parseInt(editBefore.val, 10) + 1), "edit sheet keeps the edited number");
-  await page.click("#sheet-cancel"); /* Cancel the edit */
-  await sleep(300);
-  eq(await page.evaluate(() => document.querySelector("#sheet-backdrop").hidden), true, "Cancel closes the edit sheet");
+  eq(await page.evaluate(() => document.querySelector("#sheet-backdrop").hidden), true, "backdrop tap dismisses the edit sheet");
+  eq(await page.evaluate(() => document.querySelector(".history-entry .history-title").textContent.includes("6 kits")), true, "dismissed edit is not saved");
   await clickTab("pack");
-  eq(await promptOpen(), false, "no prompt after cancelling the edit");
-  eq(await currentTab(), "pack", "tab switch works after cancelling the edit");
+  eq(await promptOpen(), false, "no prompt after dismissing the edit");
+  eq(await currentTab(), "pack", "tab switch works after dismissing the edit");
 
   /* ---- 6. A typed-but-unsaved Settings name prompts; a saved one does not ---- */
   await clickTab("settings");
