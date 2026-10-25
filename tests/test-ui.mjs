@@ -392,8 +392,8 @@ async function tab(name) {
   eq(putCount, putsBeforeBatch + 1, "Bulk: the whole batch saved in ONE commit");
   eq(remoteData.inventory["tree-mirror"].qty, -6, "Bulk: BM-6 deducted 6 tree mirrors");
   eq(remoteData.inventory["tambourines"].qty, -12, "Bulk: TAM-12 deducted 12 tambourines");
-  eq(remoteData.history[0].type, "hand-packed", "Bulk: first batch entry logged as hand-packed");
-  eq(remoteData.history[1].type, "hand-packed", "Bulk: second batch entry logged as hand-packed");
+  eq(remoteData.history[0].type, "bulk", "Bulk: first batch entry logged as bulk (Batch C A1)");
+  eq(remoteData.history[1].type, "bulk", "Bulk: second batch entry logged as bulk (Batch C A1)");
   eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 0, "Bulk: queue cleared after recording");
 
   /* Batch C item 3: NO prompt while adding — the duplicate check fires at
