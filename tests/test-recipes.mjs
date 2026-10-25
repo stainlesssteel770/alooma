@@ -245,7 +245,7 @@ try {
   rows = await (async () => { await pick("Judaic Clay-Art", 6); return printSheet(); })();
   eq(qtyOf(rows, "Clay Tray A"), "1", "browser: defaults JCA-6 tray A 1");
   eq(qtyOf(rows, "Clay Tray B"), "0", "browser: defaults JCA-6 tray B 0");
-  eq(qtyOf(rows, "JCA Instructions brochure"), "2", "browser: defaults JCA-6 instructions 2");
+  eq(qtyOf(rows, "JCA Instructions"), "2", "browser: defaults JCA-6 instructions 2");
 
   /* ---- Section B: first real save carries the migrated recipes ---- */
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
