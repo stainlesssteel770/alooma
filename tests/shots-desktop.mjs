@@ -65,7 +65,12 @@ try {
   const SIZES = [[768, 1024], [1280, 800], [1440, 900], [1920, 1080]];
   for (const [w, h] of SIZES) {
     await page.setViewport({ width: w, height: h });
-    await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
+    // networkidle0 never fires on repeat navigations once the service worker
+    // serves the shell from cache (the navigation's network accounting does
+    // not settle) — the 1920 goto hung 30s on it twice while the first three
+    // sizes loaded fine. "load" + the 600ms sleep below is all the
+    // screenshots need: the page is rendered, and no assert reads the network.
+    await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "load", timeout: 30000 });
     await sleep(600);
     const geo = await page.evaluate(() => {
       const m = document.querySelector("main").getBoundingClientRect();
