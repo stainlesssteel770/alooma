@@ -210,10 +210,13 @@ try {
   async function printSheet() {
     await page.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
     await sleep(400);
-    return await page.evaluate(() => {
-      const rows = [...document.querySelectorAll("#print-area tbody tr")].map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent.trim()));
-      return rows;
+    const rows = await page.evaluate(() => {
+      return [...document.querySelectorAll("#print-area tbody tr")].map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent.trim()));
     });
+    /* A blocked print (shortage sheet) leaves the area empty/stale — fail
+       loudly here instead of confusing nulls downstream. */
+    ok(rows.length > 0, "print happened (rows present, no shortage sheet blocked it)");
+    return rows;
   }
   function qtyOf(rows, name) {
     const row = rows.find(r => r[1] === name);
@@ -246,9 +249,10 @@ try {
   /* ---- Section B: first real save carries the migrated recipes ---- */
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
   await sleep(200);
+  const putsBeforeToggle = putCount; /* section A prints already saved (3 PUTs) */
   await page.click("#set-boxes-on"); /* boxes true -> false: a trivial settings save */
   await page.waitForFunction(() => document.querySelector("#save-status").textContent.includes("Saved"), { timeout: 10000 });
-  eq(putCount, 1, "browser: exactly one PUT for the toggle save");
+  eq(putCount, putsBeforeToggle + 1, "browser: exactly one PUT for the toggle save");
   eq(lastPutBody.settings.recipes, JSON.parse(JSON.stringify(L.builtInRecipes())), "browser: saved recipes equal the built-ins");
   eq(lastPutBody.settings.customItems, [], "browser: saved customItems empty");
 
@@ -265,6 +269,10 @@ try {
   remote.settings = { features: { boxes: false, bins: false, bulkTab: true }, boxes: [], boxRules: [], bins: {}, recipes: customs,
     customItems: [{ id: "test-widget", name: "Test Widget", unit: "each" }, { id: "spare-part", name: "Spare Part", unit: "" }] };
   Object.keys(remote.inventory).forEach(k => { remote.inventory[k] = { qty: 100, threshold: null }; });
+  /* Custom items start at 0 (plan) — stock the one the BM print needs.
+     Spare-part is deliberately NOT seeded: the Added test below proves
+     the app fills it at 0 on load. */
+  remote.inventory["test-widget"] = { qty: 100, threshold: null };
   remote.history = [];
   await page.reload({ waitUntil: "load", timeout: 30000 });
   await page.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 7, { timeout: 15000 });
