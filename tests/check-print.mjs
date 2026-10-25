@@ -111,6 +111,12 @@ const browser = await puppeteer.launch({ executablePath: EXE, headless: true, ar
 try {
   const page = await browser.newPage();
   page.on("pageerror", e => console.log("PAGEERROR " + e.message));
+  /* A4: pack printing now completes the order, so it requires the editor
+     token like every other editor harness — without it printSingle
+     no-ops and the print area stays empty. */
+  await page.evaluateOnNewDocument(() => {
+    localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
+  });
   await page.setRequestInterception(true);
   const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
   page.on("request", req => {
