@@ -50,6 +50,7 @@ try {
   await page.setRequestInterception(true);
   page.on("request", req => {
     const url = req.url();
+    if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" }, body: "" });
     if (url.includes("/contents/data.json")) {
       if (req.method() === "PUT") {
         const body = JSON.parse(req.postData() || "{}");
