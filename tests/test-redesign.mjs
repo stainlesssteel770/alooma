@@ -365,20 +365,44 @@ try {
   await typePackKits("0");
   eq(await txt("#pack-error"), "Kits must be at least 6.", "12: zero rejected with 'must be at least 6'");
   eq(await vis("#pack-single-actions"), false, "12: no action buttons for zero kits");
-  await typePackKits("150");
-  eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: kits above 96 ask first");
-  eq(await page.$eval("#sheet-summary", e => e.textContent.includes("150 kits")), true, "12: large-order sheet names the amount");
+  /* Item 5: large orders ask on blur/submit, never while typing;
+     threshold 240 (was 96). */
+  await typePackKits("300");
+  eq(await sheetIsOpen(), false, "12: no sheet while typing a large value");
+  await page.evaluate(() => document.querySelector("#pack-kits").blur());
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: kits above 240 ask on blur");
+  eq(await page.$eval("#sheet-summary", e => e.textContent.includes("300 kits")), true, "12: large-order sheet names the amount");
   if (await sheetIsOpen()) { await page.click("#sheet-cancel"); await sleep(250); }
   /* Go back restores the focus-time value: the box was empty when first
      focused (the helper keeps focus across typings, so no re-focus
      fires) — "" is the correct previous value here, not "0". */
   eq(await page.$eval("#pack-kits", e => e.value), "", "12: Go back reverts to the previous value");
-  await typePackKits("150");
+  await typePackKits("300");
+  await page.evaluate(() => document.querySelector("#pack-kits").blur());
+  await sleep(250);
   eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: retyping asks again after Go back");
   if (await sheetIsOpen()) { await page.click("#sheet-primary"); await sleep(250); }
-  eq(await page.$eval("#pack-kits", e => e.value), "150", "12: confirming keeps the large value");
+  eq(await page.$eval("#pack-kits", e => e.value), "300", "12: confirming keeps the large value");
   eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "12: confirming closes the sheet");
   eq(await vis("#pack-single-actions"), true, "12: action buttons appear for a confirmed large order");
+  /* Boundary: exactly 240 does not ask. */
+  await typePackKits("240");
+  await page.evaluate(() => document.querySelector("#pack-kits").blur());
+  await sleep(250);
+  eq(await sheetIsOpen(), false, "12: exactly 240 does not ask");
+  eq(await page.$eval("#pack-kits", e => e.value), "240", "12: 240 stays in the box");
+  /* Submit path: a large value set without focus asks when submitted. */
+  await page.evaluate(() => { const i = document.querySelector("#pack-kits"); i.value = "300"; i.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(250);
+  eq(await sheetIsOpen(), false, "12: unfocused large value asks nothing until submitted");
+  await page.click("#btn-pack-queue");
+  await sleep(300);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: submitting a large order asks first");
+  await page.click("#sheet-primary");
+  await sleep(300);
+  eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "12: submitting confirm closes the sheet");
+  eq(await vis("#pack-queue-actions"), true, "12: submitting confirm enters queue mode");
 
   console.log("REDESIGN TESTS: " + passes + " passed, " + failures + " failed");
   process.exit(failures ? 1 : 0);
