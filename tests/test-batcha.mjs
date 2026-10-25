@@ -294,7 +294,10 @@ try {
   await bulkType("150");
   eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: bulk kits above 96 ask first");
   if (await bulkSheetOpen()) { await page.click("#sheet-cancel"); await sleep(250); }
-  eq(await page.$eval("#bulk-kits", e => e.value), "0", "12: bulk Go back reverts to the previous value");
+  /* Go back restores the focus-time value: the box was empty when first
+     focused (the helper keeps focus across typings, so no re-focus
+     fires) — "" is the correct previous value here, not "0". */
+  eq(await page.$eval("#bulk-kits", e => e.value), "", "12: bulk Go back reverts to the previous value");
   await bulkType("150");
   eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: bulk retyping asks again after Go back");
   if (await bulkSheetOpen()) { await page.click("#sheet-primary"); await sleep(250); }
