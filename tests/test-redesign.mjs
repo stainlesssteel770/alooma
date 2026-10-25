@@ -366,7 +366,10 @@ try {
   eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: kits above 96 ask first");
   eq(await page.$eval("#sheet-summary", e => e.textContent.includes("150 kits")), true, "12: large-order sheet names the amount");
   if (await sheetIsOpen()) { await page.click("#sheet-cancel"); await sleep(250); }
-  eq(await page.$eval("#pack-kits", e => e.value), "0", "12: Go back reverts to the previous value");
+  /* Go back restores the focus-time value: the box was empty when first
+     focused (the helper keeps focus across typings, so no re-focus
+     fires) — "" is the correct previous value here, not "0". */
+  eq(await page.$eval("#pack-kits", e => e.value), "", "12: Go back reverts to the previous value");
   await typePackKits("150");
   eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: retyping asks again after Go back");
   if (await sheetIsOpen()) { await page.click("#sheet-primary"); await sleep(250); }
