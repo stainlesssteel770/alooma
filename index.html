@@ -317,6 +317,20 @@
       </label>
     </div>
 
+    <div class="card editor-only" id="recipes-card">
+      <h3>Recipes</h3>
+      <p class="hint">Edit what goes in each craft. Changes save right away and sync like everything else. A hidden craft stays out of the Pack and Bulk pickers but queued orders for it still finish. Renaming a craft never changes old History entries.</p>
+      <div id="recipes-list"></div>
+      <hr class="card-sep">
+      <p class="hint">Add a craft</p>
+      <div class="box-add-row">
+        <label>Name <input type="text" id="recipe-add-name" placeholder="Craft name" autocomplete="off"></label>
+        <label>Code <input type="text" id="recipe-add-code" placeholder="2–4 letters" autocomplete="off" maxlength="4"></label>
+        <button id="recipe-add-btn" class="btn btn-primary">Add craft</button>
+      </div>
+      <p id="recipe-add-error" class="field-error"></p>
+    </div>
+
     <div class="card">
       <h3>Backup</h3>
       <p class="hint">Export downloads everything (inventory + history) as one file. Import replaces the current data with a backup file (editor only) and is logged in History.</p>
