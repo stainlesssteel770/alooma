@@ -40,22 +40,18 @@
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   var toastTimer = null;
-  function showToast(html, actionLabel, actionFn, ms) {
+  /* Item 4: toast placement against the ACTIVE tab's action bar, as a
+     function of the CURRENT layout — showToast places it once, and
+     queueBulkLine re-places it after its post-toast scroll (below).
+     Brief item 2 (phone): place against the bar's ACTUAL position, not
+     a fixed offset — the bar is sticky, so after a scroll it can sit
+     mid-viewport instead of stuck above the nav, and a fixed offset
+     then lands the toast right on top of it. Prefer below the bar
+     (between bar and nav) when that gap fits the toast; otherwise sit
+     above the bar. */
+  function placeToast() {
     var t = $("toast");
-    t.innerHTML = html;
-    if (actionLabel) {
-      var b = document.createElement("button");
-      b.textContent = actionLabel;
-      b.addEventListener("click", function () { t.hidden = true; actionFn(); });
-      t.appendChild(b);
-    }
-    t.hidden = false;
-    /* Brief item 2 (phone): place the toast against the bar's ACTUAL
-       position, not a fixed offset — the bar is sticky, so after a scroll
-       it can sit mid-viewport instead of stuck above the nav, and a fixed
-       offset then lands the toast right on top of it. Prefer below the
-       bar (between bar and nav) when that gap fits the toast; otherwise
-       sit above the bar. */
+    if (!t || t.hidden) return;
     if (window.innerWidth <= 700) {
       var bar = document.querySelector(".tab-panel.active .action-bar");
       var tabsEl = $("tabs");
@@ -83,6 +79,18 @@
     } else {
       t.style.bottom = "";
     }
+  }
+  function showToast(html, actionLabel, actionFn, ms) {
+    var t = $("toast");
+    t.innerHTML = html;
+    if (actionLabel) {
+      var b = document.createElement("button");
+      b.textContent = actionLabel;
+      b.addEventListener("click", function () { t.hidden = true; actionFn(); });
+      t.appendChild(b);
+    }
+    t.hidden = false;
+    placeToast();
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.hidden = true; }, ms || 4200);
   }
@@ -1166,6 +1174,14 @@
       var i = bulkLines.indexOf(line);
       if (i >= 0) { bulkLines.splice(i, 1); renderBulk(); }
     }, 8000);
+    scrollCardClearOfToast(el);
+    /* Item 4: the scroll above can park the bar under the toast — the
+       toast was placed against the bar's pre-scroll position, and the
+       scroll transitions the bar from in-flow to stuck. Re-place
+       against the post-scroll bar, then clear the card again (the bar
+       is stuck by now, so the second scroll can't move it under the
+       toast again). */
+    placeToast();
     scrollCardClearOfToast(el);
     /* Desktop: the fixed bottom toast can park over the Record button,
        so the next tap hits UNDO and silently undoes the Add (the Batch A
