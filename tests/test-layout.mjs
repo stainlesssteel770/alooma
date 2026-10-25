@@ -38,7 +38,7 @@ delete remoteData.settings;
 remoteData.inventory["scissors"] = { qty: 200, threshold: 250 };
 remoteData.inventory["tree-mirror"] = { qty: 5, threshold: null };
 remoteData.settings = {
-  features: { boxes: true, bins: true },
+  features: { boxes: true, bins: true, bulkTab: true },
   boxes: { A: { name: "Box A", size: "12 x 9 x 4" }, B: { name: "Box B", size: "" }, C: { name: "Box C", size: "" } },
   boxRules: [{ craftId: "cak", kits: 12, boxes: ["A", "B"] }],
   bins: { scissors: "BIN-99" }
