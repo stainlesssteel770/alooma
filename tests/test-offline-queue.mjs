@@ -100,21 +100,6 @@ try {
   await sleep(200);
   await page.click("#btn-bulk-record");
   await sleep(300);
-  /* TEMP DIAG (Batch A offline-queue root-cause): why is #sheet-primary
-     unclickable here? Log the state instead of guessing. */
-  const diag = await page.evaluate(() => {
-    const r = s => { const el = document.querySelector(s); if (!el) return s + ":missing"; const q = el.getBoundingClientRect(); return s + ":rect=" + Math.round(q.left) + "," + Math.round(q.top) + "," + Math.round(q.right) + "," + Math.round(q.bottom); };
-    return "lines=" + document.querySelectorAll("#bulk-lines .hand-line").length
-      + " recDisabled=" + document.querySelector("#btn-bulk-record").disabled
-      + " addDisabled=" + document.querySelector("#btn-bulk-add").disabled
-      + " backdropHidden=" + document.querySelector("#sheet-backdrop").hidden
-      + " sheetTitle=" + document.querySelector("#sheet-title").textContent
-      + " toastHidden=" + document.querySelector("#toast").hidden
-      + " bulkKits=" + document.querySelector("#bulk-kits").value
-      + " activeTab=" + (document.querySelector(".tab-panel.active") || {}).id
-      + " " + r("#btn-bulk-record") + " " + r("#toast") + " " + r("#sheet-primary");
-  });
-  console.log("DIAG " + diag);
   await page.click("#sheet-primary");
   await sleep(600);
   const queue1 = await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.queue.v1") || "[]"));
