@@ -469,6 +469,23 @@ try {
   eq(tam42b.sel, "42", "item6: the dropdown still shows 42 after a re-render");
   eq(tam42b.text.includes("TAM-42"), true, "item6: the line still holds TAM-42 after a re-render");
 
+  /* Retest item 2: Add to queue scrolls to the TOP (craft + kit chips). */
+  await page.setViewport({ width: 390, height: 664 });
+  await reloadApp();
+  await queueFirst("Blooming Mirrors", 6);
+  /* Scroll to the bottom first, so a scroll-to-top is observable. */
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await sleep(200);
+  await page.click("#btn-queue-add");
+  await sleep(300);
+  const topGeo = await page.evaluate(() => {
+    const cr = document.querySelector("#pack-crafts").getBoundingClientRect();
+    const ch = document.querySelector("#pack-chips").getBoundingClientRect();
+    return { craftsTop: Math.round(cr.top), chipsTop: Math.round(ch.top), vh: window.innerHeight };
+  });
+  eq(topGeo.craftsTop >= 0 && topGeo.craftsTop <= 120, true, "item2: crafts grid at the top after Add (top=" + topGeo.craftsTop + ")");
+  eq(topGeo.chipsTop > 0 && topGeo.chipsTop < topGeo.vh, true, "item2: kit chips in view after Add (top=" + topGeo.chipsTop + ")");
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();
