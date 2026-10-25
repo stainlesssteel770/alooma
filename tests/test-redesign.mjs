@@ -64,6 +64,10 @@ try {
      (If this fails, the load itself didn't apply the seed — it is not a
      mid-run flip.) */
   eq(await page.$eval('[data-tab="bulk"]', e => !e.hidden), true, "seed: Bulk tab visible at load when bulkTab is on");
+  /* Which data loaded? Seed sets every qty to 100; the live fallback does not. */
+  await tab("inventory"); await sleep(300);
+  console.log("LOAD-DIAG firstQty=" + await page.evaluate(() => { const el = document.querySelector(".inv-qty"); return el ? el.textContent.trim() : "?"; }) + " saveStatus=" + await page.evaluate(() => { const el = document.querySelector("#save-status"); return el ? el.textContent.trim() : "?"; }));
+  await tab("pack"); await sleep(300);
   async function tab(name) {
     try {
       await page.click(`[data-tab="${name}"]`);
