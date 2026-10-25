@@ -231,7 +231,8 @@ try {
   await queueAdd("Tambourines", 12);
   await page.click("#btn-queue-print");
   await sleep(400);
-  eq(remote.history.length, 2, "print-all reprint: two entries at print time");
+  /* Two NEW entries, plus section 6's kept undone entry = 3 total. */
+  eq(remote.history.length, 3, "print-all reprint: two entries at print time");
   await page.click('[data-tab="history"]');
   await sleep(300);
   if (await sheetOpen()) { await sheetCancel(); await sleep(300); } /* pick left behind prompts; Discard it */
