@@ -272,7 +272,12 @@ try {
   const cntTexts = await pageTexts("/tmp/alooma-countsheet.pdf");
   checkPagination(cntTexts, "count sheet", "Counted by");
   await checkGeometry("/tmp/alooma-countsheet.pdf", "count sheet");
-  ok(cntTexts.filter(t => t.includes("Counted by")).length === groups.length, "count sheet: every craft's sheet carries its own 'Counted by' footer");
+  /* Brief item 4: exactly one Counted by footer in the whole count job,
+     and it is on the last page (under the last table, or flowed onto one
+     final label — checkPagination's carve-out allows the latter). */
+  const footPages = cntTexts.map((t, i) => t.includes("Counted by") ? i : -1).filter(i => i >= 0);
+  ok(footPages.length === 1, "count sheet: exactly one 'Counted by' footer in the whole job (was one per craft)");
+  ok(footPages[0] === cntTexts.length - 1, "count sheet: the footer is on the last page");
 
   console.log(fail ? "PRINT CHECKS FAILED (" + fail + ")" : "all print checks passed");
 } finally {
