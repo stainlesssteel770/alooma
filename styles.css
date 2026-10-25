@@ -217,6 +217,8 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 .sheet-input-wrap input { width: 100%; height: 54px; font-size: 20px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 12px; margin-top: 6px; }
 .sheet .btn { width: 100%; min-height: 54px; font-size: 17px; margin-top: 8px; }
 #sheet-primary.danger { background: #fff; color: var(--red); border-color: var(--red); }
+/* Batch C item 3: duplicate-check YES is green (NO stays danger red). */
+#sheet-primary.success { background: #1A7336; border-color: #1A7336; color: #fff; }
 #sheet-cancel.danger { background: #fff; color: var(--red); border-color: var(--red); }
 /* Multi-craft queue (brief item 1): lines mirror the Bulk hand-line rows;
    duplicate lines get a warm highlight until the YES/NO pop-up resolves. */
