@@ -131,7 +131,7 @@ try {
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await page.click('.kits-chip[data-for="pack"][data-kits="36"]');
   await sleep(300);
-  await page.evaluate(() => { document.querySelector("#btn-print-sheet").click(); });
+  await page.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
   await sleep(300);
   const pack = await page.evaluate(() => {
     const pa = document.querySelector("#print-area");
@@ -165,11 +165,12 @@ try {
   ok(packedByPages.length === 1 && packedByPages[0] === packTexts.length - 1, "pack sheet: 'Packed by' footer lands once, on the last page");
   ok(!packTexts[0].includes("BOXES") && packTexts[packTexts.length - 1].includes("BOXES: Big Box + Small Box"), "pack sheet PDF: BOXES appears only on the last page, with the footer");
 
-  /* CAK-12: all 19 lines still listed (2 pages now, by design) */
-  await page.click("#btn-pack-change");
+  /* CAK-12: all 19 lines still listed (2 pages now, by design).
+     A4: the CAK-36 print completed and cleared the pick, so re-pick. */
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
   await sleep(300);
-  await page.evaluate(() => { document.querySelector("#btn-print-sheet").click(); });
+  await page.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
   await sleep(300);
   eq12: {
     const rows12 = await page.evaluate(() => document.querySelectorAll("#print-area tbody tr").length);
@@ -180,14 +181,11 @@ try {
   await checkGeometry("/tmp/alooma-packsheet12.pdf", "pack sheet CAK-12");
   ok(pack12Texts.every(t => t.trim().length > 30), "pack sheet CAK-12: no blank pages (" + pack12Texts.length + " pages)");
 
-  /* Evidence for Mark's thermal test: a SHORT craft's pack sheet (HCB-12).
-     Programmatic clicks: after the CAK-12 print the panel sits in the
-     picker state, where the real Change button is not clickable. */
-  await page.evaluate(() => { document.querySelector("#btn-pack-change").click(); });
+  /* Evidence for Mark's thermal test: a SHORT craft's pack sheet (HCB-12). */
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat Challah")).click());
   await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="12"]').click(); });
   await sleep(300);
-  await page.evaluate(() => { document.querySelector("#btn-print-sheet").click(); });
+  await page.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
   await sleep(300);
   const hcbTitle = await page.evaluate(() => { const t = document.querySelector("#print-area .label-title"); return t ? t.textContent : ""; });
   ok(hcbTitle.includes("Hafrashat Challah"), "evidence: short-craft pack sheet really is Hafrashat Challah");
@@ -195,9 +193,8 @@ try {
   await checkGeometry("/tmp/alooma-packsheet-hcb.pdf", "pack sheet HCB-12");
 
   /* Print all (queue, brief item 1): 3 crafts, one job, queue order — the
-     geometry gate runs on it too, like every other print.
-     Programmatic clicks: the picker folds once a craft + kits are chosen,
-     so real clicks would miss hidden chips. */
+     geometry gate runs on it too, like every other print. The first line
+     enters Queue mode via the Queue button; the rest Add. */
   async function queueAdd(name, kits) {
     await page.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);
     await page.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
@@ -206,7 +203,11 @@ try {
     await sleep(250);
   }
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
-  await queueAdd("The Cakery", 36);
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+  await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="36"]').click(); });
+  await sleep(150);
+  await page.evaluate(() => { document.querySelector("#btn-pack-queue").click(); });
+  await sleep(250);
   await queueAdd("Tambourines", 12);
   await queueAdd("Hafrashat Challah", 18);
   await page.evaluate(() => { document.querySelector("#btn-queue-print").click(); });
