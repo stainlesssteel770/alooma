@@ -206,7 +206,7 @@ try {
   const histBeforeReprint = JSON.stringify(remote.history);
   const invBeforeReprint = JSON.stringify(remote.inventory);
   const entryTs = remote.history[0].ts;
-  await page.evaluate(() => document.querySelector(".history-entry .btn-reprint").click());
+  await page.evaluate(() => { const b = document.querySelector(".history-entry .btn-reprint"); if (b) b.click(); });
   await sleep(400);
   eq(await page.$$eval("#print-area .print-page", els => els.length), 1, "reprint: one sheet printed");
   const reprintText = await page.$eval("#print-area", e => e.textContent);
@@ -238,7 +238,7 @@ try {
   eq(await page.$$eval(".history-entry .btn-reprint", els => els.length), 2, "print-all reprint: one Reprint button per craft");
   const histBeforePerCraft = JSON.stringify(remote.history);
   const invBeforePerCraft = JSON.stringify(remote.inventory);
-  await page.evaluate(() => document.querySelector(".history-entry .btn-reprint").click()); /* newest = TAM-12 */
+  await page.evaluate(() => { const b = document.querySelector(".history-entry .btn-reprint"); if (b) b.click(); }); /* newest = TAM-12 */
   await sleep(400);
   eq(await page.$$eval("#print-area .print-page", els => els.length), 1, "print-all reprint: exactly one sheet, not the whole job");
   const perCraftText = await page.$eval("#print-area", e => e.textContent);
@@ -275,7 +275,7 @@ try {
   await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
   await sleep(300);
   eq(await page.$$eval(".history-entry .btn-reprint", els => els.length) > 0, true, "viewer reprint: Reprint buttons visible to viewers");
-  await page.evaluate(() => document.querySelector(".history-entry .btn-reprint").click());
+  await page.evaluate(() => { const b = document.querySelector(".history-entry .btn-reprint"); if (b) b.click(); });
   await sleep(400);
   eq(await page.$$eval("#print-area .print-page", els => els.length), 1, "viewer reprint: sheet prints");
   eq((await page.$eval("#print-area", e => e.textContent)).includes("REPRINT"), true, "viewer reprint: REPRINT line present");
