@@ -50,6 +50,7 @@ try {
   await page.setRequestInterception(true);
   page.on("request", req => {
     const url = req.url();
+    console.log("REQ-LOG " + req.method() + " " + url);
     if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" }, body: "" });
     if (url.includes("/contents/data.json")) {
       if (req.method() === "PUT") {
@@ -143,11 +144,11 @@ try {
   await sleep(400);
   eq((await page.$$eval("#print-area .print-page", els => els.length)), 3, "print all: three sheets");
   eq(remote.history.length, 3, "print all: three entries at print time");
-  eq(remote.history.map(h => h.title), [
+  eq(JSON.stringify(remote.history.map(h => h.title)), JSON.stringify([
     "Packed Hafrashat Challah — 18 kits (HCB-18)",
     "Packed Tambourines — 12 kits (TAM-12)",
     "Packed Blooming Mirrors — 6 kits (BM-6)"
-  ], "print all: entries newest first");
+  ]), "print all: entries newest first");
   eq(remote.inventory["heat-gun"].qty, 99, "print all: HCB-18 deducted once");
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 0, "print all: queue cleared");
   eq(await page.$eval("#pack-queue-actions", e => e.hidden), true, "print all: back to single view (queue actions hidden)");
@@ -163,7 +164,7 @@ try {
   await page.click("#btn-queue-print");
   await sleep(300);
   eq(await sheetOpen(), true, "print all shortage: guard sheet opens");
-  eq((await page.$eval("#sheet-summary", e => e.textContent)).includes("Scissors"), true, "print all shortage: Scissors named");
+  eq((await page.$eval("#sheet-extra", e => e.textContent)).includes("Scissors"), true, "print all shortage: Scissors named");
   await sheetPrimary(); /* Start anyway */
   await sleep(400);
   eq(remote.history.length, 2, "print all Start anyway: both entries recorded");
