@@ -606,6 +606,7 @@
     $("btn-queue-add").textContent = cur ? "Add " + L.sku(cur.craft.id, cur.kits) + " to queue" : "Add to queue";
     $("btn-queue-print").disabled = !packQueue.length;
     $("btn-queue-hand").disabled = !packQueue.length;
+    $("btn-queue-clear").hidden = packQueue.length < 2;
     $("pack-queue-progress").textContent = queueHandIdx >= 0
       ? "Craft " + (queueHandTotal - packQueue.length + 1) + " of " + queueHandTotal : "";
   }
@@ -829,6 +830,50 @@
     packMode = "hand";
     renderPack();
   }
+  /* Clear all: small quiet buttons, shown only at 2+ lines, always
+     confirming first (Clear in red, Cancel the filled default). A printed
+     or started queue says so in the confirm; clearing mid-walk ends the
+     walk and drops the loaded line, since it was a queue line. The bulk
+     pick itself (not yet added) is untouched — only the list clears. */
+  function clearQueue() {
+    if (!requireEditor()) return;
+    if (packQueue.length < 2) return;
+    var n = packQueue.length;
+    var printed = packQueue.filter(function (ln) { return ln.printed; }).length;
+    var notes = [];
+    if (printed) notes.push(printed + (printed === 1 ? " craft printed" : " crafts printed") + " but not completed");
+    if (queueHandIdx >= 0) notes.push("the craft you're hand-packing");
+    openSheet({
+      title: "Clear all " + n + " crafts?",
+      summary: n + " crafts in the queue will be removed" + (notes.length ? ", including " + notes.join(" and ") : "") + ".",
+      primary: "Clear",
+      primaryDanger: true,
+      cancelLabel: "Cancel",
+      cancelFilled: true,
+      onConfirm: function () {
+        var wasWalking = queueHandIdx >= 0;
+        packQueue = [];
+        endQueueWalk();
+        persistPackQueue();
+        if (wasWalking) { state.packCraft = null; $("pack-kits").value = ""; packMode = null; }
+        renderPack();
+      }
+    });
+  }
+  function clearBulk() {
+    if (!requireEditor()) return;
+    if (bulkLines.length < 2) return;
+    var n = bulkLines.length;
+    openSheet({
+      title: "Clear all " + n + " crafts?",
+      summary: n + " crafts in the bulk list will be removed.",
+      primary: "Clear",
+      primaryDanger: true,
+      cancelLabel: "Cancel",
+      cancelFilled: true,
+      onConfirm: function () { bulkLines = []; renderBulk(); }
+    });
+  }
   function startHandPackAll() {
     if (!packQueue.length) return;
     queueHandTotal = packQueue.length;
@@ -938,6 +983,7 @@
     rec.textContent = bulkLines.length
       ? "Record all · " + bulkLines.length + (bulkLines.length === 1 ? " order" : " orders")
       : "Record all";
+    $("btn-bulk-clear").hidden = bulkLines.length < 2;
   }
   function addBulkLine() {
     if (!requireEditor()) return;
@@ -2207,6 +2253,8 @@
     });
     $("btn-queue-print").addEventListener("click", function () { startQueue(printQueueAll); });
     $("btn-queue-hand").addEventListener("click", function () { startQueue(startHandPackAll); });
+    $("btn-queue-clear").addEventListener("click", clearQueue);
+    $("btn-bulk-clear").addEventListener("click", clearBulk);
     $("btn-print-inventory").addEventListener("click", function () { printInventory("report"); });
     $("btn-print-count").addEventListener("click", function () { printInventory("count"); });
     $("btn-reorder").addEventListener("click", function () {
