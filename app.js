@@ -525,11 +525,11 @@
   var packQueue = []; /* [{craftId, kits, printed}] in queue order */
   var queueHandIdx = -1; /* line being hand-packed, -1 = not hand-packing a queue */
   var queueHandTotal = 0; /* lines the current hand walk started with (for "Craft N of M") */
-  var QUEUE_LS = "alooma.queue.v1";
-  function saveQueue() { try { localStorage.setItem(QUEUE_LS, JSON.stringify(packQueue)); } catch (e) { /* private mode etc. */ } }
-  function loadQueue() {
+  var PACKQUEUE_LS = "alooma.packqueue.v1";
+  function persistPackQueue() { try { localStorage.setItem(PACKQUEUE_LS, JSON.stringify(packQueue)); } catch (e) { /* private mode etc. */ } }
+  function loadPackQueue() {
     try {
-      var raw = localStorage.getItem(QUEUE_LS);
+      var raw = localStorage.getItem(PACKQUEUE_LS);
       if (!raw) return;
       var arr = JSON.parse(raw);
       if (!Array.isArray(arr)) return;
@@ -573,7 +573,7 @@
       s.addEventListener("change", function () {
         var i = parseInt(s.getAttribute("data-qidx"), 10);
         packQueue[i].kits = parseInt(s.value, 10);
-        saveQueue(); renderQueue();
+        persistPackQueue(); renderQueue();
       });
     });
     wrap.querySelectorAll(".queue-remove").forEach(function (b) {
@@ -582,7 +582,7 @@
         if (queueHandIdx === i) endQueueWalk();
         else if (queueHandIdx > i) queueHandIdx--;
         packQueue.splice(i, 1);
-        saveQueue(); renderPack();
+        persistPackQueue(); renderPack();
       });
     });
     wrap.querySelectorAll(".queue-complete").forEach(function (b) {
@@ -800,7 +800,7 @@
     clearError();
     var html = packQueue.map(function (ln) { return packSheetSection(ln.craftId, ln.kits, queueLineBoxes(ln)); }).join("");
     packQueue.forEach(function (ln) { ln.printed = true; });
-    saveQueue();
+    persistPackQueue();
     printHtml(html);
     renderQueue();
   }
@@ -840,7 +840,7 @@
           { craftId: ln.craftId, kits: ln.kits }
         );
         packQueue.splice(i, 1);
-        saveQueue();
+        persistPackQueue();
         commitChange(entry, "Packed " + L.sku(ln.craftId, ln.kits));
         if (advance) {
           if (!packQueue.length) {
@@ -1869,7 +1869,7 @@
     renderHistory();
   }
   function init() {
-    loadQueue();
+    loadPackQueue();
     try {
       var saved = localStorage.getItem(LS_KEY);
       if (saved) state.editor = JSON.parse(saved);
@@ -2031,7 +2031,7 @@
       /* No warning for adding the same craft twice — the duplicate pop-up
          fires at Print all / Hand pack all, not while adding. */
       packQueue.push({ craftId: cur.craft.id, kits: cur.kits, printed: false });
-      saveQueue();
+      persistPackQueue();
       packFoldOverride = true; /* picker stays open for the next line */
       renderPack();
     });
