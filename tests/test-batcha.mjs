@@ -79,7 +79,15 @@ try {
   await sleep(500);
   await page.evaluate(() => { window.print = () => {}; });
 
-  async function tab(name) { await page.click(`[data-tab="${name}"]`); await sleep(300); }
+  /* A3: a tab switch with anything chosen or unsaved prompts instead of
+     switching; batcha always takes Discard (the dirty state here is
+     already saved or intentionally abandoned). */
+  async function tab(name) {
+    await page.click(`[data-tab="${name}"]`);
+    await sleep(300);
+    const prompt = await page.$eval("#sheet-backdrop", e => !e.hidden && document.querySelector("#sheet-title").textContent === "Unsaved changes").catch(() => false);
+    if (prompt) { await page.click("#sheet-cancel"); await sleep(300); }
+  }
   async function waitFor(fn, label, ms) {
     const t0 = Date.now();
     while (Date.now() - t0 < (ms || 5000)) { if (await fn()) return true; await sleep(100); }
@@ -108,7 +116,7 @@ try {
       const bar = inter(rect(document.querySelector("#tab-bulk .action-bar")), vp);
       const nav = withNav ? inter(rect(document.querySelector("#tabs")), vp) : null;
       const out = [];
-      ["#bulk-crafts", "#bulk-lines", "#tab-bulk .clear-row"].forEach(sel => {
+      ["#bulk-crafts", "#bulk-lines", "#bulk-lines-head"].forEach(sel => {
         const r = rect(document.querySelector(sel));
         if (!r) return;
         if (bar && inter(r, bar)) out.push(sel + " under sticky bar");
@@ -190,11 +198,10 @@ try {
 
   /* ---- 2b. Packing toast: clear of bar/nav, SKU unbroken ---- */
   await tab("pack");
-  await page.evaluate(() => { document.querySelector("#btn-pack-change").click(); });
   await page.evaluate(name => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), "Blooming Mirrors");
   await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
   await sleep(150);
-  await page.click("#btn-mode-hand");
+  await page.click("#btn-pack-hand");
   await sleep(200);
   await page.click("#btn-check-all");
   await sleep(200);
@@ -218,9 +225,8 @@ try {
   eq(packToastOk, "ok", "2b: pack toast clear of bar/nav");
   eq(await page.evaluate(() => { const s = document.querySelector("#toast .nowrap"); return s ? s.textContent : null; }), "BM-6", "2b: pack toast SKU in a nowrap span");
 
-  /* ---- 8. Tab-switch clear leaves a clean form, no red error ---- */
+  /* ---- 8. Discard on a tab switch leaves a clean form, no red error ---- */
   await tab("pack");
-  await page.evaluate(() => { document.querySelector("#btn-pack-change").click(); });
   await page.evaluate(name => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), "Tambourines");
   await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="18"]').click(); });
   await sleep(150);
