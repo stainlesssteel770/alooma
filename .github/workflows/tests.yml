@@ -68,6 +68,8 @@ jobs:
         run: node tests/test-a11y.mjs
       - name: Print checks (4x6 PDFs, no blank labels)
         run: node tests/check-print.mjs
+      - name: Label-fit audit (item 9 — report only, never fails the build)
+        run: node tests/label-fit.mjs
 
       - name: Screenshots at 390px (batch-report evidence)
         run: node tests/screenshots.mjs
