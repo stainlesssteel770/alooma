@@ -1123,13 +1123,14 @@
     /* Desktop: the fixed bottom toast can park over the Record button,
        so the next tap hits UNDO and silently undoes the Add (the Batch A
        intercept, back via the Batch B header row pushing Record down).
-       Nudge the page up so Record clears the toast. Phone already places
-       the toast clear of the bar, so this is desktop-only. */
+       Scrolling DOWN the document (positive dy) lifts the button up the
+       screen, clear of the toast. Phone already places the toast clear
+       of the bar, so this is desktop-only. */
     if (window.innerWidth > 700) {
       var rec = $("btn-bulk-record"), toast = $("toast");
       if (rec && toast && !toast.hidden) {
         var rr = rec.getBoundingClientRect(), tr = toast.getBoundingClientRect();
-        if (rr.bottom > tr.top && rr.top < tr.bottom) window.scrollBy(0, -(rr.bottom - tr.top + 8));
+        if (rr.bottom > tr.top && rr.top < tr.bottom) window.scrollBy(0, rr.bottom - tr.top + 8);
       }
     }
   }
