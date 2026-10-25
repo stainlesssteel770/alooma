@@ -211,6 +211,7 @@ try {
   await page.evaluate(() => { document.querySelector("#btn-queue-print").click(); });
   await sleep(300);
   const allTitles = await page.$$eval("#print-area .print-page .label-title", els => els.map(e => e.textContent));
+  console.log("Print-all titles:", JSON.stringify(allTitles));
   ok(JSON.stringify(allTitles) === JSON.stringify(["The Cakery", "Tambourines", "Blooming Mirrors"]), "Print all: one job, sections in queue order");
   await page.pdf({ path: "/tmp/alooma-printall.pdf", preferCSSPageSize: true, printBackground: true });
   await checkGeometry("/tmp/alooma-printall.pdf", "Print all (3 crafts)");
