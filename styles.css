@@ -229,6 +229,9 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 .queue-line .queue-remove { min-width: 44px; min-height: 44px; margin-left: auto; }
 .queue-line .queue-complete { min-height: 44px; }
 .queue-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.byline-row { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
+.byline-row label { font-weight: 600; white-space: nowrap; }
+.byline-row input { flex: 1; min-height: 44px; padding: 8px 10px; border: 1px solid #C9CED6; border-radius: 8px; font-size: 16px; }
 .queue-actions .btn { flex: 1; min-height: 48px; }
 .queue-progress { font-size: 17px; font-weight: 700; margin: 0 0 10px; }
 .sheet-short { background: var(--red-bg); border: 2px solid var(--red); color: var(--red); border-radius: 12px; padding: 10px 12px; margin: 0 0 14px; text-align: left; }
