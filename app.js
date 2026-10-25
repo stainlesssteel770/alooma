@@ -50,12 +50,27 @@
       t.appendChild(b);
     }
     t.hidden = false;
+    /* Brief item 2 (phone): park the toast above the visible sticky bar +
+       fixed nav instead of a fixed height a wrapped multi-row bar can grow
+       past — measured live, because the bar's height varies by tab. */
+    if (window.innerWidth <= 700) {
+      var bar = document.querySelector(".tab-panel.active .action-bar");
+      var barH = bar ? bar.offsetHeight : 0;
+      var tabsEl = $("tabs");
+      var navH = tabsEl ? tabsEl.offsetHeight : 66;
+      t.style.bottom = (barH + navH + 8) + "px";
+    } else {
+      t.style.bottom = "";
+    }
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.hidden = true; }, ms || 4200);
   }
   function toast(msg) { showToast(esc(msg), null, null, 4200); }
   function actionToast(msg, entry) {
-    showToast(esc(msg), "UNDO", function () { undoEntry(entry, true); }, 10000);
+    /* A trailing "(SKU)" stays unbroken: a long craft name may wrap the
+       toast to a second line, but the SKU itself never splits mid-code. */
+    var html = esc(msg).replace(/\(([^()]*-\d+)\)$/, "(<span class=\"nowrap\">$1</span>)");
+    showToast(html, "UNDO", function () { undoEntry(entry, true); }, 10000);
   }
   /* v2 A3: batch saves (a whole delivery / count) get one UNDO that
      reverses every entry in the batch */
@@ -603,7 +618,9 @@
     });
     var cur = currentPack();
     $("btn-queue-add").disabled = !cur;
-    $("btn-queue-add").textContent = cur ? "Add " + L.sku(cur.craft.id, cur.kits) + " to queue" : "Add to queue";
+    var qa = $("btn-queue-add");
+    if (cur) qa.innerHTML = "Add <span class=\"nowrap\">" + esc(L.sku(cur.craft.id, cur.kits)) + "</span> to queue";
+    else qa.textContent = "Add to queue";
     $("btn-queue-print").disabled = !packQueue.length;
     $("btn-queue-hand").disabled = !packQueue.length;
     $("btn-queue-clear").hidden = packQueue.length < 2;
@@ -909,7 +926,7 @@
         if (advance) {
           if (!packQueue.length) {
             endQueueWalk();
-            state.packCraft = null; $("pack-kits").value = ""; packMode = null;
+            state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
             renderPack();
           } else {
             queueHandIdx = Math.min(i, packQueue.length - 1);
@@ -975,9 +992,9 @@
     var add = $("btn-bulk-add");
     var kits = parseInt($("bulk-kits").value, 10);
     add.disabled = !(!!state.bulkCraft && L.validKits(kits));
-    add.textContent = !state.bulkCraft ? "Pick a craft"
-      : !L.validKits(kits) ? "Choose kits"
-      : "Add " + L.sku(state.bulkCraft, kits);
+    if (!state.bulkCraft) { add.textContent = "Pick a craft"; }
+    else if (!L.validKits(kits)) { add.textContent = "Choose kits"; }
+    else { add.innerHTML = "Add <span class=\"nowrap\">" + esc(L.sku(state.bulkCraft, kits)) + "</span>"; }
     var rec = $("btn-bulk-record");
     rec.disabled = !bulkLines.length;
     rec.textContent = bulkLines.length
@@ -996,7 +1013,7 @@
     if (dup) {
       openSheet({
         title: sku + " is already in the list.",
-        summary: "Add another " + sku + " to the queue?",
+        summary: "Add another " + sku + " to the list?",
         primary: "Add another",
         cancelLabel: "Keep one",
         onConfirm: function () { queueBulkLine(craftId, kits); }
@@ -1013,10 +1030,14 @@
     state.bulkCraft = null;
     $("bulk-kits").value = "";
     renderBulk();
-    showToast("Added " + esc(L.sku(craftId, kits)), "UNDO", function () {
+    showToast("Added <span class=\"nowrap\">" + esc(L.sku(craftId, kits)) + "</span>", "UNDO", function () {
       var i = bulkLines.indexOf(line);
       if (i >= 0) { bulkLines.splice(i, 1); renderBulk(); }
     }, 8000);
+    /* Brief item 2: the new card scrolls fully into view above the bar
+       (scroll-margin-bottom in the phone CSS clears bar + nav). */
+    var el = $("bulk-lines").lastElementChild;
+    if (el) el.scrollIntoView({ block: "nearest" });
   }
   function recordAllBulk() {
     if (!requireEditor()) return;
@@ -1033,7 +1054,7 @@
     });
     var skus = lines.map(function (ln) { return L.sku(ln.craftId, ln.kits); });
     openSheet({
-      title: "Hand-packed",
+      title: "Record all",
       sub: lines.length + (lines.length === 1 ? " order: " : " orders: ") +
         skus.slice(0, 3).join(", ") + (skus.length > 3 ? " +" + (skus.length - 3) + " more" : "") + " · hand-packed",
       summary: packSummary(aggPack),
@@ -1735,7 +1756,7 @@
         onConfirm: function () { restoreSheetState(saved); activateTab(name); },
         onCancel: function () {
           clearPackQueueAndWalk();
-          state.packCraft = null; $("pack-kits").value = ""; packMode = null;
+          state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
           renderPack();
           activateTab(name);
         }
@@ -1757,7 +1778,7 @@
     }
     if (leaving === "pack") {
       clearPackQueueAndWalk();
-      if (name === "bulk") { state.packCraft = null; $("pack-kits").value = ""; packMode = null; packBoxOverride = null; }
+      if (name === "bulk") { state.packCraft = null; $("pack-kits").value = ""; packMode = null; packBoxOverride = null; packKitsTouched = false; }
       renderPack();
     } else if (leaving === "bulk" && name === "pack") {
       state.bulkCraft = null; $("bulk-kits").value = ""; bulkLines = [];
@@ -1771,12 +1792,12 @@
     var editor = !!state.editor;
     document.querySelectorAll("#tabs button").forEach(function (b) {
       var t = b.getAttribute("data-tab");
-      b.hidden = !editor && t !== "inventory" && t !== "history";
+      /* A2: the Bulk tab is opt-in (default OFF) even for editors. */
+      b.hidden = (!editor && t !== "inventory" && t !== "history") ||
+        (t === "bulk" && !(settings().features && settings().features.bulkTab));
     });
-    if (!editor) {
-      var active = document.querySelector("#tabs button.active");
-      if (active && active.hidden) activateTab("inventory");
-    }
+    var active = document.querySelector("#tabs button.active");
+    if (active && active.hidden) activateTab(editor ? "pack" : "inventory");
   }
   function renderSettings() {
     var status = $("settings-conn-status");
@@ -2073,11 +2094,17 @@
     $("set-bins-on").checked = !!settings().features.bins;
   }
 
+  /* ---------- Settings: Bulk tab toggle (brief A2, default OFF) ---------- */
+  function renderBulkTabSetting() {
+    $("set-bulk-on").checked = !!(settings().features && settings().features.bulkTab);
+  }
+
   /* ---------- wiring ---------- */
   function renderAll() {
     renderSettings();
     renderBoxSettings();
     renderBinSettings();
+    renderBulkTabSetting();
     renderPack();
     renderBulk();
     renderInventory();
@@ -2147,6 +2174,12 @@
       settings().features.bins = $("set-bins-on").checked;
       if (!settings().features.bins) { invSortBin = false; packSortBin = false; }
       saveData("Bin locations " + (settings().features.bins ? "on" : "off")).then(function () { renderAll(); });
+    });
+    $("set-bulk-on").addEventListener("change", function () {
+      if (!requireEditor()) { renderBulkTabSetting(); return; }
+      if (!settings().features) settings().features = {};
+      settings().features.bulkTab = $("set-bulk-on").checked;
+      saveData("Bulk tab " + (settings().features.bulkTab ? "on" : "off")).then(function () { renderAll(); });
     });
     $("btn-print-menu").addEventListener("click", function () {
       var menu = $("print-menu");
@@ -2250,6 +2283,10 @@
       persistPackQueue();
       packFoldOverride = true; /* picker stays open for the next line */
       renderPack();
+      /* Brief item 2, same as Bulk: the new line scrolls fully into view
+         above the bar. */
+      var qel = $("pack-queue").lastElementChild;
+      if (qel) qel.scrollIntoView({ block: "nearest" });
     });
     $("btn-queue-print").addEventListener("click", function () { startQueue(printQueueAll); });
     $("btn-queue-hand").addEventListener("click", function () { startQueue(startHandPackAll); });
