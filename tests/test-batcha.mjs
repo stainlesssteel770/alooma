@@ -280,6 +280,27 @@ try {
   eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 3, "13: NO keeps all three lines");
   eq(putCount, putsBeforeDup, "13: NO saves nothing");
 
+  /* ---- 12 (bulk): manual kits validation on the Bulk input ---- */
+  await page.evaluate(name => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), "Blooming Mirrors");
+  async function bulkType(v) {
+    await page.evaluate(x => { const i = document.querySelector("#bulk-kits"); i.focus(); i.value = x; i.dispatchEvent(new Event("input", { bubbles: true })); }, v);
+    await sleep(250);
+  }
+  async function bulkSheetOpen() { return page.$eval("#sheet-backdrop", e => !e.hidden); }
+  await bulkType("6.5");
+  eq(await page.$eval("#bulk-error", e => e.textContent), "Kits must be a whole number — decimals aren't allowed.", "12: bulk decimals rejected, not treated as 6");
+  await bulkType("0");
+  eq(await page.$eval("#bulk-error", e => e.textContent), "Kits must be at least 6.", "12: bulk zero rejected with 'must be at least 6'");
+  await bulkType("150");
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: bulk kits above 96 ask first");
+  if (await bulkSheetOpen()) { await page.click("#sheet-cancel"); await sleep(250); }
+  eq(await page.$eval("#bulk-kits", e => e.value), "0", "12: bulk Go back reverts to the previous value");
+  await bulkType("150");
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: bulk retyping asks again after Go back");
+  if (await bulkSheetOpen()) { await page.click("#sheet-primary"); await sleep(250); }
+  eq(await page.$eval("#bulk-kits", e => e.value), "150", "12: bulk confirming keeps the large value");
+  eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "12: bulk confirming closes the sheet");
+
   console.log(fail ? "BATCHA TESTS FAILED (" + fail + ")" : "all batcha tests passed (" + pass + ")");
 } finally {
   await browser.close();
