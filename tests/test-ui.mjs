@@ -790,8 +790,12 @@ async function tab(name) {
   eq(remoteData.settings.bins.scissors === "BIN-99", true, "C2: custom bin saved to the shared data");
   /* A3: the bin panel stays open after its save with an input that no
      longer matches its prefill, so leaving Inventory prompts — Discard
-     closes the panel (the bin itself is already saved) and switches. */
+     closes the panel (the bin itself is already saved) and switches.
+     The boxes section's CAK-12 pick was discarded at the Settings switch
+     too, so pick Cakery here before the kits. */
   await tab("pack");
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+  await sleep(150);
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await page.click("#btn-pack-hand");
   await sleep(300);
