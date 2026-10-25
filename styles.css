@@ -206,6 +206,8 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 .toast[hidden] { display: none !important; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 76px; background: var(--ink); color: #fff; padding: 12px 18px; border-radius: var(--radius); font-weight: 600; font-size: 15.5px; box-shadow: 0 6px 22px rgba(0,0,0,.28); z-index: 60; max-width: min(92vw, 560px); display: flex; align-items: center; gap: 14px; pointer-events: none; }
 .toast button { background: none; border: none; color: #FFD94D; font-weight: 800; font-size: 15.5px; cursor: pointer; min-height: 44px; padding: 4px 6px; letter-spacing: .03em; pointer-events: auto; }
+/* A SKU must never break mid-code ("BM-" / "6") — in toasts and buttons. */
+.nowrap { white-space: nowrap; }
 /* in-app confirm sheet (replaces window.confirm / window.prompt) */
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(20, 24, 28, .48); z-index: 80; display: flex; align-items: flex-end; justify-content: center; }
 .sheet-backdrop[hidden] { display: none !important; }
@@ -276,7 +278,17 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   .kits-block .chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
   .kits-block .kits-chip { padding: 9px 2px; text-align: center; }
   #pack-order { padding-bottom: 76px; }
-  .toast { bottom: 132px; }
+  /* Brief item 1: Bulk content gets bottom padding equal to the sticky bar
+     plus the fixed nav, so no form/list line ever sits under either. The
+     scroll margin lets a newly added card scroll fully into view above
+     the bar (item 2). */
+  #tab-bulk { padding-bottom: 150px; }
+  #bulk-lines > *, #pack-queue > * { scroll-margin-bottom: 150px; }
+  .toast { bottom: 132px; left: 8px; right: 8px; transform: none; max-width: none; font-size: 14px; padding: 12px 14px; }
+  /* Brief item 14: the header status wraps under the badge instead of
+     running off the right edge on narrow phones. */
+  .header-status { flex-wrap: wrap; justify-content: flex-end; }
+  .save-status { flex: 1 1 100%; text-align: right; }
   .header-text p { display: none; }
 }
 
