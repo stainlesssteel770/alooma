@@ -199,6 +199,22 @@ try {
   eq(await sheetOpen(), true, "hand-pack pick prompts on the way to History");
   await sheetCancel();
   await sleep(300);
+  /* Batch C A5: the printed (not undone) entry offers Reprint, which
+     prints the same sheet again — original date, REPRINT line — with no
+     stock change and no new History entry. */
+  eq(await page.$$eval(".history-entry .btn-reprint", els => els.length), 1, "reprint: printed entry has a Reprint button");
+  const histBeforeReprint = JSON.stringify(remote.history);
+  const invBeforeReprint = JSON.stringify(remote.inventory);
+  const entryTs = remote.history[0].ts;
+  await page.evaluate(() => document.querySelector(".history-entry .btn-reprint").click());
+  await sleep(400);
+  eq(await page.$$eval("#print-area .print-page", els => els.length), 1, "reprint: one sheet printed");
+  const reprintText = await page.$eval("#print-area", e => e.textContent);
+  eq(reprintText.includes("Hafrashat Challah"), true, "reprint: same craft sheet");
+  eq(reprintText.includes("REPRINT"), true, "reprint: REPRINT line in footer");
+  eq(reprintText.includes(new Date(entryTs).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })), true, "reprint: original date on the sheet");
+  eq(JSON.stringify(remote.history), histBeforeReprint, "reprint: History unchanged");
+  eq(JSON.stringify(remote.inventory), invBeforeReprint, "reprint: stock unchanged");
   await page.evaluate(() => document.querySelector(".history-entry .btn-undo").click());
   await sleep(300);
   await sheetPrimary(); /* Undo this entry? */
@@ -206,7 +222,65 @@ try {
   eq(remote.history.length, 1, "history undo: entry kept (marked undone, not spliced)");
   eq(remote.history[0].undone, true, "history undo: entry marked undone");
   eq(remote.inventory["heat-gun"].qty, 100, "history undo: stock restored");
-  eq(await page.$$eval(".history-entry .btn-reprint", els => els.length), 0, "no Reprint yet (Batch C scope, A5)");
+  eq(await page.$$eval(".history-entry .btn-reprint", els => els.length), 0, "reprint: undone entry offers no Reprint");
+
+  /* ---- 7. Print all: Reprint works per craft ---- */
+  await page.click('[data-tab="pack"]');
+  await sleep(300);
+  await queueFirst("Blooming Mirrors", 6);
+  await queueAdd("Tambourines", 12);
+  await page.click("#btn-queue-print");
+  await sleep(400);
+  eq(remote.history.length, 2, "print-all reprint: two entries at print time");
+  await page.click('[data-tab="history"]');
+  await sleep(300);
+  if (await sheetOpen()) { await sheetCancel(); await sleep(300); } /* pick left behind prompts; Discard it */
+  eq(await page.$$eval(".history-entry .btn-reprint", els => els.length), 2, "print-all reprint: one Reprint button per craft");
+  const histBeforePerCraft = JSON.stringify(remote.history);
+  const invBeforePerCraft = JSON.stringify(remote.inventory);
+  await page.evaluate(() => document.querySelector(".history-entry .btn-reprint").click()); /* newest = TAM-12 */
+  await sleep(400);
+  eq(await page.$$eval("#print-area .print-page", els => els.length), 1, "print-all reprint: exactly one sheet, not the whole job");
+  const perCraftText = await page.$eval("#print-area", e => e.textContent);
+  eq(perCraftText.includes("Tambourines"), true, "print-all reprint: the newest craft's sheet");
+  eq(perCraftText.includes("REPRINT"), true, "print-all reprint: REPRINT line present");
+  eq(JSON.stringify(remote.history), histBeforePerCraft, "print-all reprint: History unchanged");
+  eq(JSON.stringify(remote.inventory), invBeforePerCraft, "print-all reprint: stock unchanged");
+
+  /* ---- 8. No Reprint on Bulk entries (never printed) ---- */
+  await page.click('[data-tab="bulk"]');
+  await sleep(300);
+  await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("Blooming Mirrors")).click());
+  await page.evaluate(() => { document.querySelector('.kits-chip[data-for="bulk"][data-kits="6"]').click(); });
+  await sleep(150);
+  await page.click("#btn-bulk-add");
+  await sleep(250);
+  await page.click("#btn-bulk-record");
+  await sleep(300);
+  await page.click("#sheet-primary"); /* Subtract from inventory */
+  await sleep(600);
+  eq(remote.history[0].type, "bulk", "bulk reprint: newest entry is a Bulk entry (A1)");
+  eq(remote.history[0].title.startsWith("Bulk "), true, "bulk reprint: Bulk title prefix (A1)");
+  await page.click('[data-tab="history"]');
+  await sleep(300);
+  const reprintFlags = await page.$$eval(".history-entry", els => els.map(e => !!e.querySelector(".btn-reprint")));
+  eq(reprintFlags[0], false, "bulk reprint: the Bulk entry has no Reprint button");
+  eq(reprintFlags[1] && reprintFlags[2], true, "bulk reprint: the older printed entries keep theirs (the undone one correctly has none)");
+
+  /* ---- 9. Viewers can Reprint too ---- */
+  const histBeforeViewer = JSON.stringify(remote.history);
+  const invBeforeViewer = JSON.stringify(remote.inventory);
+  await page.evaluate(() => localStorage.removeItem("alooma.editor.v1"));
+  await reloadApp();
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
+  await sleep(300);
+  eq(await page.$$eval(".history-entry .btn-reprint", els => els.length) > 0, true, "viewer reprint: Reprint buttons visible to viewers");
+  await page.evaluate(() => document.querySelector(".history-entry .btn-reprint").click());
+  await sleep(400);
+  eq(await page.$$eval("#print-area .print-page", els => els.length), 1, "viewer reprint: sheet prints");
+  eq((await page.$eval("#print-area", e => e.textContent)).includes("REPRINT"), true, "viewer reprint: REPRINT line present");
+  eq(JSON.stringify(remote.history), histBeforeViewer, "viewer reprint: History unchanged");
+  eq(JSON.stringify(remote.inventory), invBeforeViewer, "viewer reprint: stock unchanged");
 
   console.log(failures ? "PRINTDONE TESTS FAILED (" + failures + ")" : "all printdone tests passed (" + passes + ")");
 } finally {
