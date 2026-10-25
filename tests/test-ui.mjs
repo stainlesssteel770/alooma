@@ -523,7 +523,10 @@ try {
   });
   console.log("B1 diag:", diagTops);
   eq(firstRow.h > 0, true, "B1: first pack row is actually rendered (not a hidden-element measurement)");
-  eq(firstRowTop < 420, true, "B1: first pack row near the top (was ~857px before B1)");
+  /* Brief item 3 added the Packed by row above the order area (~60px), so
+     the near-the-top bar moved from 420 to 480 — still far from the ~857px
+     buried-table case this assert guards against. */
+  eq(firstRowTop < 480, true, "B1: first pack row near the top (was ~857px before B1)");
   await page.click("#btn-pack-change");
   await sleep(200);
   eq(await page.$eval("#pack-picker", e => e.hidden), false, "B1: Change reopens the picker");
