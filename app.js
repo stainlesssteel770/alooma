@@ -526,6 +526,19 @@
   var queueHandIdx = -1; /* line being hand-packed, -1 = not hand-packing a queue */
   var queueHandTotal = 0; /* lines the current hand walk started with (for "Craft N of M") */
   var PACKQUEUE_LS = "alooma.packqueue.v1";
+  /* ---------- brief item 3: Packed by / Counted by ---------- */
+  /* Optional names, never blocking. Each remembers its own last value per
+     device (separate keys: the packer and the counter aren't always the
+     same person) and prefills from it; stored on the History entry and
+     printed on the sheet's byline instead of the blank when filled. */
+  var PACKBY_LS = "alooma.packedby.v1", COUNTBY_LS = "alooma.countedby.v1";
+  function byVal(id) { var el = $(id); return el ? el.value.trim() : ""; }
+  function rememberBy(key, name) { if (name) { try { localStorage.setItem(key, name); } catch (e) {} } }
+  function prefillBy(id, key) {
+    var el = $(id);
+    if (!el || el.value) return;
+    try { el.value = localStorage.getItem(key) || ""; } catch (e) {}
+  }
   function persistPackQueue() { try { localStorage.setItem(PACKQUEUE_LS, JSON.stringify(packQueue)); } catch (e) { /* private mode etc. */ } }
   function loadPackQueue() {
     try {
@@ -720,11 +733,14 @@
       summary: packSummary(cur.pack) + (boxes && boxes.length ? " · Boxes: " + L.boxesText(settings(), boxes) : ""),
       primary: "Subtract from inventory",
       onConfirm: function () {
+        var by = byVal("pack-by");
+        var extra = { craftId: craft.id, kits: cur.kits };
+        if (by) { extra.packedBy = by; rememberBy(PACKBY_LS, by); }
         var entry = newEntry(
           "packed",
           "Packed " + craft.name + " — " + cur.kits + " kits (" + L.sku(craft.id, cur.kits) + ")",
           cur.pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
-          { craftId: craft.id, kits: cur.kits }
+          extra
         );
         state.packPrintedKey = null;
         commitChange(entry, "Packed " + L.sku(craft.id, cur.kits));
@@ -798,7 +814,7 @@
   function printQueueAll() {
     if (!packQueue.length) return;
     clearError();
-    var html = packQueue.map(function (ln) { return packSheetSection(ln.craftId, ln.kits, queueLineBoxes(ln)); }).join("");
+    var html = packQueue.map(function (ln) { return packSheetSection(ln.craftId, ln.kits, queueLineBoxes(ln), byVal("pack-by")); }).join("");
     packQueue.forEach(function (ln) { ln.printed = true; });
     persistPackQueue();
     printHtml(html);
@@ -833,11 +849,14 @@
       summary: packSummary(pack) + (boxes && boxes.length ? " · Boxes: " + L.boxesText(settings(), boxes) : ""),
       primary: "Subtract from inventory",
       onConfirm: function () {
+        var by = byVal("pack-by");
+        var extra = { craftId: ln.craftId, kits: ln.kits };
+        if (by) { extra.packedBy = by; rememberBy(PACKBY_LS, by); }
         var entry = newEntry(
           "packed",
           "Packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
           pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
-          { craftId: ln.craftId, kits: ln.kits }
+          extra
         );
         packQueue.splice(i, 1);
         persistPackQueue();
@@ -1135,6 +1154,7 @@
   }
   function renderCountEntry() {
     var list = $("count-entry-list"); list.innerHTML = "";
+    prefillBy("count-by", COUNTBY_LS); /* brief item 3: last counter name, if the field is empty */
     L.inventoryGroups().forEach(function (g) {
       var head = document.createElement("div");
       head.className = "entry-head";
@@ -1181,13 +1201,17 @@
       primary: "Apply counts",
       cancelLabel: "Edit numbers",
       onConfirm: function () {
+        var by = byVal("count-by");
+        if (by) rememberBy(COUNTBY_LS, by);
         var entries = [];
         changes.forEach(function (ch) {
+          var extra = { item: ch.item, counted: ch.counted };
+          if (by) extra.countedBy = by;
           var entry = newEntry(
             "count-fix",
             "Count fix " + L.ITEMS[ch.item] + ": " + ch.cur + " → " + ch.counted,
             [{ item: ch.item, delta: ch.delta }],
-            { item: ch.item, counted: ch.counted }
+            extra
           );
           /* apply locally without a save per item; one save at the end */
           L.applyEffects(state.data.inventory, entry.effects, +1);
@@ -1295,9 +1319,10 @@
       if (eff.length > 3) summary += " · +" + (eff.length - 3) + " more";
       var fullList = eff.length > 3
         ? "<details><summary>Show all " + eff.length + " changes</summary>" + eff.join(" · ") + "</details>" : "";
+      var by = entry.packedBy || entry.countedBy;
       div.innerHTML =
         '<div class="history-head"><span class="type-dot" style="background:' + (TYPE_DOT[entry.type] || "#5C6570") + '"></span>' +
-        '<span class="history-title">' + esc(entry.title) + "</span>" +
+        '<span class="history-title">' + esc(entry.title) + (by ? " — by " + esc(by) : "") + "</span>" +
         '<span class="history-date">' + esc(fmtDateRel(entry.ts)) + "</span></div>" +
         (eff.length ? '<div class="history-effects">' + summary + fullList + "</div>" : "") +
         (entry.undone ? '<div class="undone-tag">Undone</div>' : "") +
@@ -1413,7 +1438,7 @@
   }
   /* One craft's 4x6 sheet section. Single print and Print all share this
      builder, so a queue job is exactly the single sheets in queue order. */
-  function packSheetSection(craftId, kits, boxes) {
+  function packSheetSection(craftId, kits, boxes, by) {
     var craft = L.craftById(craftId);
     var pack = L.computePack(craftId, kits);
     var binsOn = settings().features.bins;
@@ -1438,7 +1463,7 @@
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>" +
       '<div class="print-foot">' + (boxes && boxes.length ? '<div class="foot-boxes">BOXES: ' + esc(boxes.join(" + ")) + "</div>" : "") +
-      "<div>Packed by: ____________________</div><div>Date: ____________</div></div></section>";
+      "<div>Packed by: " + (by ? esc(by) : "____________________") + "</div><div>Date: ____________</div></div></section>";
   }
   function printPackSheet() {
     var cur = currentPack(); if (!cur) { showError("Pick a craft and a valid number of kits first."); return; }
@@ -1446,7 +1471,7 @@
     /* Printing the sheet means they're packing from paper: unlock Complete for this exact order. */
     state.packPrintedKey = cur.craft.id + ":" + cur.kits;
     updatePackProgress();
-    printHtml(packSheetSection(cur.craft.id, cur.kits, currentBoxes()));
+    printHtml(packSheetSection(cur.craft.id, cur.kits, currentBoxes(), byVal("pack-by")));
   }
   function printInventory(mode) {
     var binsOn = settings().features.bins;
@@ -1477,7 +1502,7 @@
       var headRow = mode === "count"
         ? "<tr><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Should be</th><th>Counted</th></tr>"
         : "<tr><th>Item</th><th class='qty'>On hand</th></tr>";
-      var foot = mode === "count" ? '<div class="print-foot"><div>Counted by: ____________________</div><div>Date: ____________</div></div>' : "";
+      var foot = mode === "count" ? '<div class="print-foot"><div>Counted by: ' + (byVal("count-by") ? esc(byVal("count-by")) : "____________________") + '</div><div>Date: ____________</div></div>' : "";
       return '<section class="print-page"><table><thead>' +
         '<tr class="p-title"><th colspan="' + cols + '"><div class="label-title">' + esc(g.name) + '</div><div class="label-sub">' + (mode === "count" ? "Count sheet · " : "Inventory · ") + date + "</div></th></tr>" +
         headRow + "</thead><tbody>" + rows + "</tbody></table>" + foot + "</section>";
@@ -2007,6 +2032,7 @@
   }
   function init() {
     loadPackQueue();
+    prefillBy("pack-by", PACKBY_LS); /* brief item 3: last packer name, per device */
     try {
       var saved = localStorage.getItem(LS_KEY);
       if (saved) state.editor = JSON.parse(saved);
