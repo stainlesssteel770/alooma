@@ -303,12 +303,12 @@ try {
   eq(await rowVisible("pack-single-actions"), false, "item1: single row hides in Queue mode");
   eq(await page.$eval("#pack-queue-count", e => e.textContent), "1", "item1: queue holds the picked line");
   await page.screenshot({ path: path.join(SHOT, "queue-row-queuemode.jpg"), type: "jpeg", quality: 74 });
-  /* Run 1 failed here only: at 390x664 Done sits low enough that the
-     fixed phone tab bar (bottom, z-50) can cover its center, so the tap
-     hit the tab bar instead — same interception family as the toast
-     lesson. Probe the geometry (Node-side log, since page console is
-     not forwarded), then scroll Done to center — a real tap, the same
-     pattern as the test-ui stale-coordinate fix — before clicking. */
+  /* Run 1 failed here only: at 390x664 Done's in-flow bottom was 654
+     of 664, its center (616) under the tab bar's top edge (605), so
+     the tap hit the tab bar — same interception family as the toast
+     lesson. Fold-in fix: the row is pinned above the tab bar, so a
+     plain first-paint tap must land. Probe the geometry (Node-side
+     log, since page console is not forwarded) and assert it. */
   const doneDiag = await page.evaluate(() => {
     var b = document.getElementById("btn-queue-done");
     var r = b.getBoundingClientRect();
@@ -319,13 +319,70 @@ try {
     return { doneTop: Math.round(r.top), doneBottom: Math.round(r.bottom), doneCenterY: Math.round(cy), topEl: top ? (top.id || top.className || top.tagName) : null, tabsTop: tr ? Math.round(tr.top) : null, hidden: document.getElementById("pack-queue-actions").hidden };
   });
   console.log("ITEM1-DIAG before Done click: " + JSON.stringify(doneDiag));
-  await page.evaluate(() => { document.getElementById("btn-queue-done").scrollIntoView({ block: "center" }); });
-  await sleep(150);
+  /* Fold-in: the row is pinned above the tab bar, so Done must be
+     tappable on first paint with a plain tap — no scrolling. */
+  eq(doneDiag.topEl, "btn-queue-done", "item1: Done itself is on top at first paint");
+  eq(doneDiag.doneBottom <= doneDiag.tabsTop, true, "item1: Done sits above the tab bar on first paint");
   await page.click("#btn-queue-done");
   await sleep(300);
   eq(await rowVisible("pack-queue-actions"), false, "item1: Done hides the queue row again");
   eq(await page.$eval("#pack-queue-count", e => e.textContent), "1", "item1: Done keeps the saved queue");
   await page.screenshot({ path: path.join(SHOT, "queue-row-done.jpg"), type: "jpeg", quality: 74 });
+
+  /* ---- Item 1 fold-in: pinned row at 390x844, first paint, plain tap ---- */
+  await page.setViewport({ width: 390, height: 844 });
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
+  await reloadApp();
+  await page.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 6, { timeout: 15000 });
+  await sleep(300);
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Blooming Mirrors")).click());
+  await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
+  await sleep(200);
+  await page.click("#btn-pack-queue");
+  await sleep(300);
+  const d844 = await page.evaluate(() => {
+    var b = document.getElementById("btn-queue-done");
+    var r = b.getBoundingClientRect();
+    var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    var top = document.elementFromPoint(cx, cy);
+    var tabs = document.getElementById("tabs");
+    var tr = tabs ? tabs.getBoundingClientRect() : null;
+    return { doneBottom: Math.round(r.bottom), doneCenterY: Math.round(cy), topEl: top ? (top.id || top.className || top.tagName) : null, tabsTop: tr ? Math.round(tr.top) : null };
+  });
+  console.log("ITEM1-DIAG 844 before Done click: " + JSON.stringify(d844));
+  eq(d844.topEl, "btn-queue-done", "item1-844: Done itself is on top at first paint");
+  eq(d844.doneBottom <= d844.tabsTop, true, "item1-844: Done sits above the tab bar on first paint");
+  await page.screenshot({ path: path.join(SHOT, "queue-row-queuemode-844.jpg"), type: "jpeg", quality: 74 });
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  eq(await rowVisible("pack-queue-actions"), false, "item1-844: Done hides the queue row again");
+  eq(await page.$eval("#pack-queue-count", e => e.textContent), "1", "item1-844: Done keeps the saved queue");
+  await page.screenshot({ path: path.join(SHOT, "queue-row-done-844.jpg"), type: "jpeg", quality: 74 });
+
+  /* ---- Item 1 fold-in: during a walk the row unpins (static) so it
+     never covers the sticky Complete bar, which shares its band. ---- */
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Tambourines")).click());
+  await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="12"]').click(); });
+  await sleep(200);
+  await page.click("#btn-queue-add");
+  await sleep(300);
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 2, "item1-walk: two lines queued");
+  await page.click("#btn-queue-hand");
+  await sleep(500);
+  const walkPos = await page.evaluate(() => {
+    var el = document.getElementById("pack-queue-actions");
+    return { cls: el.className, pos: getComputedStyle(el).position };
+  });
+  eq(walkPos.cls.includes("walking"), true, "item1-walk: row carries the walking class");
+  eq(walkPos.pos, "static", "item1-walk: row unpins during the walk");
+  /* The walk table is long, so Done is scrolled to center first — a
+     user scrolls to it too; only the first-paint queue taps above are
+     required to land without scrolling. */
+  await page.evaluate(() => { document.getElementById("btn-queue-done").scrollIntoView({ block: "center" }); });
+  await sleep(150);
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  eq(await rowVisible("pack-queue-actions"), false, "item1-walk: Done ends the walk and hides the row");
 
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
