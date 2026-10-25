@@ -229,6 +229,7 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 .queue-line .queue-remove { min-width: 44px; min-height: 44px; margin-left: auto; }
 .queue-line .queue-complete { min-height: 44px; }
 .queue-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.clear-row { text-align: right; margin: 2px 0 10px; }
 .byline-row { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
 .byline-row label { font-weight: 600; white-space: nowrap; }
 .byline-row input { flex: 1; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid #C9CED6; border-radius: 8px; font-size: 16px; }
