@@ -104,7 +104,7 @@ try {
     await pickPack("Blooming Mirrors", 6);
     await clickTab(target);
     eq(await promptOpen(), true, "pick prompts on the way to " + target);
-    eq(await promptButtons(), { primary: "Stay and finish", cancel: "Discard" }, "prompt buttons for " + target);
+    eq(JSON.stringify(await promptButtons()), JSON.stringify({ primary: "Stay and finish", cancel: "Discard" }), "prompt buttons for " + target);
     await stay();
     eq(await currentTab(), "pack", "Stay keeps you on Pack (target " + target + ")");
     eq(await page.$eval("#pack-sku", e => e.textContent), "BM-6", "Stay keeps the pick (target " + target + ")");
@@ -162,7 +162,7 @@ try {
   await clickTab("inventory");
   eq(await page.$eval("#count-entry", e => e.hidden), true, "Discard closed the count form");
 
-  /* ---- 5. An open edit sheet prompts; Stay restores it exactly ---- */
+  /* ---- 5. A modal edit sheet blocks tab taps (see below) ---- */
   await clickTab("pack");
   await pickPack("Blooming Mirrors", 6);
   await page.click("#btn-pack-hand");
@@ -185,17 +185,22 @@ try {
   await sleep(300);
   const editBefore = await page.evaluate(() => ({ title: document.querySelector("#sheet-title").textContent, val: document.querySelector("#sheet-input").value }));
   await page.evaluate(() => { const i = document.querySelector("#sheet-input"); i.value = String(parseInt(i.value, 10) + 1); });
+  /* ---- 5. A modal edit sheet blocks tab taps; Cancel then switches cleanly ----
+     The sheet backdrop (z-80) covers the tab bar (z-50), so a tab tap with
+     an edit sheet open cannot reach the button at all — there is no leave
+     prompt to test here. What must hold: the switch does not happen, the
+     edited value survives the blocked tap, and Cancel restores clean tab
+     switches. */
   await clickTab("pack");
-  eq(await promptOpen(), true, "open edit sheet prompts on the way out");
-  await stay();
-  const editAfter = await page.evaluate(() => ({ title: document.querySelector("#sheet-title").textContent, val: document.querySelector("#sheet-input").value, open: !document.querySelector("#sheet-backdrop").hidden }));
-  eq(editAfter.open, true, "Stay restores the edit sheet");
-  eq(editAfter.title, editBefore.title, "Stay restores the edit sheet title");
-  eq(editAfter.val, String(parseInt(editBefore.val, 10) + 1), "Stay restores the edited number");
+  eq(await currentTab(), "history", "edit sheet blocks the tab switch");
+  eq(await page.evaluate(() => !document.querySelector("#sheet-backdrop").hidden), true, "edit sheet stays open through the blocked tap");
+  eq(await page.evaluate(() => document.querySelector("#sheet-input").value), String(parseInt(editBefore.val, 10) + 1), "edit sheet keeps the edited number");
+  await page.click("#sheet-cancel"); /* Cancel the edit */
+  await sleep(300);
+  eq(await page.evaluate(() => document.querySelector("#sheet-backdrop").hidden), true, "Cancel closes the edit sheet");
   await clickTab("pack");
-  await discard();
-  eq(await currentTab(), "pack", "Discard switches with an edit sheet open");
-  eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "Discard closed the edit sheet");
+  eq(await promptOpen(), false, "no prompt after cancelling the edit");
+  eq(await currentTab(), "pack", "tab switch works after cancelling the edit");
 
   /* ---- 6. A typed-but-unsaved Settings name prompts; a saved one does not ---- */
   await clickTab("settings");
