@@ -387,6 +387,59 @@ try {
   await sleep(300);
   eq(await rowVisible("pack-queue-actions"), false, "item1-walk: Done ends the walk and hides the row");
 
+  /* ---- Item 2: sheets cap at viewport height, content scrolls,
+     buttons stay pinned. Forced overflow: every item at 0, three
+     full lines queued, so the shortage sheet is far taller than the
+     viewport at 1366x900 and at 390x664. ---- */
+  async function sheetGeom() {
+    return await page.evaluate(() => {
+      var sh = document.querySelector(".sheet");
+      var sr = document.querySelector(".sheet-scroll");
+      var pr = document.getElementById("sheet-primary").getBoundingClientRect();
+      var cr = document.getElementById("sheet-cancel").getBoundingClientRect();
+      return { sheetBottom: Math.round(sh.getBoundingClientRect().bottom), scrollH: sr.scrollHeight, clientH: sr.clientHeight, primBottom: Math.round(pr.bottom), cancelBottom: Math.round(cr.bottom), H: window.innerHeight };
+    });
+  }
+  await page.setViewport({ width: 1366, height: 900 });
+  Object.keys(remoteData.inventory).forEach(k => { remoteData.inventory[k].qty = 0; });
+  remoteSha = "sha-q-item2";
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
+  await reloadApp();
+  await page.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 6, { timeout: 15000 });
+  await sleep(300);
+  await queueFirst("Tambourines", 36);
+  await addLine("The Cakery", 36);
+  await addLine("Blooming Mirrors", 36);
+  await page.click("#btn-queue-print");
+  await sleep(400);
+  eq(await sheetVisible(), true, "item2: Print all stops at the shortage sheet");
+  eq(await page.$eval("#sheet-title", e => e.textContent.includes("Items short")), true, "item2: the sheet is the shortage sheet");
+  const g900 = await sheetGeom();
+  eq(g900.sheetBottom <= g900.H, true, "item2-1366x900: sheet fits the viewport");
+  eq(g900.scrollH > g900.clientH, true, "item2-1366x900: content overflows, so it must scroll");
+  eq(g900.primBottom <= g900.H && g900.cancelBottom <= g900.H, true, "item2-1366x900: both buttons inside the viewport");
+  const scrolled900 = await page.evaluate(() => {
+    var sr = document.querySelector(".sheet-scroll");
+    sr.scrollTop = sr.scrollHeight;
+    return sr.scrollTop;
+  });
+  eq(scrolled900 > 0, true, "item2-1366x900: the scroll area actually moves");
+  await page.screenshot({ path: path.join(SHOT, "sheet-overflow-desktop.jpg"), type: "jpeg", quality: 74 });
+  await sheetCancel();
+  eq(await sheetVisible(), false, "item2: Go back closes the sheet");
+  eq((await queueLines()).length, 3, "item2: Go back keeps the queue intact");
+  await page.setViewport({ width: 390, height: 664 });
+  await sleep(300);
+  await page.click("#btn-queue-print");
+  await sleep(400);
+  eq(await sheetVisible(), true, "item2-390x664: shortage sheet opens");
+  const g664 = await sheetGeom();
+  eq(g664.sheetBottom <= g664.H, true, "item2-390x664: sheet fits the viewport");
+  eq(g664.scrollH > g664.clientH, true, "item2-390x664: content overflows, so it must scroll");
+  eq(g664.primBottom <= g664.H && g664.cancelBottom <= g664.H, true, "item2-390x664: both buttons inside the viewport");
+  await page.screenshot({ path: path.join(SHOT, "sheet-overflow-phone.jpg"), type: "jpeg", quality: 74 });
+  await sheetCancel();
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();
