@@ -311,7 +311,8 @@ try {
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 4, "10: toast undo restores the queue line");
   eq(await txt("#pack-queue-progress"), "Craft 1 of 4", "10: walk steps back to Craft 1 of 4");
   eq(await txt("#pack-sku"), "BM-6", "10: walk steps back to the restored BM-6 line");
-  eq(remote.history.length, 1, "10: the undone entry stays in History");
+  /* Two entries: this walk entry (undone, kept) plus section 5e's print. */
+  eq(remote.history.length, 2, "10: the undone entry stays in History");
   eq(remote.history[0].undone, true, "10: the undone entry is marked undone");
   /* Finish the walk, then undo its last entry from History: the line
      comes back and the walk steps back to it, on the Pack tab. The loop
