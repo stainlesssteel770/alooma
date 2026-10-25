@@ -228,6 +228,22 @@ try {
   eq(await page.evaluate(() => document.querySelector("#print-area").textContent.includes("Packed by: Dina")), true, "5e: printed sheet carries the saved Packed-by name");
 
   /* ---- 11: during a walk, single buttons hide and the table clears the bar ---- */
+  /* Section 4's Bulk detour Discarded the saved queue under A3, so rebuild
+     the 5d shape first; the BM-6 below then makes 4 lines with BM-6 x3. */
+  await packCraft("Blooming Mirrors");
+  await packChip(6);
+  await page.click("#btn-pack-queue");
+  await sleep(300);
+  await packCraft("Tambourines");
+  await packChip(12);
+  await page.click("#btn-queue-add");
+  await sleep(250);
+  await packCraft("Blooming Mirrors");
+  await packChip(6);
+  await page.click("#btn-queue-add");
+  await sleep(250);
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await packCraft("Blooming Mirrors");
   await packChip(6);
   await page.click("#btn-pack-queue");
