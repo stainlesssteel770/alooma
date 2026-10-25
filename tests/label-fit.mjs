@@ -120,6 +120,13 @@ try {
       p2 = (spilled.length ? spilled.join(" | ") : "no rows") + foot;
     }
     console.log(`FIT ${craft.name} ${kits} rows=${craft.items.length} pages=${pages.length} p1rows=${p1rows} p2=[${p2}] bottomGap=${bottomGap(pages[pages.length - 1])}pt`);
+    /* Pack-fix sizing (kits=6 is representative — row counts don't vary by
+       kits): how much free space page 1 actually has left. A footer needs
+       ~47pt, one more row ~28pt; if p1gap covers it, the spill is a
+       fragmentation quirk, not a real shortage. */
+    if (kits === 6) {
+      console.log(`PACKGEO ${craft.name} p1gap=${bottomGap(pages[0])}pt p1rows=${p1rows} pages=${pages.length}`);
+    }
   }
 
   /* ---- Matrix: every craft at every chip count, boxes off ---- */
