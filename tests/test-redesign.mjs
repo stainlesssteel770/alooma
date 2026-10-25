@@ -409,6 +409,17 @@ try {
   eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "12: submitting confirm closes the sheet");
   eq(await vis("#pack-queue-actions"), true, "12: submitting confirm enters queue mode");
 
+  /* ---- 13: item 7 smalls (Pack wording, -6 message) ---- */
+  if (await vis("#btn-queue-done")) { await page.evaluate(() => document.querySelector("#btn-queue-done").scrollIntoView({ block: "center" })); await page.click("#btn-queue-done"); await sleep(250); }
+  await packCraft("Blooming Mirrors");
+  await page.evaluate(() => document.querySelector("#pack-kits-plus").click());
+  await sleep(150);
+  await typePackKits("9");
+  eq(await page.$eval("#pack-error", e => e.textContent.includes("stepper")), false, "13: Pack multiples message never mentions the stepper");
+  eq(await page.$eval("#pack-error", e => e.textContent.includes("a chip")), true, "13: Pack multiples message names a chip");
+  await typePackKits("-6");
+  eq(await page.$eval("#pack-error", e => e.textContent), "Kits must be at least 6.", "13: -6 says at least 6, not multiples");
+
   console.log("REDESIGN TESTS: " + passes + " passed, " + failures + " failed");
   process.exit(failures ? 1 : 0);
 } finally {
