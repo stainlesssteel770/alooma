@@ -396,42 +396,54 @@ async function tab(name) {
   eq(remoteData.history[1].type, "hand-packed", "Bulk: second batch entry logged as hand-packed");
   eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 0, "Bulk: queue cleared after recording");
 
-  /* v3 D1: after Add the picker clears; re-adding the same order asks first */
+  /* Batch C item 3: NO prompt while adding — the duplicate check fires at
+     Record all only (the old v3 D1 add-time prompt is gone). */
   await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await page.click('.kits-chip[data-for="bulk"][data-kits="18"]');
   await sleep(200);
   await page.click("#btn-bulk-add");
   await sleep(250);
-  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 1, "v3 D1: order queued");
-  eq(await page.$eval("#btn-bulk-add", e => e.textContent), "Pick a craft", "v3 D1: picker cleared after Add");
-  eq(await page.$eval("#toast", e => e.textContent.includes("Added CAK-18")), true, "v3 D1: toast confirms the add");
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 1, "item3: order queued");
+  eq(await page.$eval("#btn-bulk-add", e => e.textContent), "Pick a craft", "item3: picker cleared after Add");
+  eq(await page.$eval("#toast", e => e.textContent.includes("Added CAK-18")), true, "item3: toast confirms the add");
   await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
   await sleep(200);
-  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 0, "v3 D1: toast Undo un-queues the line");
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 0, "item3: toast Undo un-queues the line");
   await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await page.click('.kits-chip[data-for="bulk"][data-kits="18"]');
   await sleep(200);
   await page.click("#btn-bulk-add");
   await sleep(250);
-  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 1, "v3 D1: order queued again");
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 1, "item3: order queued again");
   await page.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await page.click('.kits-chip[data-for="bulk"][data-kits="18"]');
   await sleep(200);
   await page.click("#btn-bulk-add");
   await sleep(250);
-  eq(await page.$eval("#sheet-title", e => e.textContent), "CAK-18 is already in the list.", "v3 D1: the same order again asks first");
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 2, "item3: re-adding queues silently, no prompt while adding");
+  eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "item3: no sheet opened while adding");
+  const histBeforeDup = remoteData.history.length;
+  await page.click("#btn-bulk-record");
+  await sleep(300);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Multiple of the same craft detected", "item3: Record all opens the duplicate pop-up");
+  eq(await page.$eval("#sheet-summary", e => e.textContent.includes("The Cakery x2 (18 kits + 18 kits)") && e.textContent.includes("Was this intentional?")), true, "item3: pop-up names the craft, count and kit amounts");
+  eq(await page.$eval("#sheet-primary", e => e.textContent), "YES", "item3: YES is the primary button");
+  eq(await page.$eval("#sheet-primary", e => e.classList.contains("success")), true, "item3: YES is green");
+  eq(await page.$eval("#sheet-cancel", e => e.textContent), "NO", "item3: NO is the cancel button");
+  eq(await page.$eval("#sheet-cancel", e => e.classList.contains("danger")), true, "item3: NO is red");
   await page.click("#sheet-cancel");
-  await sleep(200);
-  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 1, "v3 D1: Keep one leaves exactly one line");
-  await page.click("#btn-bulk-add");
   await sleep(250);
-  eq(await page.$eval("#sheet-title", e => e.textContent), "CAK-18 is already in the list.", "v3 D1: asking again on the next attempt");
-  await page.click("#sheet-primary");
-  await sleep(200);
-  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 2, "v3 D1: Add another queues the second line");
-  await page.evaluate(() => { document.querySelector('#bulk-lines [data-remove="1"]').click(); document.querySelector('#bulk-lines [data-remove="0"]').click(); });
-  await sleep(200);
-  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 0, "v3 D1: queue tidied back to empty");
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 2, "item3: NO keeps both lines");
+  eq(remoteData.history.length, histBeforeDup, "item3: NO records nothing");
+  await page.click("#btn-bulk-record");
+  await sleep(300);
+  await page.click("#sheet-primary"); /* YES */
+  await sleep(300);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Record all", "item3: YES proceeds to the Record all confirm");
+  await page.click("#sheet-primary"); /* Subtract from inventory */
+  await sleep(600);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 0, "item3: YES + confirm records the batch and clears the list");
+  eq(remoteData.history.length, histBeforeDup + 2, "item3: YES + confirm logs both entries");
 
   /* Count fix via Enter counts: scissors counted 190 */
   await tab("inventory");
