@@ -33,6 +33,11 @@ async function waitFor(fn, label) {
 let online = true, shaN = 1, putCount = 0, serverClosed = false;
 const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
 remote.history = [];
+/* Batch A: the Bulk tab is opt-in (default OFF) even for editors, and the
+   app bounces off a hidden tab on render — this suite drives Bulk via
+   real clicks, so opt it in like the other Bulk suites do. */
+remote.settings = remote.settings || {};
+remote.settings.features = Object.assign({}, remote.settings.features, { bulkTab: true });
 Object.keys(remote.inventory).forEach(k => { remote.inventory[k].qty = 0; remote.inventory[k].threshold = null; });
 remote.inventory["scissors"].qty = 200;
 let remoteSha = "sha-1";
