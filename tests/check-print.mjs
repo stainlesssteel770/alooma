@@ -110,6 +110,7 @@ await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 try {
   const page = await browser.newPage();
+  page.on("pageerror", e => console.log("PAGEERROR " + e.message));
   await page.setRequestInterception(true);
   const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
   page.on("request", req => {
@@ -201,8 +202,11 @@ try {
     await page.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);
     await page.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
     await sleep(150);
+    console.log("queueAdd", name, kits, "add disabled =", await page.$eval("#btn-queue-add", e => e.disabled),
+      "sku =", await page.$eval("#pack-sku", e => e.textContent));
     await page.evaluate(() => { document.querySelector("#btn-queue-add").click(); });
     await sleep(250);
+    console.log("queueAdd", name, kits, "lines now =", await page.$$eval("#pack-queue .queue-line", els => els.length));
   }
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await queueAdd("The Cakery", 36);
