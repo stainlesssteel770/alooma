@@ -1046,9 +1046,14 @@
   /* Brief item 2: after an Add, the new card must clear the toast too,
      not just the bar + nav. Scrolling up only grows the gap to a
      below-bar toast (the bar moves up with the card), so this adjustment
-     can't create a new overlap. */
+     can't create a new overlap. Phone only: on desktop the toast sits
+     at a fixed bottom and this extra scroll can park the action bar
+     UNDER the toast — where the next tap hits the toast's UNDO button
+     instead of the bar (that exact intercept broke the offline-queue
+     suite: Record's center landed on UNDO, undoing the Add). */
   function scrollCardClearOfToast(el) {
     if (!el) return;
+    if (window.innerWidth > 700) return;
     var toast = $("toast");
     if (!toast || toast.hidden) return;
     var cr = el.getBoundingClientRect();
