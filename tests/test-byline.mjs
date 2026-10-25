@@ -1,7 +1,8 @@
-/* Byline tests (brief item 3): optional Packed by / Counted by fields.
-   - Packed by on Packing (single + queue), Counted by on the count form.
+/* Byline tests (brief item 3, Batch B: names live in Settings).
+   - Packed by / Counted by set in Settings, saved per device on change.
+   - No name fields on Packing or the count form anymore.
    - Complete/save never blocked by an empty name; blank lines stay blank.
-   - Last name remembered per device (localStorage) and prefilled.
+   - Last name remembered per device (localStorage) across reloads.
    - Stored on the History entry and shown as "— by <name>".
    - Filled before printing, the name replaces the blank on the sheet.
    - Old entries without a name render fine, with no "by" text.
@@ -84,20 +85,33 @@ try {
   await sleep(500);
   await page.evaluate(() => { window.print = () => {}; });
 
-  async function tab(name) { await page.click(`[data-tab="${name}"]`); await sleep(300); }
+  /* A3: prompt-aware — Discard whenever a switch prompts (the dirty state
+     here is always already saved or intentionally abandoned). */
+  async function tab(name) {
+    await page.click(`[data-tab="${name}"]`);
+    await sleep(300);
+    const prompt = await page.$eval("#sheet-backdrop", e => !e.hidden && document.querySelector("#sheet-title").textContent === "Unsaved changes").catch(() => false);
+    if (prompt) { await page.click("#sheet-cancel"); await sleep(300); }
+  }
   async function packSelect(craftName, kits) {
-    await page.evaluate(() => { document.querySelector("#btn-pack-change").click(); });
     await page.evaluate(name => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), craftName);
     await page.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
     await sleep(150);
+  }
+  async function queueFirst(craftName, kits) {
+    await packSelect(craftName, kits);
+    await page.click("#btn-pack-queue");
+    await sleep(250);
   }
   async function queueAdd(craftName, kits) {
     await packSelect(craftName, kits);
     await page.click("#btn-queue-add");
     await sleep(250);
   }
-  async function setBy(id, name) {
-    await page.evaluate((sel, v) => { document.querySelector(sel).value = v; }, id, name);
+  /* Names save on change (blur) — set the value and fire change. */
+  async function setName(id, name) {
+    await page.evaluate((sel, v) => { const el = document.querySelector(sel); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }, id, name);
+    await sleep(150);
   }
   async function printAreaText() { return page.$eval("#print-area", e => e.textContent); }
 
@@ -106,62 +120,64 @@ try {
   eq(await page.$$eval(".history-entry", els => els.length), 1, "old entry: one history row");
   eq((await page.$eval(".history-entry", e => e.textContent)).includes("by "), false, "old entry: no byline shown");
 
+  /* ---- 0b. No name fields on Packing or the count form anymore ---- */
+  await tab("pack");
+  eq(await page.$$eval("#pack-by", els => els.length), 0, "5e: no Packed by field on Packing");
+  await tab("inventory");
+  await page.click("#btn-enter-counts");
+  await sleep(300);
+  eq(await page.$$eval("#count-by", els => els.length), 0, "5e: no Counted by field on the count form");
+  await page.click("#btn-cancel-counts");
+  await sleep(200);
+
   /* ---- 1. Single print with a name fills the Packed by line ---- */
+  await tab("settings");
+  await setName("#set-packed-by", "Sara");
+  eq(await page.evaluate(() => localStorage.getItem("alooma.packedby.v1")), "Sara", "settings: Packed by saved per device on change");
   await tab("pack");
   await packSelect("The Cakery", 18);
-  await setBy("#pack-by", "Sara");
-  await page.click("#btn-print-sheet");
-  await sleep(200);
+  await page.click("#btn-pack-print");
+  await sleep(300);
   eq((await printAreaText()).includes("Packed by: Sara"), true, "single print: name on the Packed by line");
   eq((await printAreaText()).includes("Packed by: ____________________"), false, "single print: blank line replaced, not kept");
+  eq(remoteData.history[0].packedBy, "Sara", "single print: packedBy stored on the entry (A4: print completes)");
 
   /* ---- 2. Single print with an empty name keeps the blank ---- */
-  await setBy("#pack-by", "");
-  await page.click("#btn-print-sheet");
-  await sleep(200);
+  await tab("settings");
+  await setName("#set-packed-by", "");
+  await tab("pack");
+  await packSelect("The Cakery", 18);
+  await page.click("#btn-pack-print");
+  await sleep(300);
   eq((await printAreaText()).includes("Packed by: ____________________"), true, "single print empty: blank line kept");
+  eq(remoteData.history[0].packedBy, undefined, "single print empty: no packedBy stored");
 
-  /* ---- 3. Complete with a name stores it and shows it in History ---- */
-  await setBy("#pack-by", "Sara");
-  await page.click("#btn-complete-pack");
-  await sleep(250);
-  await page.click("#sheet-primary");
-  await sleep(700);
-  eq(remoteData.history[0].packedBy, "Sara", "complete: packedBy stored on the entry");
-  await tab("history");
-  eq((await page.$eval(".history-entry", e => e.textContent)).includes("by Sara"), true, "history: newest row shows by Sara");
-
-  /* ---- 4. The name is remembered per device and prefilled after reload ---- */
+  /* ---- 3. The name is remembered per device across reloads ---- */
+  await tab("settings");
+  await setName("#set-packed-by", "Sara");
   await page.reload({ waitUntil: "networkidle0", timeout: 30000 });
   await sleep(500);
-  eq(await page.$eval("#pack-by", e => e.value), "Sara", "reload: Packed by prefilled with the last name");
+  await tab("settings");
+  eq(await page.$eval("#set-packed-by", e => e.value), "Sara", "reload: Packed by remembered from this device");
 
-  /* ---- 5. Queue Print all carries the name onto every sheet; per-line Complete stores it ---- */
-  await queueAdd("The Cakery", 36);
+  /* ---- 4. Queue Print all carries the name onto every sheet ---- */
+  await tab("pack");
+  await queueFirst("The Cakery", 36);
   await queueAdd("Tambourines", 12);
   await page.click("#btn-queue-print");
   await sleep(300);
   eq(((await printAreaText()).match(/Packed by: Sara/g) || []).length, 2, "print all: name on both sheets");
-  await page.click("#pack-queue .queue-line .queue-complete");
-  await sleep(250);
-  await page.click("#sheet-primary");
-  await sleep(700);
-  eq(remoteData.history[0].packedBy, "Sara", "queue line complete: packedBy stored");
-  /* Complete the second line too: leaving Pack with a printed line left
-     would fire the tab guard, and section 6 needs a clean switch. */
-  await page.click("#pack-queue .queue-line .queue-complete");
-  await sleep(250);
-  await page.click("#sheet-primary");
-  await sleep(700);
-  eq(remoteData.history[0].packedBy, "Sara", "queue line 2 complete: packedBy stored");
-  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 0, "queue line 2 complete: queue empty");
+  eq(remoteData.history[0].packedBy, "Sara", "print all: newest entry carries packedBy");
+  eq(remoteData.history[1].packedBy, "Sara", "print all: second entry carries packedBy");
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 0, "print all: queue cleared");
 
-  /* ---- 6. Count with a name: entries + count sheet carry it ---- */
+  /* ---- 5. Count with a name: entries + count sheet carry it ---- */
+  await tab("settings");
+  eq(await page.$eval("#set-counted-by", e => e.value), "", "count name: Counted by starts empty (nothing remembered yet)");
+  await setName("#set-counted-by", "Dina");
   await tab("inventory");
   await page.click("#btn-enter-counts");
   await sleep(300);
-  eq(await page.$eval("#count-by", e => e.value), "", "count form: Counted by starts empty (nothing remembered yet)");
-  await setBy("#count-by", "Dina");
   await page.type("#count-entry-list input[data-item]", "90");
   await page.click("#btn-apply-counts");
   await sleep(250);
@@ -176,11 +192,16 @@ try {
   await sleep(200);
   eq((await printAreaText()).includes("Counted by: Dina"), true, "count print: name on the Counted by line");
 
-  /* ---- 7. Complete with an empty name is never blocked and stores nothing ---- */
+  /* ---- 6. Complete with an empty name is never blocked and stores nothing ---- */
+  await tab("settings");
+  await setName("#set-packed-by", "");
   await tab("pack");
-  await setBy("#pack-by", "");
   await packSelect("Tambourines", 12);
-  await page.click("#btn-print-sheet");
+  await page.click("#btn-pack-hand");
+  await sleep(200);
+  await page.click("#btn-check-all");
+  await sleep(200);
+  await page.click("#sheet-primary"); /* "Mark all" confirm */
   await sleep(200);
   await page.click("#btn-complete-pack");
   await sleep(250);
