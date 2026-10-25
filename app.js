@@ -50,15 +50,36 @@
       t.appendChild(b);
     }
     t.hidden = false;
-    /* Brief item 2 (phone): park the toast above the visible sticky bar +
-       fixed nav instead of a fixed height a wrapped multi-row bar can grow
-       past — measured live, because the bar's height varies by tab. */
+    /* Brief item 2 (phone): place the toast against the bar's ACTUAL
+       position, not a fixed offset — the bar is sticky, so after a scroll
+       it can sit mid-viewport instead of stuck above the nav, and a fixed
+       offset then lands the toast right on top of it. Prefer below the
+       bar (between bar and nav) when that gap fits the toast; otherwise
+       sit above the bar. */
     if (window.innerWidth <= 700) {
       var bar = document.querySelector(".tab-panel.active .action-bar");
-      var barH = bar ? bar.offsetHeight : 0;
       var tabsEl = $("tabs");
       var navH = tabsEl ? tabsEl.offsetHeight : 66;
-      t.style.bottom = (barH + navH + 8) + "px";
+      var toastH = t.offsetHeight;
+      var vh = window.innerHeight;
+      var bottom;
+      if (bar) {
+        var br = bar.getBoundingClientRect();
+        if (br.bottom > 0 && br.top < vh) {
+          if (br.bottom + 8 + toastH <= vh - navH) {
+            bottom = vh - br.bottom - toastH - 8; /* below the bar */
+          } else {
+            bottom = vh - br.top + 8; /* above the bar */
+          }
+        } else if (br.top >= vh) {
+          bottom = bar.offsetHeight + navH + 8; /* bar below the fold */
+        } else {
+          bottom = navH + 8; /* bar scrolled past the top */
+        }
+      } else {
+        bottom = navH + 8;
+      }
+      t.style.bottom = bottom + "px";
     } else {
       t.style.bottom = "";
     }
@@ -1022,6 +1043,18 @@
     }
     queueBulkLine(craftId, kits);
   }
+  /* Brief item 2: after an Add, the new card must clear the toast too,
+     not just the bar + nav. Scrolling up only grows the gap to a
+     below-bar toast (the bar moves up with the card), so this adjustment
+     can't create a new overlap. */
+  function scrollCardClearOfToast(el) {
+    if (!el) return;
+    var toast = $("toast");
+    if (!toast || toast.hidden) return;
+    var cr = el.getBoundingClientRect();
+    var tr = toast.getBoundingClientRect();
+    if (cr.bottom > tr.top - 8) window.scrollBy(0, cr.bottom - tr.top + 8);
+  }
   function queueBulkLine(craftId, kits) {
     var line = { craftId: craftId, kits: kits };
     bulkLines.push(line);
@@ -1030,14 +1063,17 @@
     state.bulkCraft = null;
     $("bulk-kits").value = "";
     renderBulk();
+    /* Brief item 2: the new card scrolls fully into view above the bar
+       (scroll-margin-bottom in the phone CSS clears bar + nav + toast);
+       the toast is placed against the bar's post-scroll position, then
+       the card is nudged above the toast if they still touch. */
+    var el = $("bulk-lines").lastElementChild;
+    if (el) el.scrollIntoView({ block: "nearest" });
     showToast("Added <span class=\"nowrap\">" + esc(L.sku(craftId, kits)) + "</span>", "UNDO", function () {
       var i = bulkLines.indexOf(line);
       if (i >= 0) { bulkLines.splice(i, 1); renderBulk(); }
     }, 8000);
-    /* Brief item 2: the new card scrolls fully into view above the bar
-       (scroll-margin-bottom in the phone CSS clears bar + nav). */
-    var el = $("bulk-lines").lastElementChild;
-    if (el) el.scrollIntoView({ block: "nearest" });
+    scrollCardClearOfToast(el);
   }
   function recordAllBulk() {
     if (!requireEditor()) return;
