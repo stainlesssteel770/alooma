@@ -255,7 +255,7 @@
     "features": {
       "boxes": false,
       "bins": false,
-      "bulkTab": true
+      "bulkTab": false
     },
     "boxes": [
       "Box A",
