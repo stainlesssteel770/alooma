@@ -174,7 +174,7 @@ try {
   });
   await page.setRequestInterception(true);
   const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
-  page.on("request", req => {
+  const mockHandler = req => {
     const url = req.url();
     if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: CORS, body: "" });
     if (url.includes("/contents/data.json")) {
@@ -193,7 +193,8 @@ try {
     if (url === "https://api.github.com/user") return req.respond({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ login: "tester" }) });
     if (url.startsWith("https://api.github.com")) return req.respond({ status: 404, headers: CORS, body: "{}" });
     req.continue();
-  });
+  };
+  page.on("request", mockHandler);
   async function load(expectedCrafts) {
     await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "load", timeout: 30000 });
     await page.waitForFunction(n => document.querySelectorAll("#pack-crafts .craft-btn").length === n, { timeout: 15000 }, expectedCrafts);
@@ -314,6 +315,274 @@ try {
   await page.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
   await sleep(400);
   eq(await pdfPages("tam"), 2, "browser: TAM above the max (10 lines) spills to two pages, never shrinks");
+
+  /* ---- Sub-batch (b) sections: editor UI + validation + hide/unhide ---- */
+  const newContext = async () => (browser.createBrowserContext ? await browser.createBrowserContext() : await browser.createIncognitoBrowserContext());
+  async function goSettings(pg) {
+    await pg.evaluate(() => document.querySelector('[data-tab="settings"]').click());
+    await sleep(300);
+  }
+  async function resetSeed() {
+    remote.settings = { features: { boxes: false, bins: false, bulkTab: true }, boxes: [], boxRules: [], bins: {} };
+    delete remote.settings.recipes;
+    delete remote.settings.customItems;
+    Object.keys(remote.inventory).forEach(k => { remote.inventory[k] = { qty: 100, threshold: null }; });
+    remote.history = [];
+    await page.reload({ waitUntil: "load", timeout: 30000 });
+    await page.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 6, { timeout: 15000 });
+    await sleep(300);
+    await page.evaluate(() => { window.print = () => {}; });
+  }
+  async function waitPut(pred, label) {
+    for (let i = 0; i < 40; i++) {
+      if (pred(lastPutBody)) return true;
+      await sleep(150);
+    }
+    return false;
+  }
+  async function confirmIfOpen(pg) {
+    const open = await pg.evaluate(() => { const bd = document.querySelector("#sheet-backdrop"); return bd && !bd.hidden; });
+    if (open) { await pg.evaluate(() => document.querySelector("#sheet-primary").click()); await sleep(500); }
+  }
+
+  /* (b1) Viewers: no Settings tab, Recipes card is editor-only. */
+  const vctx = await newContext();
+  const vpage = await vctx.newPage();
+  vpage.on("dialog", d => d.accept());
+  await vpage.setRequestInterception(true);
+  vpage.on("request", mockHandler);
+  await vpage.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "load", timeout: 30000 });
+  await vpage.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 6, { timeout: 15000 });
+  await sleep(300);
+  eq(await vpage.evaluate(() => document.querySelector('[data-tab="settings"]').hidden), true, "(b) viewer: Settings tab hidden");
+  eq(await vpage.evaluate(() => document.querySelector("#recipes-card").classList.contains("editor-only")), true, "(b) viewer: Recipes card is editor-only");
+  await vctx.close();
+
+  /* (b2) Code validation + Add craft. */
+  await resetSeed();
+  await goSettings(page);
+  eq(await page.evaluate(() => !!document.querySelector("#recipes-card")), true, "(b) editor: Recipes card present");
+  async function tryAdd(name, code) {
+    await page.evaluate((n, c) => { document.querySelector("#recipe-add-name").value = n; document.querySelector("#recipe-add-code").value = c; }, name, code);
+    await page.evaluate(() => document.querySelector("#recipe-add-btn").click());
+    await sleep(400);
+  }
+  const packCount = async () => await page.evaluate(() => document.querySelectorAll("#pack-crafts .craft-btn").length);
+  await tryAdd("Test Craft", "A");
+  eq(await page.evaluate(() => document.querySelector("#recipe-add-error").textContent !== ""), true, "(b) code 1 letter rejected");
+  eq(await packCount(), 6, "(b) rejected add adds no craft");
+  await tryAdd("Test Craft", "ABCDE");
+  eq(await page.evaluate(() => document.querySelector("#recipe-add-error").textContent !== ""), true, "(b) code 5 letters rejected");
+  await tryAdd("Test Craft", "A1");
+  eq(await page.evaluate(() => document.querySelector("#recipe-add-error").textContent !== ""), true, "(b) code with digit rejected");
+  await tryAdd("Another", "BM");
+  eq(await page.evaluate(() => document.querySelector("#recipe-add-error").textContent !== ""), true, "(b) duplicate code rejected");
+  eq(await packCount(), 6, "(b) no rejected add added a craft");
+  await tryAdd("Alpha Craft", "abc");
+  eq(await page.evaluate(() => document.querySelector("#recipe-add-error").textContent), "", "(b) lowercase code accepted (auto-uppercased)");
+  eq(await packCount(), 7, "(b) valid add appears in the picker");
+  const alphaRow = await page.evaluate(() => { const r = document.querySelector('[data-recipe-row="alpha-craft"]'); return r ? r.textContent : ""; });
+  eq(alphaRow.includes("Alpha Craft") && alphaRow.includes("ABC"), true, "(b) new craft listed with uppercased code");
+
+  /* (b3) Hide/unhide + a queued line for the hidden craft still completes. */
+  await resetSeed();
+  await pick("Blooming Mirrors", 6);
+  await page.evaluate(() => document.querySelector("#btn-pack-queue").click());
+  await sleep(300);
+  eq(await page.evaluate(() => document.querySelector("#pack-queue").textContent.includes("Blooming Mirrors")), true, "(b) queue holds BM-6 before hide");
+  const hctx = await newContext();
+  const hpage = await hctx.newPage();
+  hpage.on("dialog", d => d.accept());
+  await hpage.evaluateOnNewDocument(() => {
+    localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
+  });
+  await hpage.setRequestInterception(true);
+  hpage.on("request", mockHandler);
+  await hpage.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "load", timeout: 30000 });
+  await hpage.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 6, { timeout: 15000 });
+  await sleep(300);
+  await goSettings(hpage);
+  await hpage.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
+  await sleep(300);
+  await hpage.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-hide-toggle]').click());
+  await sleep(500);
+  eq(await waitPut(b => b && b.settings && b.settings.recipes && b.settings.recipes.some(r => r.id === "bm" && r.hidden), "hide"), true, "(b) hide saved (BM hidden in shared data)");
+  eq(await hpage.evaluate(() => document.querySelector('[data-recipe-row="bm"]').textContent.includes("Hidden")), true, "(b) hidden craft shows Hidden badge");
+  await hpage.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(200);
+  eq(await hpage.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors"))), false, "(b) hidden craft absent from Pack picker");
+  await hpage.evaluate(() => document.querySelector('[data-tab="bulk"]').click());
+  await sleep(200);
+  eq(await hpage.evaluate(() => [...document.querySelectorAll("#bulk-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors"))), false, "(b) hidden craft absent from Bulk picker");
+  await page.reload({ waitUntil: "load", timeout: 30000 });
+  await page.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 5, { timeout: 15000 });
+  await sleep(300);
+  await page.evaluate(() => { window.print = () => {}; });
+  eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors"))), false, "(b) reloaded picker still lacks hidden BM");
+  eq(await page.evaluate(() => document.querySelector("#pack-queue").textContent.includes("Blooming Mirrors")), true, "(b) queued BM-6 survives reload while hidden");
+  await pick("Tambourines", 6);
+  await page.evaluate(() => document.querySelector("#btn-pack-queue").click());
+  await sleep(300);
+  await page.evaluate(() => document.querySelector("#btn-queue-hand").click());
+  await sleep(400);
+  eq(await page.evaluate(() => document.querySelector("#pack-queue-progress").textContent.includes("Craft 1 of 2")), true, "(b) walk starts on the hidden line (Craft 1 of 2)");
+  async function finishWalkLine() {
+    await page.evaluate(() => document.querySelector("#btn-check-all").click());
+    await sleep(300);
+    await page.evaluate(() => document.querySelector("#sheet-primary").click());
+    await sleep(300);
+    await page.evaluate(() => document.querySelector("#btn-complete-pack").click());
+    await sleep(300);
+    await confirmIfOpen(page);
+  }
+  await finishWalkLine();
+  eq(await page.evaluate(() => document.querySelector("#pack-queue-progress").textContent.includes("Craft 2 of 2")), true, "(b) walk steps to Craft 2 of 2");
+  await finishWalkLine();
+  eq(remote.history.some(e => e.title && e.title.includes("Blooming Mirrors") && e.title.includes("6 kits")), true, "(b) hidden craft's queued line completed (history entry)");
+  eq(remote.history.some(e => e.title && e.title.includes("Tambourines") && e.title.includes("6 kits")), true, "(b) walk second line completed too");
+  eq(remote.inventory["scissors"].qty, 94, "(b) hidden-line walk deducted stock (scissors 100-3-3)");
+  await goSettings(hpage);
+  await hpage.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
+  await sleep(300);
+  await hpage.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-hide-toggle]').click());
+  await sleep(500);
+  eq(await waitPut(b => b && b.settings && b.settings.recipes && b.settings.recipes.some(r => r.id === "bm" && !r.hidden), "unhide"), true, "(b) unhide saved");
+  await page.reload({ waitUntil: "load", timeout: 30000 });
+  await page.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 6, { timeout: 15000 });
+  await sleep(300);
+  await page.evaluate(() => { window.print = () => {}; });
+  eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors"))), true, "(b) unhidden craft back in picker");
+  await hctx.close();
+
+  /* (b4) New item at 0 and packable. */
+  await resetSeed();
+  await goSettings(page);
+  await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
+  await sleep(300);
+  await page.select('[data-recipe-row="bm"] [data-line-item]', '__new__');
+  await sleep(300);
+  eq(await page.evaluate(() => !!document.querySelector('[data-new-item-name]')), true, "(b) Create-new-item form appears");
+  await page.evaluate(() => { document.querySelector('[data-new-item-name]').value = "Widget X"; document.querySelector('[data-new-item-unit]').value = "each"; });
+  await page.evaluate(() => document.querySelector('[data-new-item-create]').click());
+  await sleep(500);
+  eq(await waitPut(b => b && b.settings && b.settings.customItems && b.settings.customItems.some(it => it.id === "widget-x"), "new item"), true, "(b) new item saved (widget-x in customItems)");
+  eq(await page.evaluate(() => { const s = document.querySelector('[data-recipe-row="bm"] [data-line-item]'); return s ? s.value : null; }), "widget-x", "(b) line now uses the new item");
+  await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); document.querySelector("#btn-print-inventory").click(); });
+  await sleep(400);
+  const invB4 = await page.evaluate(() => [...document.querySelectorAll("#print-area .print-page")].map(sec => ({
+    title: sec.querySelector(".label-title") ? sec.querySelector(".label-title").textContent : "",
+    rows: [...sec.querySelectorAll("tbody tr")].map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent.trim()))
+  })));
+  const bmGroup = invB4.find(s => s.title === "Blooming Mirrors");
+  eq(bmGroup && bmGroup.rows.some(r => r[0] === "Widget X (each)" && r[1] === "0"), true, "(b) new item at 0 with unit shown");
+  await page.evaluate(() => { if (document.querySelector("#delivery-entry").hidden) document.querySelector("#btn-delivery").click(); });
+  await sleep(250);
+  await page.evaluate(() => { document.querySelector('#delivery-entry-list input[data-item="widget-x"]').value = "100"; });
+  await page.click("#btn-apply-delivery");
+  await sleep(250);
+  await confirmIfOpen(page);
+  await sleep(300);
+  rows = await (async () => { await pick("Blooming Mirrors", 6); return printSheet(); })();
+  eq(qtyOf(rows, "Widget X"), "6", "(b) new item packs (BM-6 Widget X 6)");
+  eq(remote.inventory["widget-x"].qty, 94, "(b) new-item pack deducted stock");
+  await goSettings(page);
+  await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
+  await sleep(300);
+  await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-line-remove]').click());
+  await sleep(500);
+  eq(await waitPut(b => b && b.settings && b.settings.recipes && !b.settings.recipes.find(r => r.id === "bm").lines.some(ln => ln.item === "widget-x"), "line removed"), true, "(b) removing the line saved");
+  await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); document.querySelector("#btn-print-inventory").click(); });
+  await sleep(400);
+  const invB4b = await page.evaluate(() => [...document.querySelectorAll("#print-area .print-page")].map(sec => ({
+    title: sec.querySelector(".label-title") ? sec.querySelector(".label-title").textContent : "",
+    rows: [...sec.querySelectorAll("tbody tr")].map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent.trim()))
+  })));
+  const addedB4 = invB4b.find(s => s.title === "Added items");
+  eq(addedB4 && addedB4.rows.some(r => r[0] === "Widget X (each)" && r[1] === "0"), true, "(b) unused custom item lands in Added items at 0");
+
+  /* (b5) Warning above the max + line/pair add + dup validation + rename. */
+  const tenLines = ["tree-mirror", "scissors", "heat-gun", "wood-burning-cream", "clay-tray-a", "clay-tray-b", "cake-box", "tambourines", "white-clay", "english-ay-printout"].map(id => ({ item: id, qty: 6, per: 6 }));
+  remote.settings = { features: { boxes: false, bins: false, bulkTab: true }, boxes: [], boxRules: [], bins: {},
+    recipes: L.builtInRecipes().concat([
+      { id: "ten-line", code: "TEN", name: "Ten Line", hidden: false, lines: tenLines },
+      { id: "nine-line", code: "NIN", name: "Nine Line", hidden: false, lines: tenLines.slice(0, 9) } ]), customItems: [] };
+  Object.keys(remote.inventory).forEach(k => { remote.inventory[k] = { qty: 100, threshold: null }; });
+  remote.history = [];
+  await page.reload({ waitUntil: "load", timeout: 30000 });
+  await page.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 8, { timeout: 15000 });
+  await sleep(300);
+  await page.evaluate(() => { window.print = () => {}; });
+  await goSettings(page);
+  await page.evaluate(() => document.querySelector('[data-recipe-row="ten-line"] [data-recipe-edit]').click());
+  await sleep(300);
+  eq(await page.evaluate(() => { const w = document.querySelector('[data-recipe-row="ten-line"] [data-recipe-warning]'); return w ? w.textContent.includes("second page") : false; }), true, "(b) editor warns above the max (10 lines)");
+  await page.evaluate(() => document.querySelector('[data-recipe-row="nine-line"] [data-recipe-edit]').click());
+  await sleep(300);
+  eq(await page.evaluate(() => !!document.querySelector('[data-recipe-row="nine-line"] [data-recipe-warning]')), false, "(b) editor silent at exactly the max (9 lines)");
+  await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
+  await sleep(300);
+  const lineCount = async () => await page.evaluate(() => document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]').length);
+  const bmLines0 = await lineCount();
+  const puts0 = putCount;
+  await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-add-line]').click());
+  await sleep(500);
+  eq(await lineCount(), bmLines0 + 1, "(b) Add line appends a row");
+  eq(putCount, puts0 + 1, "(b) Add line saves immediately");
+  const newRow = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')];
+    const last = rows[rows.length - 1];
+    return { qty: last.querySelector("[data-line-qty]").value, per: last.querySelector("[data-line-per]").value };
+  });
+  eq(newRow, { qty: "1", per: "6" }, "(b) new line defaults qty 1 per 6");
+  const puts1 = putCount;
+  const setLastLineItem = async (val) => {
+    await page.evaluate((v) => {
+      const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')];
+      const sel = rows[rows.length - 1].querySelector("[data-line-item]");
+      sel.value = v;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }, val);
+  };
+  await setLastLineItem('tree-mirror');
+  await sleep(400);
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent !== ""), true, "(b) duplicate item in one craft blocked");
+  eq(putCount, puts1, "(b) blocked edit saves nothing");
+  await setLastLineItem('cake-box');
+  await sleep(400);
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent), "", "(b) fixing the duplicate clears the error");
+  eq(putCount, puts1 + 1, "(b) fixed edit saves");
+  const puts2 = putCount;
+  await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-add-pair]').click());
+  await sleep(500);
+  eq(await page.evaluate(() => !!document.querySelector('[data-recipe-row="bm"] [data-line-item2]')), true, "(b) Add pair appends a two-select row");
+  eq(putCount, puts2 + 1, "(b) Add pair saves immediately");
+  const puts3 = putCount;
+  await page.evaluate(() => { const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')]; rows[rows.length - 1].querySelector("[data-line-remove]").click(); });
+  await sleep(500);
+  eq(await lineCount(), bmLines0 + 1, "(b) Remove line drops the row");
+  eq(putCount, puts3 + 1, "(b) Remove line saves immediately");
+  await page.evaluate(() => { const inp = document.querySelector('[data-recipe-row="bm"] [data-recipe-name]'); inp.value = "Blooming Mirrors X"; inp.dispatchEvent(new Event("change", { bubbles: true })); });
+  await sleep(500);
+  eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors X"))), true, "(b) rename shows in the picker");
+
+  /* (b6) Rename keeps old history titles. */
+  await resetSeed();
+  rows = await (async () => { await pick("Blooming Mirrors", 6); await page.evaluate(() => document.querySelector("#btn-pack-hand").click()); await sleep(300); return null; })();
+  await page.evaluate(() => document.querySelector("#btn-check-all").click());
+  await sleep(300);
+  await page.evaluate(() => document.querySelector("#sheet-primary").click());
+  await sleep(300);
+  await page.evaluate(() => document.querySelector("#btn-complete-pack").click());
+  await sleep(300);
+  await confirmIfOpen(page);
+  eq(remote.history[0] && remote.history[0].title, "Packed Blooming Mirrors — 6 kits (BM-6)", "(b) hand-pack entry title before rename");
+  await goSettings(page);
+  await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
+  await sleep(300);
+  await page.evaluate(() => { const inp = document.querySelector('[data-recipe-row="bm"] [data-recipe-name]'); inp.value = "Blooming Mirrors Renamed"; inp.dispatchEvent(new Event("change", { bubbles: true })); });
+  await sleep(500);
+  eq(remote.history[0] && remote.history[0].title, "Packed Blooming Mirrors — 6 kits (BM-6)", "(b) old history title unchanged after rename");
+  eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors Renamed"))), true, "(b) renamed craft shows new name in picker");
 
   console.log(fail ? "RECIPE TESTS FAILED (" + fail + ")" : "all recipe tests passed (" + pass + " checks)");
 } finally {
