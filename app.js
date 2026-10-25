@@ -544,6 +544,22 @@
     });
   }
   function qtyOf(itemId) { return state.data.inventory[itemId] ? state.data.inventory[itemId].qty : 0; }
+  /* Batch C item 12: manual kits entries are parsed strictly — parseInt
+     silently turned 6.5 into 6. strictKits gives NaN for anything that
+     isn't a whole number; kitsError names the problem for the field. */
+  function strictKits(raw) {
+    if (raw === null || raw === undefined || String(raw).trim() === "") return NaN;
+    var n = Number(raw);
+    return Number.isInteger(n) ? n : NaN;
+  }
+  function kitsError(raw) {
+    if (raw === null || raw === undefined || String(raw).trim() === "") return null;
+    var n = Number(raw);
+    if (!Number.isInteger(n)) return "Kits must be a whole number — decimals aren't allowed.";
+    if (n === 0) return "Kits must be at least 6.";
+    if (!L.validKits(n)) return "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…).";
+    return null;
+  }
 
   /* ---------- Packing tab ---------- */
   function markChips(forId, kits) {
@@ -559,7 +575,7 @@
     $("pack-progress").textContent = total ? checked + " of " + total + " checked" : "";
     $("pack-progress-fill").style.width = total ? Math.round(checked / total * 100) + "%" : "0";
     var btn = $("btn-complete-pack");
-    var kitsNow = parseInt($("pack-kits").value, 10);
+    var kitsNow = strictKits($("pack-kits").value);
     var ready = total > 0 && checked === total;
     btn.disabled = !ready;
     if (!state.packCraft) btn.textContent = "Choose a craft";
@@ -576,6 +592,8 @@
   var packBoxOverride = null; /* null = use the box rule; an array = this order only */
   var packSelKey = null;
   var packKitsTouched = false; /* v2 A1: the kits error shows only after the field is touched */
+  var packPrevKits = "", packLargeConfirmed = null; /* Batch C item 12: focus-time value + last confirmed large amount */
+  var bulkPrevKits = "", bulkLargeConfirmed = null; /* Batch C item 12, Bulk side */
   /* ---------- multi-craft queue (brief item 1) ---------- */
   /* Lines persist on-device (localStorage) until finished or cleared, so a
      reload never eats a started queue. The single-craft path is untouched:
@@ -692,7 +710,8 @@
       if (queueHandIdx >= 0) endQueueWalk(); /* picking a different craft mid-walk ends the walk; queued lines stay */
       state.packCraft = id; renderPack();
     });
-    var kits = parseInt($("pack-kits").value, 10);
+    var rawKits = $("pack-kits").value;
+    var kits = strictKits(rawKits);
     markChips("pack", kits);
     /* Chips or the manual box, never both (brief 5a). */
     $("pack-chips").hidden = packKitsManual;
@@ -701,9 +720,11 @@
     err.textContent = ""; warn.hidden = true;
     var valid = L.validKits(kits);
     /* v2 A1: calm first screen — the red kits error appears only once the
-       kits field has been touched; until then a muted help line shows. */
+       kits field has been touched; until then a muted help line shows.
+       Batch C item 12: the message names the actual problem (decimal,
+       zero, non-multiple) instead of silently coercing the value. */
     var showKitsErr = !valid && packKitsTouched;
-    if (showKitsErr) err.textContent = kits ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : "Enter the number of kits — orders are multiples of 6.";
+    if (showKitsErr) err.textContent = kitsError(rawKits) || "Enter the number of kits — orders are multiples of 6.";
     $("pack-help").hidden = (state.packCraft && valid) || showKitsErr;
     $("pack-sku").textContent = valid && state.packCraft ? L.sku(state.packCraft, kits) : "—";
     /* Brief 5/6: the picker never collapses — the grid and chips stay open
@@ -777,7 +798,7 @@
   }
   function currentPack() {
     if (!state.packCraft) return null;
-    var kits = parseInt($("pack-kits").value, 10);
+    var kits = strictKits($("pack-kits").value);
     if (!L.validKits(kits)) return null;
     return { craft: L.craftById(state.packCraft), kits: kits, pack: L.computePack(state.packCraft, kits) };
   }
@@ -975,6 +996,10 @@
         var by = storedBy(PACKBY_LS);
         var extra = { craftId: ln.craftId, kits: ln.kits };
         if (by) extra.packedBy = by;
+        /* Batch C item 10: remember the removed line + its index so Undo
+           can restore the line and step the walk back to it. */
+        extra.queueLine = { craftId: ln.craftId, kits: ln.kits };
+        extra.queueIndex = i;
         var entry = newEntry(
           "packed",
           "Packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
@@ -1030,12 +1055,15 @@
   }
   function renderBulk() {
     craftButtons("bulk-crafts", state.bulkCraft, function (id) { state.bulkCraft = id; renderBulk(); });
-    var kits = parseInt($("bulk-kits").value, 10);
+    var rawBulkKits = $("bulk-kits").value;
+    var kits = strictKits(rawBulkKits);
     markChips("bulk", kits);
     var err = $("bulk-error"); err.textContent = "";
     var valid = L.validKits(kits);
     $("bulk-sku").textContent = valid && state.bulkCraft ? L.sku(state.bulkCraft, kits) : "—";
-    if (state.bulkCraft && kits && !valid) err.textContent = "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…).";
+    /* Batch C item 12: same strict messages as Packing — decimals and
+       zero are named, not coerced or silently ignored. */
+    if (state.bulkCraft && rawBulkKits.trim() !== "" && !valid) err.textContent = kitsError(rawBulkKits) || "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…).";
     renderBulkLines();
   }
   function renderBulkLines() {
@@ -1053,7 +1081,7 @@
       wrap.appendChild(row);
     });
     var add = $("btn-bulk-add");
-    var kits = parseInt($("bulk-kits").value, 10);
+    var kits = strictKits($("bulk-kits").value);
     add.disabled = !(!!state.bulkCraft && L.validKits(kits));
     if (!state.bulkCraft) { add.textContent = "Pick a craft"; }
     else if (!L.validKits(kits)) { add.textContent = "Choose kits"; }
@@ -1068,7 +1096,7 @@
   }
   function addBulkLine() {
     if (!requireEditor()) return;
-    var kits = parseInt($("bulk-kits").value, 10);
+    var kits = strictKits($("bulk-kits").value);
     if (!state.bulkCraft || !L.validKits(kits)) return;
     /* Batch C item 3: no prompt while adding — the duplicate check fires
        at Record all only (the old v3 D1 add-time prompt is gone). */
@@ -1513,7 +1541,25 @@
     var doUndo = function () {
       L.applyEffects(state.data.inventory, entry.effects, -1);
       entry.undone = true;
+      /* Batch C item 10: undoing a hand-packed queue line restores the
+         line and steps the walk back to it. The index is clamped — lines
+         completed since may have shifted the queue. A finished walk
+         restarts over the restored queue; an active walk keeps its total
+         (progress counts remaining lines, as before). */
+      var restoredIdx = -1;
+      if (entry.queueLine) {
+        restoredIdx = Math.min(entry.queueIndex != null ? entry.queueIndex : packQueue.length, packQueue.length);
+        packQueue.splice(restoredIdx, 0, { craftId: entry.queueLine.craftId, kits: entry.queueLine.kits });
+        persistPackQueue();
+      }
       renderAll();
+      if (restoredIdx >= 0) {
+        queueMode = true;
+        if (queueHandIdx < 0) queueHandTotal = packQueue.length;
+        queueHandIdx = restoredIdx;
+        loadQueueLineIntoPack(restoredIdx);
+        activateTab("pack");
+      }
       saveData("Undo: " + entry.title).then(function () { toast("Undone: " + entry.title); });
     };
     if (skipConfirm) { doUndo(); return; }
@@ -1589,10 +1635,14 @@
           var pack = L.computePack(entry.craftId, k);
           var verb = entry.type === "packed" ? "Packed" : "Hand-packed";
           var craft = L.craftById(entry.craftId);
+          var updates = { kits: k };
+          /* Batch C item 10: keep a later walk-undo consistent with the
+             edit — the restored line carries the edited kit count. */
+          if (entry.queueLine) updates.queueLine = { craftId: entry.craftId, kits: k };
           replaceEffects(entry,
             pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
             verb + " " + craft.name + " — " + k + " kits (" + L.sku(entry.craftId, k) + ")",
-            { kits: k })
+            updates)
             .then(function () { toast("Entry updated."); });
         }
       });
@@ -2263,7 +2313,27 @@
       b.addEventListener("click", function () { requestTab(b.getAttribute("data-tab")); });
     });
     $("conn-badge").addEventListener("click", function () { if (!state.editor) requestTab("settings"); });
-    $("pack-kits").addEventListener("input", function () { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; renderPack(); });
+    /* Batch C item 12: a manually typed order above 96 kits asks first.
+       prev is the focus-time value, so Go back restores what was there
+       before this typing run; confirming remembers the amount so
+       retyping the same amount doesn't ask again. */
+    $("pack-kits").addEventListener("focus", function () { packPrevKits = $("pack-kits").value; });
+    $("pack-kits").addEventListener("input", function () {
+      if (queueHandIdx >= 0) endQueueWalk();
+      packKitsTouched = true;
+      var raw = $("pack-kits").value, prev = packPrevKits, n = strictKits(raw);
+      if (Number.isInteger(n) && n > 96 && n !== packLargeConfirmed) {
+        openSheet({
+          title: "Large order",
+          summary: n + " kits is unusually large — is that the right amount?",
+          primary: "Yes, use " + n + " kits",
+          cancelLabel: "Go back",
+          onConfirm: function () { packLargeConfirmed = n; packPrevKits = raw; renderPack(); },
+          onCancel: function () { $("pack-kits").value = prev; packPrevKits = prev; renderPack(); }
+        });
+      }
+      renderPack();
+    });
     function wireStepper(inputId, minusId, plusId, renderFn) {
       $(minusId).addEventListener("click", function () {
         var v = parseInt($(inputId).value, 10);
@@ -2416,7 +2486,22 @@
     });
     $("btn-pack-print").addEventListener("click", printSingle);
     $("btn-pack-hand").addEventListener("click", function () { packMode = "hand"; renderPack(); });
-    $("bulk-kits").addEventListener("input", renderBulk);
+    /* Batch C item 12, Bulk side: same above-96 confirm as Packing. */
+    $("bulk-kits").addEventListener("focus", function () { bulkPrevKits = $("bulk-kits").value; });
+    $("bulk-kits").addEventListener("input", function () {
+      var raw = $("bulk-kits").value, prev = bulkPrevKits, n = strictKits(raw);
+      if (Number.isInteger(n) && n > 96 && n !== bulkLargeConfirmed) {
+        openSheet({
+          title: "Large order",
+          summary: n + " kits is unusually large — is that the right amount?",
+          primary: "Yes, use " + n + " kits",
+          cancelLabel: "Go back",
+          onConfirm: function () { bulkLargeConfirmed = n; bulkPrevKits = raw; renderBulk(); },
+          onCancel: function () { $("bulk-kits").value = prev; bulkPrevKits = prev; renderBulk(); }
+        });
+      }
+      renderBulk();
+    });
     wireStepper("bulk-kits", "bulk-minus", "bulk-plus", renderBulk);
     $("btn-bulk-add").addEventListener("click", addBulkLine);
     $("btn-bulk-record").addEventListener("click", recordAllBulk);
