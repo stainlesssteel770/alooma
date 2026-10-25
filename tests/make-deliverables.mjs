@@ -93,7 +93,7 @@ try {
      correctly blocks a reload while a queue is printed/started — the
      reload then stalls behind the leave-confirm dialog until the goto
      timeout. The script's own reloads accept that dialog; the guard
-     itself is covered by test-tabguards, not bypassed here. */
+     itself is covered by test-leaverule, not bypassed here. */
   page.on("dialog", d => { d.accept().catch(() => {}); });
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "alooma", login: "testeditor" }));
@@ -130,7 +130,6 @@ try {
   await load();
   async function tab(name) { await page.click(`[data-tab="${name}"]`); await sleep(300); }
   async function packSelect(craftName, kits) {
-    await page.evaluate(() => { document.querySelector("#btn-pack-change").click(); });
     await page.evaluate(name => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), craftName);
     await page.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
     await sleep(150);
@@ -140,13 +139,19 @@ try {
     await page.click("#btn-queue-add");
     await sleep(250);
   }
+  /* First queue line: the Queue button enters Queue mode with the pick. */
+  async function queueFirst(craftName, kits) {
+    await packSelect(craftName, kits);
+    await page.click("#btn-pack-queue");
+    await sleep(250);
+  }
   async function freshQueue() {
     await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
     await load();
   }
 
   /* ---- A. Queue with 3 crafts (screenshot) + 3-craft Print all (PDF) ---- */
-  await queueAdd("The Cakery", 36);
+  await queueFirst("The Cakery", 36);
   await queueAdd("Tambourines", 12);
   await queueAdd("Hafrashat Challah", 18);
   await page.screenshot({ path: path.join(ROOT, "screenshots/queue-3craft.png"), fullPage: true });
@@ -163,7 +168,7 @@ try {
 
   /* ---- B. Hand pack walk at "Craft 2 of 3" (screenshot) ---- */
   await freshQueue();
-  await queueAdd("The Cakery", 36);
+  await queueFirst("The Cakery", 36);
   await queueAdd("Tambourines", 12);
   await queueAdd("Hafrashat Challah", 18);
   await page.click("#btn-queue-hand");
@@ -185,7 +190,7 @@ try {
   remoteData.settings.boxRules = [{ craftId: "cak", kits: 36, boxes: ["Big Box", "Small Box"] }];
   await freshQueue();
   await packSelect("The Cakery", 36);
-  await page.click("#btn-print-sheet");
+  await page.click("#btn-pack-print");
   await sleep(200);
   await page.pdf({ path: "/tmp/alooma-single-boxes.pdf", preferCSSPageSize: true, printBackground: true });
   await checkPdf("/tmp/alooma-single-boxes.pdf", "single WITH BOXES", pages => {
@@ -194,18 +199,18 @@ try {
   remoteData.settings.features.boxes = false;
   await freshQueue();
   await packSelect("The Cakery", 18);
-  await page.click("#btn-print-sheet");
+  await page.click("#btn-pack-print");
   await sleep(200);
   await page.pdf({ path: "/tmp/alooma-single-noboxes.pdf", preferCSSPageSize: true, printBackground: true });
   await checkPdf("/tmp/alooma-single-noboxes.pdf", "single WITHOUT BOXES", pages => {
     ok(!pages.map(p => p.text).join(" ").includes("BOXES"), "single WITHOUT BOXES: no BOXES line");
   });
 
-  /* ---- D. Count sheet with a Counted by name ---- */
+  /* ---- D. Count sheet with a Counted by name ----
+     Brief 5e: the name lives in Settings now, saved per device. */
+  await tab("settings");
+  await page.evaluate(() => { const el = document.querySelector("#set-counted-by"); el.value = "Dina"; el.dispatchEvent(new Event("change", { bubbles: true })); });
   await tab("inventory");
-  await page.click("#btn-enter-counts");
-  await sleep(300);
-  await page.evaluate(() => { document.querySelector("#count-by").value = "Dina"; });
   await page.evaluate(() => document.querySelector("#btn-print-count").click());
   await sleep(200);
   await page.pdf({ path: "/tmp/alooma-count-dina.pdf", preferCSSPageSize: true, printBackground: true });
