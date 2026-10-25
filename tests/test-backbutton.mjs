@@ -105,8 +105,10 @@ try {
   await page.click('[data-tab="pack"]');
   await sleep(400);
   const len1 = await page.evaluate(() => history.length);
-  await page.evaluate(() => document.querySelector('#pack-crafts .craft-btn[data-craft="bm"]').click());
-  await page.evaluate(() => document.querySelector('#pack-chips .kits-chip[data-kits="6"]').click());
+  /* Craft buttons carry no data-craft attribute — match by name, like
+     every other suite; chips match by data-for + data-kits. */
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Blooming Mirrors")).click());
+  await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
   await sleep(300);
   await page.goBack();
   await sleep(400);
