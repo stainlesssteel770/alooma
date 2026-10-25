@@ -256,6 +256,7 @@ try {
     return bd && !bd.hidden && document.querySelector("#sheet-title").textContent.includes("Multiple of the same craft");
   });
   if (dupOpen) { await page.click("#sheet-primary"); await sleep(400); }
+  console.log("WALK-DIAG dupOpen=" + dupOpen + " progress=" + JSON.stringify(await txt("#pack-queue-progress")) + " lines=" + await page.$$eval("#pack-queue .queue-line", els => els.length) + " sheetTitle=" + await page.evaluate(() => { const t = document.querySelector("#sheet-title"); return t ? t.textContent : "?"; }) + " sheetHidden=" + await page.evaluate(() => { const bd = document.querySelector("#sheet-backdrop"); return bd ? bd.hidden : "?"; }) + " handDisabled=" + await page.evaluate(() => { const b = document.querySelector("#btn-queue-hand"); return b ? b.disabled : "?"; }));
   eq(await txt("#pack-queue-progress"), "Craft 1 of 4", "11: walk starts at Craft 1 of 4");
   eq(await vis("#pack-single-actions"), false, "11: single buttons hidden during the walk");
   eq(await vis("#btn-queue-add"), false, "11: queue Add hidden during the walk");
