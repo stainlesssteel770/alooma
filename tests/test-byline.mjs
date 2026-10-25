@@ -149,7 +149,9 @@ try {
   await packSelect("The Cakery", 18);
   await page.click("#btn-pack-print");
   await sleep(300);
-  eq((await printAreaText()).includes("Packed by: ____________________"), true, "single print empty: blank line kept");
+  /* Single-line pack footer: the blank shortened 20 -> 12 underscores so
+     Packed by + Date fit one line at 12.5pt; the blank line itself stays. */
+  eq((await printAreaText()).includes("Packed by: ____________"), true, "single print empty: blank line kept");
   eq(remoteData.history[0].packedBy, undefined, "single print empty: no packedBy stored");
 
   /* ---- 3. The name is remembered per device across reloads ---- */
