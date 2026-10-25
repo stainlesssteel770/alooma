@@ -230,7 +230,9 @@ try {
   const dupText = await page.$eval("#sheet-backdrop", e => e.textContent);
   eq(dupText.includes("Multiple of the same craft detected") && dupText.includes("x2") && dupText.includes("12 kits + 18 kits"), true, "duplicates: pop-up names the craft, count and kit amounts");
   eq(await page.$eval("#sheet-primary", e => e.textContent), "YES", "duplicates: YES is the primary button");
+  eq(await page.$eval("#sheet-primary", e => e.classList.contains("success")), true, "duplicates: YES is green (Batch C item 3)");
   eq(await page.$eval("#sheet-cancel", e => e.textContent), "NO", "duplicates: NO is the cancel button");
+  eq(await page.$eval("#sheet-cancel", e => e.classList.contains("danger")), true, "duplicates: NO is red (Batch C item 3)");
   await sheetCancel(); /* NO */
   await sleep(300);
   eq(await sheetVisible(), false, "duplicates: NO closes the pop-up");
