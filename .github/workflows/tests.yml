@@ -27,6 +27,8 @@ jobs:
 
       - name: Logic tests (stock math, recipes, history)
         run: node tests/test-logic.js
+      - name: Label-fit audit (item 9 — report only, never fails the build; runs early so the skip chain can't hide it)
+        run: node tests/label-fit.mjs
 
       # Speed rule (2026-10-25): the suites changed most recently run
       # first, so their failures surface in minutes, not at step 20.
@@ -68,8 +70,6 @@ jobs:
         run: node tests/test-a11y.mjs
       - name: Print checks (4x6 PDFs, no blank labels)
         run: node tests/check-print.mjs
-      - name: Label-fit audit (item 9 — report only, never fails the build)
-        run: node tests/label-fit.mjs
 
       - name: Screenshots at 390px (batch-report evidence)
         run: node tests/screenshots.mjs
