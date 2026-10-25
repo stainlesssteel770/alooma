@@ -169,6 +169,9 @@ try {
     await sleep(400);
   }
   await completeChecklist();
+  /* Item 7: the hand-pack toast keeps the whole (SKU) unbroken — the
+     parens sit inside the nowrap span, so the bracket can't split. */
+  eq(await page.$eval("#toast .nowrap", e => e.textContent), "(BM-6)", "item7: hand-pack toast (SKU) unbroken with parens inside the span");
   eq(await page.$eval("#pack-queue-progress", e => e.textContent), "Craft 2 of 3", "Hand pack all: completing craft 1 opens craft 2 automatically");
   await completeChecklist();
   eq(await page.$eval("#pack-queue-progress", e => e.textContent), "Craft 3 of 3", "Hand pack all: completing craft 2 opens craft 3 automatically");
