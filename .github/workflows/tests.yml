@@ -43,6 +43,9 @@ jobs:
       - name: Clear-all tests (Clear all on Packing + Bulk)
         run: node tests/test-clearall.mjs
 
+      - name: Batch A tests (Bulk padding, toast, kits error, header, Bulk wording, Bulk toggle)
+        run: node tests/test-batcha.mjs
+
       - name: Layout audit (real geometry at 360/390px — nothing clipped or off-screen)
         if: always()
         run: node tests/test-layout.mjs
