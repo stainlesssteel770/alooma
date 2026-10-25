@@ -53,6 +53,9 @@ const browser = await puppeteer.launch({ executablePath: EXE, headless: true, ar
 try {
   const page = await browser.newPage();
   page.on("pageerror", e => console.log("PAGEERROR " + e.message));
+  /* A3: reloads while a walk/queue is restored correctly raise the
+     browser's own leave prompt — accept it, never fight the guard. */
+  page.on("dialog", (d) => d.accept());
   page.on("console", m => { if (m.type() === "error") console.log("CONSOLE-ERROR " + m.text()); });
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "alooma", login: "testeditor" }));
@@ -190,6 +193,12 @@ try {
   eq(remoteData.history.length, 3, "undo keeps the entry in History (marked undone, not deleted)");
   eq(remoteData.history[2].undone, true, "undo marks the BM-6 entry undone");
   eq(remoteData.inventory["heat-gun"].qty, 100, "undo restores the deducted stock (BM-6 heat gun 99 -> 100)");
+  /* Batch C item 10: undoing a walked line restores the line and steps
+     the walk back to it — the app auto-switches to Pack for the walk. */
+  eq(await page.$eval("#tab-pack", e => e.classList.contains("active")), true, "walk undo: History undo auto-switches to the Pack tab");
+  eq((await queueLines()).length, 1, "walk undo: the BM-6 line is back in the queue");
+  eq(await page.$eval("#pack-queue-progress", e => e.textContent), "Craft 1 of 1", "walk undo: the walk steps back to Craft 1 of 1");
+  eq(await page.$eval("#pack-sku", e => e.textContent), "BM-6", "walk undo: the restored BM-6 line is loaded");
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(300);
 
@@ -197,6 +206,13 @@ try {
   remoteData.inventory["scissors"].qty = 5;
   remoteSha = "sha-q-short";
   await reloadApp();
+  /* The item-10 restored BM-6 line persists on-device across the reload;
+     drop it so the shortage section starts from its own clean queue. */
+  while ((await queueLines()).length) {
+    await page.evaluate(() => { document.querySelector("#pack-queue .queue-remove").click(); });
+    await sleep(200);
+  }
+  eq((await queueLines()).length, 0, "shortage: restored walk line removed before starting");
   await queueFirst("The Cakery", 36);
   await addLine("Tambourines", 12);
   await page.click("#btn-queue-print");
