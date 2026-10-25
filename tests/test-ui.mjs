@@ -27,17 +27,6 @@ function eq(a, e, label) {
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-/* A3: a tab switch with anything chosen or unsaved opens the "Unsaved
-   changes" prompt instead of switching. test-ui always takes Discard here:
-   the dirty state at every such switch is already saved or intentionally
-   abandoned, matching the old silent-clear outcomes. */
-async function tab(name) {
-  await page.evaluate((n) => document.querySelector('[data-tab="' + n + '"]').click(), name);
-  await sleep(200);
-  const prompt = await page.$eval("#sheet-backdrop", e => !e.hidden && document.querySelector("#sheet-title").textContent === "Unsaved changes").catch(() => false);
-  if (prompt) { await page.click("#sheet-cancel"); await sleep(200); }
-}
-
 /* In-memory "GitHub repo": starts as the shipped data.json */
 /* The repo's data.json is the user's LIVE warehouse data (since 2026-10-23 he
    uses the app for real), so reset it to a known blank state: the suites
@@ -96,6 +85,18 @@ try {
   page.on("dialog", async d => { await d.accept(testDialogAnswer); });
   let testDialogAnswer = "";
   globalThis.__setDialog = v => { testDialogAnswer = v; };
+
+/* A3: a tab switch with anything chosen or unsaved opens the "Unsaved
+   changes" prompt instead of switching. test-ui always takes Discard here:
+   the dirty state at every such switch is already saved or intentionally
+   abandoned, matching the old silent-clear outcomes. (Defined inside the
+   try block: it closes over the block-scoped `page`.) */
+async function tab(name) {
+  await page.evaluate((n) => document.querySelector('[data-tab="' + n + '"]').click(), name);
+  await sleep(200);
+  const prompt = await page.$eval("#sheet-backdrop", e => !e.hidden && document.querySelector("#sheet-title").textContent === "Unsaved changes").catch(() => false);
+  if (prompt) { await page.click("#sheet-cancel"); await sleep(200); }
+}
 
   await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
   await sleep(400);
