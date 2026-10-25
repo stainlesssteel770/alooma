@@ -150,6 +150,7 @@ try {
   eq(remote.history.some(h => h.type === "hand-packed"), true, "E4: my pack is in History");
   eq(remote.history.some(h => h.type === "received" && h.item === "tambourines" && h.amount === 50), true, "E4: my delivery is in History");
   eq(remote.history.some(h => h.id === "their-1"), true, "E4: their delivery is still in History (no overwrite)");
+  await waitFor(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.queue.v1") || "[]").length)) === 0, "queue drains after sync");
   eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.queue.v1") || "[]").length), 0, "E4: queue drained after sync");
   eq(await page.$eval("#save-status", e => e.textContent), "Saved · now", "E4: header back to Saved");
 
@@ -174,6 +175,7 @@ try {
   await waitFor(() => remote.inventory["scissors"].qty === 190, "my count lands");
   eq(remote.inventory["scissors"].qty, 190, "E4: my count stands after I pick it");
   eq(remote.inventory["tambourines"].qty, 150, "E4: resolving the conflict overwrote nothing else");
+  await waitFor(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.queue.v1") || "[]").length)) === 0, "queue drains after the conflict resolves");
   eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.queue.v1") || "[]").length), 0, "E4: queue drained after the conflict resolves");
 
   /* ---- Service worker + snapshot: the app opens with no signal ---- */
