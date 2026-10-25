@@ -210,8 +210,10 @@ try {
     await sleep(300);
     await page.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
     const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(file)) }).promise;
-    const p1 = await doc.getPage(1);
-    const tc = await p1.getTextContent();
+    /* Footer lives on the LAST page (a 2-page sheet's page 1 has no footer
+       — checking page 1 there finds neither run and fails spuriously). */
+    const plast = await doc.getPage(doc.numPages);
+    const tc = await plast.getTextContent();
     const runs = tc.items.filter(it => it.str.trim()).map(it => ({ s: it.str, y: it.transform[5] }));
     const pb = runs.find(r => r.s.includes("Packed by"));
     const dt = runs.find(r => r.s.includes("Date:"));
