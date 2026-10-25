@@ -128,9 +128,6 @@ tr.checked-row td .row-name { text-decoration: line-through; }
 .box-add { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 .box-add select { height: 48px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 10px; font-size: 16px; background: var(--surface); max-width: 100%; }
 .box-add input[type="number"] { width: 170px; max-width: 100%; height: 48px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 10px; font-size: 16px; }
-.picker-summary { display: flex; align-items: center; gap: 10px; background: #F1F3F6; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 6px 6px 14px; margin: 4px 0 10px; font-size: 16.5px; font-weight: 600; }
-.picker-summary[hidden] { display: none !important; }
-.picker-summary span { flex: 1; }
 .action-bar { display: flex; gap: 8px; margin-top: 10px; }
 .action-bar .btn { min-height: 48px; font-size: 16.5px; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .action-bar .btn-primary { flex: 1; }
@@ -224,18 +221,26 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 /* Multi-craft queue (brief item 1): lines mirror the Bulk hand-line rows;
    duplicate lines get a warm highlight until the YES/NO pop-up resolves. */
 .queue-block { margin: 14px 0 4px; }
-.queue-title { font-size: 17px; margin: 0 0 6px; }
+/* Brief item 4: the list header row carries the count and the Clear all
+   link, so Clear all is visible at 2+ lines without scrolling to the end. */
+.list-head-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 4px; }
+.list-head-row h3 { font-size: 17px; margin: 0; }
+.list-head-row .btn { min-height: 44px; }
 .queue-line { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 8px 8px 12px; margin: 8px 0; font-weight: 600; flex-wrap: wrap; }
 .queue-line.dup { background: #FFF4E5; border-color: #E8A838; }
 .queue-line .queue-kits { min-height: 44px; font-size: 16px; font-weight: 600; border: 1.5px solid var(--line); border-radius: 8px; padding: 0 6px; background: #fff; }
 .queue-line .queue-remove { min-width: 44px; min-height: 44px; margin-left: auto; }
-.queue-line .queue-complete { min-height: 44px; }
 .queue-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
-.clear-row { text-align: right; margin: 2px 0 10px; }
-.byline-row { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
-.byline-row label { font-weight: 600; white-space: nowrap; }
-.byline-row input { flex: 1; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid #C9CED6; border-radius: 8px; font-size: 16px; }
 .queue-actions .btn { flex: 1; min-height: 48px; }
+/* Brief 5c: the single-craft action row — exactly Queue / Print / Hand pack. */
+.single-actions { display: flex; gap: 8px; margin: 14px 0 4px; }
+.single-actions[hidden] { display: none !important; }
+.single-actions .btn { flex: 1; min-height: 48px; }
+/* Brief 5a: the manual kits box replaces the chips, with a way back. */
+#pack-kits-manual { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+#pack-kits-manual[hidden] { display: none !important; }
+#pack-kits-manual label { font-weight: 600; white-space: nowrap; }
+#pack-kits-manual input { flex: 1; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid #C9CED6; border-radius: 8px; font-size: 16px; }
 .queue-progress { font-size: 17px; font-weight: 700; margin: 0 0 10px; }
 .sheet-short { background: var(--red-bg); border: 2px solid var(--red); color: var(--red); border-radius: 12px; padding: 10px 12px; margin: 0 0 14px; text-align: left; }
 .sheet-short-title { font-size: 17px; font-weight: 700; margin: 0 0 4px; }
@@ -276,8 +281,12 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   .craft-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .craft-btn { min-height: 64px; }
   .kits-block .chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  /* Pack carries a seventh chip ("+") after 36. */
+  #pack-chips { grid-template-columns: repeat(7, 1fr); }
   .kits-block .kits-chip { padding: 9px 2px; text-align: center; }
-  #pack-order { padding-bottom: 76px; }
+  /* Item 11: the pack table's last row clears the sticky Complete bar + nav. */
+  #pack-order { padding-bottom: 150px; }
+  #tab-pack { padding-bottom: 150px; }
   /* Brief item 1: Bulk content gets bottom padding equal to the sticky bar
      plus the fixed nav, so no form/list line ever sits under either. The
      scroll margin lets a newly added card scroll fully into view above
@@ -335,11 +344,7 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 }
 
 /* Merged pack flow (2026-10-23): Print / Hand pack choice + batch hand-pack list */
-.mode-row { display: flex; gap: 10px; margin: 14px 0 4px; }
-.mode-row[hidden] { display: none !important; }
 .pack-help { color: var(--muted); font-size: 16px; margin: 6px 0 0; }
-.mode-btn { flex: 1; min-height: 52px; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-.mode-btn.selected { background: #E8EEF8; border: 2px solid #2457A6; color: #1B4382; }
 .hand-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 8px 8px 12px; margin: 8px 0; font-weight: 600; }
 
 /* Flow fix (2026-10-23): view-only tab gating + GitHub device sign-in */
