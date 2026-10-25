@@ -743,10 +743,20 @@ async function tab(name) {
   await sleep(250);
   eq((await page.evaluate(() => document.querySelector("#print-area").textContent)).includes("BOXES: Box A + Box B + Box C"), true, "C1+C3: packing sheet prints BOXES: Box A + Box B + Box C");
   /* A4: that print completed CAK-12 — undo it so the checklist Complete
-     below deducts exactly once. */
+     below deducts exactly once. The print also cleared the pick AND the
+     Box C override, so re-pick CAK-12 and re-apply Box C first — the
+     confirm sheet below must still name Box C. */
   await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
   await waitRemote(() => remoteData.inventory.scissors.qty === 245, "print UNDO restores scissors");
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+  await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
+  await sleep(200);
   await page.click("#btn-pack-hand");
+  await sleep(200);
+  await waitDom(() => !document.querySelector("#pack-boxes").hidden, "boxes line shows after re-pick");
+  await page.click("#btn-boxes-change");
+  await page.evaluate(() => [...document.querySelectorAll("#pack-boxes-chips .kits-chip")].find(x => x.textContent === "Box C").click());
+  await page.click("#btn-boxes-done");
   await sleep(200);
   await page.click("#btn-check-all");
   await sleep(200);
