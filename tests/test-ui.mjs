@@ -725,10 +725,16 @@ async function tab(name) {
   await page.click("#btn-rule-add");
   await waitRemote(() => (remoteData.settings.boxRules || []).length === 1, "box rule saved");
   eq(remoteData.settings.boxRules[0].boxes.join(",") === "Box A,Box B", true, "C1: rule saved (CAK 12 = Box A + Box B, picked from the box menu)");
-  /* The kits field validates: 7 is not a multiple of 6, so no rule is added */
+  /* The kits field validates: 7 is not a multiple of 6, so no rule is added.
+     Flake fix (2nd failure of this assert, runs 40016302717 + 40210169050):
+     the old code typed "7" onto whatever the first save's async roundtrip
+     left in the field and read the error once after a fixed 300ms — a
+     timing race against that save/render. Clear first, then poll for the
+     error text instead of a one-shot read. */
+  await page.evaluate(() => { document.querySelector("#rule-kits").value = ""; });
   await page.type("#rule-kits", "7");
   await page.click("#btn-rule-add");
-  await sleep(300);
+  await waitDom(() => { const e = document.querySelector("#rule-error"); return e && e.textContent.includes("multiple of 6"); }, "multiple-of-6 error appears");
   eq((remoteData.settings.boxRules || []).length, 1, "Boxes: kit counts that aren't multiples of 6 are rejected");
   eq(await page.$eval("#rule-error", e => e.textContent.includes("multiple of 6")), true, "Boxes: the kits field explains the multiple-of-6 rule");
   await page.evaluate(() => { document.querySelector("#rule-kits").value = ""; });
