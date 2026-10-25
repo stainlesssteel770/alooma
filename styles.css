@@ -233,6 +233,11 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 .queue-line .queue-kits { min-height: 44px; font-size: 16px; font-weight: 600; border: 1.5px solid var(--line); border-radius: 8px; padding: 0 6px; background: #fff; }
 .queue-line .queue-remove { min-width: 44px; min-height: 44px; margin-left: auto; }
 .queue-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+/* Retest item 1: the queue row was the only flex row missing its
+   [hidden] override (single-actions, boxes-line and boxes-edit all have
+   one), so the author display:flex beat the UA hidden rule and the row
+   showed on fresh screens — 7 buttons at once. */
+.queue-actions[hidden] { display: none !important; }
 .queue-actions .btn { flex: 1; min-height: 48px; }
 /* Brief 5c: the single-craft action row — exactly Queue / Print / Hand pack. */
 .single-actions { display: flex; gap: 8px; margin: 14px 0 4px; }
