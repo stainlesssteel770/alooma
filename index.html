@@ -68,6 +68,15 @@
       <div class="sku-box">Order SKU: <strong id="pack-sku">—</strong></div>
     </div>
     </div>
+    <div id="pack-queue-block" class="queue-block">
+      <h3 class="queue-title">Queue</h3>
+      <div id="pack-queue"></div>
+      <div class="queue-actions">
+        <button type="button" id="btn-queue-add" class="btn" disabled>Add to queue</button>
+        <button type="button" id="btn-queue-print" class="btn" disabled>Print all</button>
+        <button type="button" id="btn-queue-hand" class="btn" disabled>Hand pack all</button>
+      </div>
+    </div>
     <div id="pack-mode" class="mode-row" hidden role="group" aria-label="How is this order being packed?">
       <button type="button" id="btn-print-sheet" class="btn mode-btn" aria-label="Print packing sheet (4×6)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8V3.5h10V8"/><rect x="4" y="8" width="16" height="7.5" rx="2"/><path d="M7 13.5h10V21H7z"/></svg>Print</button>
       <button type="button" id="btn-mode-hand" class="btn mode-btn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 12.5L12 21 3 12V3.5H11.5L20.5 12.5z"/><circle cx="8" cy="8" r="1.6"/></svg>Hand pack</button>
@@ -76,6 +85,7 @@
     <p id="pack-error" class="field-error"></p>
     <div id="pack-warning" class="warning" hidden></div>
     <div id="pack-order" hidden>
+      <div id="pack-queue-progress" class="queue-progress"></div>
       <div id="pack-boxes" class="boxes-line" hidden>
         <span>Boxes for this order: <strong id="pack-boxes-text"></strong></span>
         <button type="button" id="btn-boxes-change" class="btn btn-quiet">Change</button>
