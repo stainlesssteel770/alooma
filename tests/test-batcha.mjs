@@ -291,18 +291,45 @@ try {
   eq(await page.$eval("#bulk-error", e => e.textContent), "Kits must be a whole number — decimals aren't allowed.", "12: bulk decimals rejected, not treated as 6");
   await bulkType("0");
   eq(await page.$eval("#bulk-error", e => e.textContent), "Kits must be at least 6.", "12: bulk zero rejected with 'must be at least 6'");
-  await bulkType("150");
-  eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: bulk kits above 96 ask first");
+  /* Item 5: large orders ask on blur/submit, never while typing;
+     threshold 240 (was 96). */
+  await bulkType("300");
+  eq(await bulkSheetOpen(), false, "12: no sheet while typing a large value");
+  await page.evaluate(() => document.querySelector("#bulk-kits").blur());
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: bulk kits above 240 ask on blur");
   if (await bulkSheetOpen()) { await page.click("#sheet-cancel"); await sleep(250); }
   /* Go back restores the focus-time value: the box was empty when first
      focused (the helper keeps focus across typings, so no re-focus
      fires) — "" is the correct previous value here, not "0". */
   eq(await page.$eval("#bulk-kits", e => e.value), "", "12: bulk Go back reverts to the previous value");
-  await bulkType("150");
+  await bulkType("300");
+  await page.evaluate(() => document.querySelector("#bulk-kits").blur());
+  await sleep(250);
   eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: bulk retyping asks again after Go back");
   if (await bulkSheetOpen()) { await page.click("#sheet-primary"); await sleep(250); }
-  eq(await page.$eval("#bulk-kits", e => e.value), "150", "12: bulk confirming keeps the large value");
+  eq(await page.$eval("#bulk-kits", e => e.value), "300", "12: bulk confirming keeps the large value");
   eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "12: bulk confirming closes the sheet");
+  /* Boundary: exactly 240 does not ask. */
+  await bulkType("240");
+  await page.evaluate(() => document.querySelector("#bulk-kits").blur());
+  await sleep(250);
+  eq(await bulkSheetOpen(), false, "12: bulk exactly 240 does not ask");
+  /* Stepper path: focus, step 240 -> 246, no sheet on the stepper
+     blur; submitting then asks. */
+  await page.evaluate(() => document.querySelector("#bulk-kits").focus());
+  await page.click("#bulk-plus");
+  await sleep(250);
+  eq(await bulkSheetOpen(), false, "12: bulk stepper to 246 does not ask on blur");
+  eq(await page.$eval("#bulk-kits", e => e.value), "246", "12: bulk stepper moved to 246");
+  const linesBefore = await page.$$eval("#bulk-lines .hand-line", els => els.length);
+  await page.click("#btn-bulk-add");
+  await sleep(300);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: bulk submitting 246 asks first");
+  await page.click("#sheet-primary");
+  await sleep(300);
+  eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "12: bulk submitting confirm closes the sheet");
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), linesBefore + 1, "12: bulk submitting confirm adds the line");
 
   console.log(fail ? "BATCHA TESTS FAILED (" + fail + ")" : "all batcha tests passed (" + pass + ")");
 } finally {
