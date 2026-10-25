@@ -251,6 +251,24 @@ try {
   await sleep(300);
   eq(await beforeunloadPrevented(), true, "beforeunload: printed queue blocks close/reload");
 
+  /* ---- 11. Regression: a CANCELLED (hidden) form with stale values is not dirty ---- */
+  await tab("bulk");
+  await sheetCancel(); /* Discard the printed queue */
+  await tab("inventory");
+  await page.click("#btn-enter-counts");
+  await sleep(300);
+  await page.type("#count-entry-list input[data-item]", "3");
+  await page.click("#btn-cancel-counts");
+  await sleep(200);
+  await tab("history");
+  eq(await sheetVisible(), false, "cancelled count form: leaving does not prompt");
+  eq(await activeTab(), "history", "cancelled count form: switch proceeds");
+  eq(await beforeunloadPrevented(), false, "cancelled count form: hidden stale value does not block close/reload");
+  await tab("inventory");
+  await page.click("#btn-enter-counts");
+  await sleep(300);
+  eq(await page.$$eval("#count-entry-list input[data-item]", els => els.every(e => e.value === "")), true, "cancelled count form: reopening renders fresh empty inputs");
+
   console.log(fail ? "TABGUARD TESTS FAILED (" + fail + ")" : "all tabguard tests passed (" + pass + ")");
 } finally {
   await browser.close();
