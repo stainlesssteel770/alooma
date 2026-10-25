@@ -248,6 +248,11 @@ try {
   await packChip(6);
   await page.click("#btn-pack-queue");
   await sleep(300);
+  /* Center the Hand button before the real click: a minimal scroll can park
+     it under the fixed bottom nav, and the click would then hit a tab
+     button and open the A3 leave prompt instead of starting the walk. */
+  await page.evaluate(() => document.querySelector("#btn-queue-hand").scrollIntoView({ block: "center" }));
+  await sleep(200);
   await page.click("#btn-queue-hand");
   await sleep(400);
   /* The queue holds BM-6 three times, so the duplicate check fires first. */
