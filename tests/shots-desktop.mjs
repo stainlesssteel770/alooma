@@ -47,6 +47,10 @@ await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 try {
   const page = await browser.newPage();
+  // A3: the 1440 block leaves an unsaved pick, so the 1920 goto raises the
+  // browser's beforeunload prompt. Accepting it = Leave, which is what this
+  // evidence suite wants (the unfinished pack is discarded).
+  page.on("dialog", d => d.accept());
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
   });
@@ -65,11 +69,10 @@ try {
   const SIZES = [[768, 1024], [1280, 800], [1440, 900], [1920, 1080]];
   for (const [w, h] of SIZES) {
     await page.setViewport({ width: w, height: h });
-    // networkidle0 never fires on repeat navigations once the service worker
-    // serves the shell from cache (the navigation's network accounting does
-    // not settle) — the 1920 goto hung 30s on it twice while the first three
-    // sizes loaded fine. "load" + the 600ms sleep below is all the
-    // screenshots need: the page is rendered, and no assert reads the network.
+    // The 1440 block leaves a hand-pack in progress (unsaved pick), so this
+    // goto raises the A3 beforeunload prompt — the dialog handler below
+    // answers Leave. (An earlier networkidle0 theory was wrong: the prompt
+    // blocks ANY navigation waiter, which is why both waiters hung here.)
     await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "load", timeout: 30000 });
     await sleep(600);
     const geo = await page.evaluate(() => {
