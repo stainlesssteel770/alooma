@@ -502,7 +502,9 @@ try {
     rows: [...sec.querySelectorAll("tbody tr")].map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent.trim()))
   })));
   const addedB4 = invB4b.find(s => s.title === "Added items");
-  eq(addedB4 && addedB4.rows.some(r => r[0] === "Widget X (each)" && r[1] === "0"), true, "(b) unused custom item lands in Added items at 0");
+  /* Stock is 94 here, not 0: the delivery stocked 100 and the pack took 6.
+     Removing the line leaves the inventory row (no item delete in v1). */
+  eq(addedB4 && addedB4.rows.some(r => r[0] === "Widget X (each)" && r[1] === "94"), true, "(b) unused custom item lands in Added items (stock kept)");
 
   /* (b5) Warning above the max + line/pair add + dup validation + rename. */
   const tenLines = ["tree-mirror", "scissors", "heat-gun", "wood-burning-cream", "clay-tray-a", "clay-tray-b", "cake-box", "tambourines", "white-clay", "english-ay-printout"].map(id => ({ item: id, qty: 6, per: 6 }));
