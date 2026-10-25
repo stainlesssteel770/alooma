@@ -110,6 +110,7 @@
     var cancelBtn = $("sheet-cancel");
     cancelBtn.textContent = opts.cancelLabel || "Cancel";
     cancelBtn.classList.toggle("btn-primary", !!opts.cancelFilled);
+    cancelBtn.classList.toggle("danger", !!opts.cancelDanger);
     var wrap = $("sheet-input-wrap");
     if (opts.input) {
       wrap.hidden = false;
@@ -517,6 +518,84 @@
   var packBoxOverride = null; /* null = use the box rule; an array = this order only */
   var packSelKey = null;
   var packKitsTouched = false; /* v2 A1: the kits error shows only after the field is touched */
+  /* ---------- multi-craft queue (brief item 1) ---------- */
+  /* Lines persist on-device (localStorage) until finished or cleared, so a
+     reload never eats a started queue. The single-craft path is untouched:
+     the queue sits alongside it, and a queue of one behaves like today. */
+  var packQueue = []; /* [{craftId, kits, printed}] in queue order */
+  var queueHandIdx = -1; /* line being hand-packed, -1 = not hand-packing a queue */
+  var queueHandTotal = 0; /* lines the current hand walk started with (for "Craft N of M") */
+  var QUEUE_LS = "alooma.queue.v1";
+  function saveQueue() { try { localStorage.setItem(QUEUE_LS, JSON.stringify(packQueue)); } catch (e) { /* private mode etc. */ } }
+  function loadQueue() {
+    try {
+      var raw = localStorage.getItem(QUEUE_LS);
+      if (!raw) return;
+      var arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return;
+      packQueue = arr.filter(function (ln) { return ln && L.craftById(ln.craftId) && L.validKits(ln.kits); })
+        .map(function (ln) { return { craftId: ln.craftId, kits: ln.kits, printed: !!ln.printed }; });
+    } catch (e) { packQueue = []; }
+  }
+  function endQueueWalk() { queueHandIdx = -1; queueHandTotal = 0; }
+  function queueDupIds() {
+    var counts = {};
+    packQueue.forEach(function (ln) { counts[ln.craftId] = (counts[ln.craftId] || 0) + 1; });
+    var dups = {};
+    Object.keys(counts).forEach(function (id) { if (counts[id] > 1) dups[id] = true; });
+    return dups;
+  }
+  function queueLineBoxes(ln) {
+    if (!settings().features.boxes) return null;
+    return L.boxRuleFor(settings(), ln.craftId, ln.kits);
+  }
+  function renderQueue() {
+    var dups = queueDupIds();
+    var wrap = $("pack-queue");
+    wrap.innerHTML = "";
+    if (!packQueue.length) {
+      wrap.innerHTML = '<p class="hint">No orders in the queue yet — pick a craft and kit amount above, then tap Add to queue.</p>';
+    }
+    packQueue.forEach(function (ln, i) {
+      var craft = L.craftById(ln.craftId);
+      var row = document.createElement("div");
+      row.className = "queue-line" + (dups[ln.craftId] ? " dup" : "");
+      var sel = '<select class="queue-kits" data-qidx="' + i + '" aria-label="Kits for ' + esc(L.sku(ln.craftId, ln.kits)) + '"' + (ln.printed ? " disabled" : "") + ">" +
+        [6, 12, 18, 24, 30, 36].map(function (k) { return '<option value="' + k + '"' + (k === ln.kits ? " selected" : "") + ">" + k + "</option>"; }).join("") + "</select>";
+      var complete = (ln.printed && queueHandIdx < 0)
+        ? '<button type="button" class="btn btn-primary editor-only queue-complete" data-qidx="' + i + '">Complete</button>' : "";
+      row.innerHTML = "<span>" + esc(craft.name) + " · </span>" + sel + "<span> kits · " + esc(L.sku(ln.craftId, ln.kits)) + "</span>" +
+        complete +
+        '<button type="button" class="btn btn-quiet queue-remove" data-qidx="' + i + '" aria-label="Remove ' + esc(L.sku(ln.craftId, ln.kits)) + '">✕</button>';
+      wrap.appendChild(row);
+    });
+    wrap.querySelectorAll(".queue-kits").forEach(function (s) {
+      s.addEventListener("change", function () {
+        var i = parseInt(s.getAttribute("data-qidx"), 10);
+        packQueue[i].kits = parseInt(s.value, 10);
+        saveQueue(); renderQueue();
+      });
+    });
+    wrap.querySelectorAll(".queue-remove").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var i = parseInt(b.getAttribute("data-qidx"), 10);
+        if (queueHandIdx === i) endQueueWalk();
+        else if (queueHandIdx > i) queueHandIdx--;
+        packQueue.splice(i, 1);
+        saveQueue(); renderPack();
+      });
+    });
+    wrap.querySelectorAll(".queue-complete").forEach(function (b) {
+      b.addEventListener("click", function () { completeQueueLine(parseInt(b.getAttribute("data-qidx"), 10), false); });
+    });
+    var cur = currentPack();
+    $("btn-queue-add").disabled = !cur;
+    $("btn-queue-add").textContent = cur ? "Add " + L.sku(cur.craft.id, cur.kits) + " to queue" : "Add to queue";
+    $("btn-queue-print").disabled = !packQueue.length;
+    $("btn-queue-hand").disabled = !packQueue.length;
+    $("pack-queue-progress").textContent = queueHandIdx >= 0
+      ? "Craft " + (queueHandTotal - packQueue.length + 1) + " of " + queueHandTotal : "";
+  }
   function currentBoxes() {
     var cur = currentPack(); if (!cur || !settings().features.boxes) return null;
     if (packBoxOverride !== null) return packBoxOverride.slice();
@@ -533,7 +612,11 @@
     $("pack-boxes-text").textContent = boxes.length ? L.boxesText(settings(), boxes) : "None";
   }
   function renderPack() {
-    craftButtons("pack-crafts", state.packCraft, function (id) { state.packCraft = id; packFoldOverride = false; renderPack(); });
+    renderQueue();
+    craftButtons("pack-crafts", state.packCraft, function (id) {
+      if (queueHandIdx >= 0) endQueueWalk(); /* picking a different craft mid-walk ends the walk; queued lines stay */
+      state.packCraft = id; packFoldOverride = false; renderPack();
+    });
     var kits = parseInt($("pack-kits").value, 10);
     markChips("pack", kits);
     var err = $("pack-error"), warn = $("pack-warning");
@@ -645,6 +728,132 @@
         );
         state.packPrintedKey = null;
         commitChange(entry, "Packed " + L.sku(craft.id, cur.kits));
+      }
+    };
+    if (shorts.length) {
+      sheetOpts.extraHtml = '<div class="sheet-short"><p class="sheet-short-title">⚠ ' + shorts.length + (shorts.length === 1 ? " item short" : " items short") + "</p><ul>" +
+        shorts.map(function (r) { var have = qtyOf(r.item); return "<li>" + esc(r.name) + ": have " + have + ", need " + r.qty + ", short " + (r.qty - have) + "</li>"; }).join("") + "</ul></div>";
+      sheetOpts.primary = "Subtract anyway (" + shorts.length + " short)";
+      sheetOpts.primaryDanger = true;
+      sheetOpts.cancelLabel = "Go back";
+      sheetOpts.cancelFilled = true;
+    }
+    openSheet(sheetOpts);
+  }
+
+  /* ---------- multi-craft queue: start guards + actions ---------- */
+  /* Whole-queue shortage first (shared items summed across lines), then the
+     duplicate-craft pop-up; both gate Print all and Hand pack all, never the
+     act of adding a line. */
+  function queueShortages() {
+    var need = {};
+    packQueue.forEach(function (ln) {
+      L.computePack(ln.craftId, ln.kits).forEach(function (r) { need[r.item] = (need[r.item] || 0) + r.qty; });
+    });
+    var out = [];
+    Object.keys(need).forEach(function (item) {
+      var have = qtyOf(item);
+      if (have < need[item]) out.push({ name: L.ITEMS[item], have: have, need: need[item], short: need[item] - have });
+    });
+    out.sort(function (a, b) { return b.short - a.short; });
+    return out;
+  }
+  function startQueue(action) {
+    var shorts = queueShortages();
+    if (shorts.length) {
+      openSheet({
+        title: "Items short in this queue",
+        extraHtml: '<div class="sheet-short"><p class="sheet-short-title">⚠ ' + shorts.length + (shorts.length === 1 ? " item short" : " items short") + "</p><ul>" +
+          shorts.map(function (s) { return "<li>" + esc(s.name) + ": have " + s.have + ", need " + s.need + ", short " + s.short + "</li>"; }).join("") + "</ul></div>",
+        primary: "Start anyway",
+        primaryDanger: true,
+        cancelLabel: "Go back",
+        cancelFilled: true,
+        onConfirm: function () { startQueueAfterShortage(action); }
+      });
+      return;
+    }
+    startQueueAfterShortage(action);
+  }
+  function startQueueAfterShortage(action) {
+    var dupNames = Object.keys(queueDupIds());
+    if (dupNames.length) {
+      var lines = dupNames.map(function (id) {
+        var ls = packQueue.filter(function (ln) { return ln.craftId === id; });
+        return L.craftById(id).name + " x" + ls.length + " (" + ls.map(function (ln) { return ln.kits + " kits"; }).join(" + ") + ")";
+      });
+      openSheet({
+        title: "Multiple of the same craft detected",
+        summary: lines.join(" · ") + ". Was this intentional?",
+        primary: "YES",
+        cancelLabel: "NO",
+        cancelDanger: true,
+        onConfirm: function () { action(); },
+        onCancel: function () { renderQueue(); }
+      });
+      return;
+    }
+    action();
+  }
+  function printQueueAll() {
+    if (!packQueue.length) return;
+    clearError();
+    var html = packQueue.map(function (ln) { return packSheetSection(ln.craftId, ln.kits, queueLineBoxes(ln)); }).join("");
+    packQueue.forEach(function (ln) { ln.printed = true; });
+    saveQueue();
+    printHtml(html);
+    renderQueue();
+  }
+  function loadQueueLineIntoPack(i) {
+    var ln = packQueue[i];
+    state.packCraft = ln.craftId;
+    $("pack-kits").value = ln.kits;
+    packKitsTouched = true;
+    renderPack(); /* the selection change resets packMode — set it after */
+    packMode = "hand";
+    renderPack();
+  }
+  function startHandPackAll() {
+    if (!packQueue.length) return;
+    queueHandTotal = packQueue.length;
+    queueHandIdx = 0;
+    loadQueueLineIntoPack(0);
+  }
+  function completeQueueLine(i, advance) {
+    if (!requireEditor()) return;
+    var ln = packQueue[i]; if (!ln) return;
+    var craft = L.craftById(ln.craftId);
+    var pack = L.computePack(ln.craftId, ln.kits);
+    var boxes = queueLineBoxes(ln);
+    var shorts = pack.filter(function (r) { return qtyOf(r.item) < r.qty; });
+    shorts.sort(function (a, b) { return (b.qty - qtyOf(b.item)) - (a.qty - qtyOf(a.item)); });
+    var sheetOpts = {
+      title: craft.name,
+      sub: ln.kits + " kits · " + L.sku(ln.craftId, ln.kits),
+      summary: packSummary(pack) + (boxes && boxes.length ? " · Boxes: " + L.boxesText(settings(), boxes) : ""),
+      primary: "Subtract from inventory",
+      onConfirm: function () {
+        var entry = newEntry(
+          "packed",
+          "Packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
+          pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
+          { craftId: ln.craftId, kits: ln.kits }
+        );
+        packQueue.splice(i, 1);
+        saveQueue();
+        commitChange(entry, "Packed " + L.sku(ln.craftId, ln.kits));
+        if (advance) {
+          if (!packQueue.length) {
+            endQueueWalk();
+            state.packCraft = null; $("pack-kits").value = ""; packMode = null;
+            renderPack();
+          } else {
+            queueHandIdx = Math.min(i, packQueue.length - 1);
+            loadQueueLineIntoPack(queueHandIdx);
+          }
+        } else {
+          renderQueue();
+        }
       }
     };
     if (shorts.length) {
@@ -1199,14 +1408,13 @@
   function printDate() {
     return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   }
-  function printPackSheet() {
-    var cur = currentPack(); if (!cur) { showError("Pick a craft and a valid number of kits first."); return; }
-    clearError();
-    /* Printing the sheet means they're packing from paper: unlock Complete for this exact order. */
-    state.packPrintedKey = cur.craft.id + ":" + cur.kits;
-    updatePackProgress();
+  /* One craft's 4x6 sheet section. Single print and Print all share this
+     builder, so a queue job is exactly the single sheets in queue order. */
+  function packSheetSection(craftId, kits, boxes) {
+    var craft = L.craftById(craftId);
+    var pack = L.computePack(craftId, kits);
     var binsOn = settings().features.bins;
-    var sheetPack = cur.pack.slice();
+    var sheetPack = pack.slice();
     if (packSortBin && binsOn) {
       sheetPack.sort(function (a, b) {
         var ba = L.binFor(settings(), a.item), bb = L.binFor(settings(), b.item);
@@ -1214,23 +1422,28 @@
       });
     }
     var per6 = {};
-    cur.craft.items.forEach(function (ln) { per6[ln.item] = L.lineQty(ln, 6); });
+    craft.items.forEach(function (ln) { per6[ln.item] = L.lineQty(ln, 6); });
     var rows = sheetPack.map(function (r) {
       return '<tr><td class="tick"><span class="tick-box"></span></td><td>' + esc(r.name) + "</td>" +
         (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), r.item)) + "</td>" : "") +
         '<td class="qty regular">' + per6[r.item] + '</td><td class="qty">' + r.qty + "</td></tr>";
     }).join("");
-    var boxes = currentBoxes();
-    printHtml(
-      '<section class="print-page"><table><thead>' +
-      '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title">' + esc(cur.craft.name) + "</div>" +
-      '<div class="label-sub">Total kits: ' + cur.kits + " &nbsp;&nbsp; Order ID: ____________</div>" +
+    return '<section class="print-page"><table><thead>' +
+      '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title">' + esc(craft.name) + "</div>" +
+      '<div class="label-sub">Total kits: ' + kits + " &nbsp;&nbsp; Order ID: ____________</div>" +
       "</th></tr>" +
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>" +
       '<div class="print-foot">' + (boxes && boxes.length ? '<div class="foot-boxes">BOXES: ' + esc(boxes.join(" + ")) + "</div>" : "") +
-      "<div>Packed by: ____________________</div><div>Date: ____________</div></div></section>"
-    );
+      "<div>Packed by: ____________________</div><div>Date: ____________</div></div></section>";
+  }
+  function printPackSheet() {
+    var cur = currentPack(); if (!cur) { showError("Pick a craft and a valid number of kits first."); return; }
+    clearError();
+    /* Printing the sheet means they're packing from paper: unlock Complete for this exact order. */
+    state.packPrintedKey = cur.craft.id + ":" + cur.kits;
+    updatePackProgress();
+    printHtml(packSheetSection(cur.craft.id, cur.kits, currentBoxes()));
   }
   function printInventory(mode) {
     var binsOn = settings().features.bins;
@@ -1656,6 +1869,7 @@
     renderHistory();
   }
   function init() {
+    loadQueue();
     try {
       var saved = localStorage.getItem(LS_KEY);
       if (saved) state.editor = JSON.parse(saved);
@@ -1665,7 +1879,7 @@
       b.addEventListener("click", function () { activateTab(b.getAttribute("data-tab")); });
     });
     $("conn-badge").addEventListener("click", function () { if (!state.editor) activateTab("settings"); });
-    $("pack-kits").addEventListener("input", function () { packKitsTouched = true; packFoldOverride = false; renderPack(); });
+    $("pack-kits").addEventListener("input", function () { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; packFoldOverride = false; renderPack(); });
     $("btn-pack-change").addEventListener("click", function () { packFoldOverride = true; renderPack(); });
     function wireStepper(inputId, minusId, plusId, renderFn) {
       $(minusId).addEventListener("click", function () {
@@ -1679,12 +1893,12 @@
         renderFn();
       });
     }
-    wireStepper("pack-kits", "pack-minus", "pack-plus", function () { packKitsTouched = true; packFoldOverride = false; renderPack(); });
+    wireStepper("pack-kits", "pack-minus", "pack-plus", function () { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; packFoldOverride = false; renderPack(); });
     document.querySelectorAll(".kits-chip").forEach(function (chip) {
       chip.addEventListener("click", function () {
         var target = chip.getAttribute("data-for");
         $(target + "-kits").value = chip.getAttribute("data-kits");
-        if (target === "pack") { packKitsTouched = true; packFoldOverride = false; renderPack(); } else renderBulk();
+        if (target === "pack") { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; packFoldOverride = false; renderPack(); } else renderBulk();
       });
     });
     $("btn-check-all").addEventListener("click", function () {
@@ -1807,7 +2021,22 @@
     });
     $("btn-gh-login").addEventListener("click", startDeviceLogin);
     $("btn-gh-login-cancel").addEventListener("click", function () { stopDeviceLogin(); $("connect-error").textContent = ""; });
-    $("btn-complete-pack").addEventListener("click", completePacking);
+    $("btn-complete-pack").addEventListener("click", function () {
+      if (queueHandIdx >= 0) completeQueueLine(queueHandIdx, true);
+      else completePacking();
+    });
+    /* Multi-craft queue buttons (brief item 1) */
+    $("btn-queue-add").addEventListener("click", function () {
+      var cur = currentPack(); if (!cur) return;
+      /* No warning for adding the same craft twice — the duplicate pop-up
+         fires at Print all / Hand pack all, not while adding. */
+      packQueue.push({ craftId: cur.craft.id, kits: cur.kits, printed: false });
+      saveQueue();
+      packFoldOverride = true; /* picker stays open for the next line */
+      renderPack();
+    });
+    $("btn-queue-print").addEventListener("click", function () { startQueue(printQueueAll); });
+    $("btn-queue-hand").addEventListener("click", function () { startQueue(startHandPackAll); });
     $("btn-print-inventory").addEventListener("click", function () { printInventory("report"); });
     $("btn-print-count").addEventListener("click", function () { printInventory("count"); });
     $("btn-reorder").addEventListener("click", function () {
