@@ -137,22 +137,25 @@ try {
   }
   eq(remoteData.history.length, 3, "Print all + Complete each: 3 History entries");
   eq(remoteData.history.map(h => h.title), [
-    "Packed The Cakery — 36 kits (CAK-36)",
+    "Packed Hafrashat Challah — 18 kits (HCB-18)",
     "Packed Tambourines — 12 kits (TAM-12)",
-    "Packed Hafrashat Challah — 18 kits (HCB-18)"
-  ], "Print all: entries carry the right SKUs");
+    "Packed The Cakery — 36 kits (CAK-36)"
+  ], "Print all: entries carry the right SKUs (newest first)");
   eq(remoteData.inventory["heart-jewelry-box"].qty, 64, "deduction: CAK-36 took 36 Heart Jewelry Boxes (100 -> 64)");
   eq(remoteData.inventory["scissors"].qty, 82, "deduction: shared Scissors across the queue (CAK 12 + TAM 6 = 18, 100 -> 82)");
   eq((await queueLines()).length, 0, "queue: completed lines leave the queue");
-  /* Undo one entry from History */
+  /* Undo one entry from History (via the confirm sheet): the CAK-36 entry
+     (third in newest-first order). Undo marks it undone and reverses its
+     effects exactly — the entry stays in History, it is not deleted. */
   await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
   await sleep(300);
-  await page.evaluate(() => document.querySelector(".history-entry .btn-undo").click());
+  await page.evaluate(() => document.querySelectorAll(".history-entry .btn-undo")[2].click());
   await sleep(300);
   eq(await page.$eval("#sheet-title", e => e.textContent), "Undo this entry?", "undo uses the confirm sheet");
   await sheetPrimary();
   await sleep(400);
-  eq(remoteData.history.length, 2, "undo removes one entry");
+  eq(remoteData.history.length, 3, "undo keeps the entry in History (marked undone, not deleted)");
+  eq(remoteData.history[2].undone, true, "undo marks the CAK-36 entry undone");
   eq(remoteData.inventory["heart-jewelry-box"].qty, 100, "undo restores the deducted stock");
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(300);
@@ -180,7 +183,12 @@ try {
   eq(await page.$eval("#pack-queue-progress", e => e.textContent), "Craft 3 of 3", "Hand pack all: completing craft 2 opens craft 3 automatically");
   await completeChecklist();
   eq((await queueLines()).length, 0, "Hand pack all: last Complete returns to an empty Packing tab");
-  eq(remoteData.history.length, 5, "Hand pack all: 3 more entries (2 kept + 3 new)");
+  eq(remoteData.history.length, 6, "Hand pack all: 3 more entries (3 kept, one undone + 3 new)");
+  eq(remoteData.history.slice(0, 3).map(h => h.title), [
+    "Packed Judaic Clay-Art — 6 kits (JCA-6)",
+    "Packed Tambourines — 12 kits (TAM-12)",
+    "Packed Blooming Mirrors — 6 kits (BM-6)"
+  ], "Hand pack all: newest entries are the walked crafts, newest first");
 
   /* ---- 3. Combined shortage across the queue is caught before starting ---- */
   remoteData.inventory["scissors"].qty = 5;
@@ -197,9 +205,13 @@ try {
   await sleep(300);
   eq(await page.$$eval("#print-area .print-page", els => els.length), 0, "shortage: cancelling prints nothing");
   eq((await queueLines()).length, 2, "shortage: cancelling keeps the queue intact");
-  /* Clear the queue before the duplicate section (lines persist on-device) */
-  await page.evaluate(() => { document.querySelectorAll("#pack-queue .queue-remove").forEach(b => b.click()); });
-  await sleep(300);
+  /* Clear the queue before the duplicate section (lines persist on-device).
+     Remove one at a time, re-querying: each remove re-renders the list, so
+     a bulk click on the old node list would hit detached nodes. */
+  while ((await queueLines()).length) {
+    await page.evaluate(() => { document.querySelector("#pack-queue .queue-remove").click(); });
+    await sleep(200);
+  }
   eq((await queueLines()).length, 0, "queue: lines can be removed before starting");
 
   /* ---- 4. Duplicates: silent while adding, pop-up at Print all ---- */
@@ -233,10 +245,10 @@ try {
     await sheetPrimary();
     await sleep(400);
   }
-  eq(remoteData.history.map(h => h.title).slice(-2), [
-    "Packed The Cakery — 12 kits (CAK-12)",
-    "Packed The Cakery — 18 kits (CAK-18)"
-  ], "duplicates: YES gives two separate entries and SKUs");
+  eq(remoteData.history.slice(0, 2).map(h => h.title), [
+    "Packed The Cakery — 18 kits (CAK-18)",
+    "Packed The Cakery — 12 kits (CAK-12)"
+  ], "duplicates: YES gives two separate entries and SKUs (newest first)");
 
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
