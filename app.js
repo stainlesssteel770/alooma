@@ -1042,7 +1042,9 @@
      import tab records orders that were already packed by hand: queue any mix
      of crafts and kit amounts, then record them all in one save. */
   function renderPackActions() {
-    var kits = parseInt($("pack-kits").value, 10);
+    /* Batch C item 12: strict parse — parseInt("6.5") is 6, which wrongly
+       showed the action buttons for a decimal kits value. */
+    var kits = strictKits($("pack-kits").value);
     var hasSel = !!state.packCraft && L.validKits(kits);
     var walking = queueHandIdx >= 0;
     /* Brief 5c: exactly Queue / Print / Hand pack, and only once both are
@@ -1527,11 +1529,31 @@
         '<span class="history-date">' + esc(fmtDateRel(entry.ts)) + "</span></div>" +
         (eff.length ? '<div class="history-effects">' + summary + fullList + "</div>" : "") +
         (entry.undone ? '<div class="undone-tag">Undone</div>' : "") +
-        (!entry.undone && state.editor ? '<div class="history-actions"><button class="btn btn-edit">Edit…</button><button class="btn btn-undo">Undo</button></div>' : "");
+        /* Batch C A5: Reprint shows on every printed (packed) entry that
+           isn't undone — to editors AND viewers — and only there. Bulk
+           entries were packed outside the app and never printed, so they
+           get no Reprint; neither do entries without a craft/kits pair. */
+        (!entry.undone && (state.editor || (entry.type === "packed" && entry.craftId && entry.kits)) ?
+          '<div class="history-actions">' +
+          (state.editor ? '<button class="btn btn-edit">Edit…</button><button class="btn btn-undo">Undo</button>' : "") +
+          (entry.type === "packed" && entry.craftId && entry.kits ? '<button class="btn btn-reprint">Reprint</button>' : "") +
+          "</div>" : "");
       wrap.appendChild(div);
       if (!entry.undone && state.editor) {
         div.querySelector(".btn-undo").addEventListener("click", function () { undoEntry(entry); });
         div.querySelector(".btn-edit").addEventListener("click", function () { editEntry(entry); });
+      }
+      if (!entry.undone && entry.type === "packed" && entry.craftId && entry.kits) {
+        var rb = div.querySelector(".btn-reprint");
+        if (rb) rb.addEventListener("click", function () {
+          /* Reprint recomputes boxes from the CURRENT box rule, keeps the
+             entry's own Packed-by name (blank if none was stored — never
+             the currently stored name), and changes nothing: no stock
+             move, no new History entry, no save. */
+          var boxes = settings().features.boxes ? L.boxRuleFor(settings(), entry.craftId, entry.kits) : null;
+          var date = new Date(entry.ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+          printHtml(packSheetSection(entry.craftId, entry.kits, boxes, entry.packedBy, { date: date, reprint: true }));
+        });
       }
     });
   }
@@ -1661,7 +1683,11 @@
   }
   /* One craft's 4x6 sheet section. Single print and Print all share this
      builder, so a queue job is exactly the single sheets in queue order. */
-  function packSheetSection(craftId, kits, boxes, by) {
+  /* Batch C A5: opts = { date, reprint } — a Reprint prints the same
+     sheet again with the ORIGINAL date filled in and a REPRINT line last
+     in the footer. Normal prints keep a blank Date and no REPRINT line. */
+  function packSheetSection(craftId, kits, boxes, by, opts) {
+    opts = opts || {};
     var craft = L.craftById(craftId);
     var pack = L.computePack(craftId, kits);
     var binsOn = settings().features.bins;
@@ -1686,7 +1712,8 @@
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>" +
       '<div class="print-foot">' + (boxes && boxes.length ? '<div class="foot-boxes">BOXES: ' + esc(boxes.join(" + ")) + "</div>" : "") +
-      "<div>Packed by: " + (by ? esc(by) : "____________________") + "</div><div>Date: ____________</div></div></section>";
+      "<div>Packed by: " + (by ? esc(by) : "____________________") + "</div><div>Date: " + (opts.date ? esc(opts.date) : "____________") + "</div>" +
+      (opts.reprint ? "<div>REPRINT</div>" : "") + "</div></section>";
   }
   /* A4: single Print prints this one craft's sheet and completes it at the
      same moment — stock deducts and History logs at print time. A short
