@@ -262,10 +262,23 @@ try {
   await sleep(150);
   await page.click("#btn-bulk-add");
   await sleep(300);
-  eq(await page.$eval("#sheet-title", e => e.textContent), "BM-6 is already in the list.", "13: duplicate prompt still names the order");
-  eq(await page.evaluate(() => document.querySelector("#sheet-summary").textContent.includes("to the list")), true, "13: duplicate prompt says 'to the list', not 'to the queue'");
+  /* Batch C item 3: no prompt while adding — the second BM-6 queues
+     silently; the duplicate pop-up fires at Record all instead. */
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 3, "13: duplicate queues silently, no prompt while adding");
+  eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "13: no sheet opened while adding");
+  const putsBeforeDup = putCount;
+  await page.click("#btn-bulk-record");
+  await sleep(300);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Multiple of the same craft detected", "13: Record all opens the duplicate pop-up");
+  eq(await page.evaluate(() => document.querySelector("#sheet-summary").textContent.includes("Blooming Mirrors x2 (6 kits + 6 kits)") && document.querySelector("#sheet-summary").textContent.includes("Was this intentional?")), true, "13: pop-up names the craft, count and kit amounts");
+  eq(await page.$eval("#sheet-primary", e => e.textContent), "YES", "13: YES is the primary button");
+  eq(await page.$eval("#sheet-primary", e => e.classList.contains("success")), true, "13: YES is green");
+  eq(await page.$eval("#sheet-cancel", e => e.textContent), "NO", "13: NO is the cancel button");
+  eq(await page.$eval("#sheet-cancel", e => e.classList.contains("danger")), true, "13: NO is red");
   await page.click("#sheet-cancel");
   await sleep(200);
+  eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), 3, "13: NO keeps all three lines");
+  eq(putCount, putsBeforeDup, "13: NO saves nothing");
 
   console.log(fail ? "BATCHA TESTS FAILED (" + fail + ")" : "all batcha tests passed (" + pass + ")");
 } finally {
