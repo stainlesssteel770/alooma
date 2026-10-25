@@ -551,6 +551,7 @@
   function craftButtons(containerId, selectedId, onPick) {
     var box = $(containerId); box.innerHTML = "";
     L.CRAFTS.forEach(function (c) {
+      if (c.hidden) return; /* recipe editor: hidden crafts leave the pickers only */
       var b = document.createElement("button");
       b.className = "craft-btn" + (c.id === selectedId ? " selected" : "");
       b.innerHTML = (c.id === selectedId ? '<span class="craft-check" aria-hidden="true">✓</span>' : "") +
@@ -1291,7 +1292,7 @@
         html +=
           '<div class="inv-item" data-item="' + itemId + '">' +
           '<button type="button" class="inv-main" aria-expanded="' + (invOpenItem === itemId) + '">' +
-          '<span class="inv-name">' + esc(L.ITEMS[itemId]) + "</span>" + badge + (settings().features.bins ? '<span class="inv-bin">' + esc(L.binFor(settings(), itemId)) + "</span>" : "") +
+          '<span class="inv-name">' + esc(L.ITEMS[itemId]) + (L.itemUnit(itemId) ? " (" + esc(L.itemUnit(itemId)) + ")" : "") + "</span>" + badge + (settings().features.bins ? '<span class="inv-bin">' + esc(L.binFor(settings(), itemId)) + "</span>" : "") +
           '<span class="inv-qty">' + rec.qty + "</span>" +
           '<span class="inv-chev" aria-hidden="true">' + (invOpenItem === itemId ? "▾" : "▸") + "</span>" +
           "</button>";
@@ -1794,7 +1795,7 @@
       }
       var rows = items.map(function (itemId) {
         var low = isLow(itemId);
-        var name = (low ? '<span class="low-tag">LOW</span> ' : "") + esc(L.ITEMS[itemId]);
+        var name = (low ? '<span class="low-tag">LOW</span> ' : "") + esc(L.ITEMS[itemId]) + (L.itemUnit(itemId) ? " (" + esc(L.itemUnit(itemId)) + ")" : "");
         if (mode === "count") {
           return '<tr' + (low ? ' class="low"' : "") + "><td>" + name + "</td>" +
             (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), itemId)) + "</td>" : "") +
@@ -2375,6 +2376,281 @@
     } catch (e) { /* private mode etc. */ }
   }
 
+  /* ---------- Settings: Recipes (recipe editor sub-batch b) ----------
+     Immediate save per valid edit (approved plan): no unsaved-recipe state,
+     so the A3 leave rule needs no recipe-dirty check — same precedent as
+     the boxes editor's fields, which are likewise not A3-protected.
+     renderRecipesSetting writes ONLY #recipes-list, so the static Add form
+     keeps in-progress text across re-renders. Expansion state lives in
+     expandedRecipeId so a save re-render keeps the open craft open. */
+  var expandedRecipeId = null;
+  var pendingNewItem = null; /* {recipeId, lineIdx, slot} while the create-item form is open */
+  function slugify(s) {
+    var slug = String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return slug || "craft";
+  }
+  function recipeEntries(recipe) {
+    var n = 0;
+    (recipe.lines || []).forEach(function (ln) { n += Array.isArray(ln.items) ? ln.items.length : 1; });
+    return n;
+  }
+  /* Whole-craft validation: "" means valid. Blocks the save, never throws. */
+  function validateRecipe(recipe) {
+    if (!recipe.name || !String(recipe.name).trim()) return "Give the craft a name.";
+    var seen = {};
+    var lines = recipe.lines || [];
+    for (var i = 0; i < lines.length; i++) {
+      var ln = lines[i];
+      if (Array.isArray(ln.items)) {
+        if (ln.items.length !== 2 || !ln.items[0] || !ln.items[1]) return "Each alternating pair needs two different items.";
+        if (ln.items[0] === ln.items[1]) return "The two items in a pair must be different.";
+        if (!(Number.isInteger(ln.qty) && ln.qty > 0)) return "Pair quantities must be whole numbers above 0.";
+        if (seen[ln.items[0]] || seen[ln.items[1]]) return "An item can only appear once in a craft.";
+        seen[ln.items[0]] = seen[ln.items[1]] = true;
+      } else {
+        if (!ln.item) return "Every line needs an item.";
+        if (!(Number.isInteger(ln.qty) && ln.qty > 0)) return "Quantities must be whole numbers above 0.";
+        if (!(Number.isInteger(ln.per) && ln.per > 0)) return "“Per” must be a whole number above 0.";
+        if (seen[ln.item]) return "An item can only appear once in a craft.";
+        seen[ln.item] = true;
+      }
+    }
+    return "";
+  }
+  function itemOptions(selected, showNew) {
+    var html = "";
+    Object.keys(L.ITEMS).forEach(function (id) {
+      var unit = L.itemUnit(id);
+      html += '<option value="' + esc(id) + '"' + (id === selected ? " selected" : "") + ">" + esc(L.ITEMS[id]) + (unit ? " (" + esc(unit) + ")" : "") + "</option>";
+    });
+    html += '<option value="__new__"' + (showNew ? " selected" : "") + ">Create new item…</option>";
+    return html;
+  }
+  function renderRecipesSetting() {
+    var list = $("recipes-list");
+    if (!list) return;
+    var recipes = settings().recipes || [];
+    var html = "";
+    recipes.forEach(function (r) {
+      var entries = recipeEntries(r);
+      var warn = entries > L.MAX_LINES_ONE_LABEL;
+      html += '<div class="recipe-row" data-recipe-row="' + esc(r.id) + '">';
+      html += '<div class="recipe-head"><strong>' + esc(r.name) + '</strong> <span class="recipe-code">' + esc(r.code) + "</span>" +
+        (r.hidden ? ' <span class="recipe-hidden">Hidden</span>' : "") +
+        '<span class="recipe-count">' + r.lines.length + " lines</span>" +
+        '<button type="button" class="btn btn-quiet" data-recipe-edit>Edit</button></div>';
+      if (expandedRecipeId === r.id) {
+        html += '<div class="recipe-editor">';
+        html += '<label>Name <input type="text" data-recipe-name value="' + esc(r.name) + '" autocomplete="off"></label>';
+        html += '<span class="hint">Code ' + esc(r.code) + " is locked after creation.</span> ";
+        html += '<button type="button" class="btn btn-quiet" data-hide-toggle>' + (r.hidden ? "Unhide" : "Hide") + "</button>";
+        r.lines.forEach(function (ln, idx) {
+          var isPending = pendingNewItem && pendingNewItem.recipeId === r.id && pendingNewItem.lineIdx === idx;
+          html += '<div class="recipe-line" data-recipe-line="' + idx + '">';
+          if (Array.isArray(ln.items)) {
+            html += '<span class="hint">Alternating pair</span>' +
+              '<select data-line-item>' + itemOptions(ln.items[0], isPending && pendingNewItem.slot === 0) + "</select>" +
+              '<select data-line-item2>' + itemOptions(ln.items[1], isPending && pendingNewItem.slot === 1) + "</select>" +
+              '<label>Qty <input type="number" min="1" step="1" data-line-qty value="' + ln.qty + '"></label>' +
+              '<span class="hint">per 6</span>';
+          } else {
+            html += '<select data-line-item>' + itemOptions(ln.item, isPending && pendingNewItem.slot === 0) + "</select>" +
+              '<label>Qty <input type="number" min="1" step="1" data-line-qty value="' + ln.qty + '"></label>' +
+              '<label>Per <input type="number" min="1" step="1" data-line-per value="' + (ln.per || 6) + '"></label>';
+          }
+          html += '<button type="button" class="btn btn-quiet" data-line-remove>Remove</button></div>';
+        });
+        if (pendingNewItem && pendingNewItem.recipeId === r.id) {
+          html += '<div class="recipe-new-item"><label>New item name <input type="text" data-new-item-name autocomplete="off"></label>' +
+            '<label>Unit (optional) <input type="text" data-new-item-unit autocomplete="off"></label>' +
+            '<button type="button" class="btn btn-primary" data-new-item-create>Create item</button>' +
+            '<button type="button" class="btn btn-quiet" data-new-item-cancel>Cancel</button></div>';
+        }
+        html += '<div class="btn-row"><button type="button" class="btn" data-add-line>Add line</button><button type="button" class="btn" data-add-pair>Add alternating pair</button></div>';
+        html += '<p class="field-error" data-recipe-error></p>';
+        if (warn) html += '<p class="hint" data-recipe-warning>This recipe has ' + entries + " items — it won't fit on one 4x6 label and will spill to a second page.</p>";
+        html += "</div>";
+      }
+      html += "</div>";
+    });
+    list.innerHTML = html;
+  }
+  /* The live catalog (L.CRAFTS/L.ITEMS) is a copy set on load; an in-app
+     edit changes state.data only, so re-sync it after every recipe save —
+     otherwise the picker, inventory groups, and item selects would keep
+     showing the pre-edit catalog until the next reload. */
+  function syncCatalog() {
+    var s = settings();
+    L.setCatalog(s.recipes, s.customItems);
+  }
+  function commitRecipe(recipeId, mutate, msg) {
+    var recipes = settings().recipes || [];
+    var idx = recipes.findIndex(function (r) { return r.id === recipeId; });
+    if (idx < 0) return;
+    mutate(recipes[idx]);
+    saveData(msg || "Recipe updated").then(function () { syncCatalog(); renderAll(); });
+  }
+  /* Validated edit: on failure the error shows and nothing saves — and
+     nothing re-renders, so the user's input stays exactly as typed. */
+  function applyRecipeEdit(recipeId, mutate, msg) {
+    var recipes = settings().recipes || [];
+    var idx = recipes.findIndex(function (r) { return r.id === recipeId; });
+    if (idx < 0) return;
+    var cand = JSON.parse(JSON.stringify(recipes[idx]));
+    mutate(cand);
+    var err = validateRecipe(cand);
+    if (err) {
+      var row = document.querySelector('[data-recipe-row="' + recipeId + '"]');
+      var errEl = row ? row.querySelector("[data-recipe-error]") : null;
+      if (errEl) errEl.textContent = err;
+      return;
+    }
+    recipes[idx] = cand;
+    saveData(msg || "Recipe updated").then(function () { syncCatalog(); renderAll(); });
+  }
+  function recipeRowId(el) {
+    var row = el.closest ? el.closest("[data-recipe-row]") : null;
+    return row ? row.getAttribute("data-recipe-row") : null;
+  }
+  function recipeLineIdx(el) {
+    var line = el.closest ? el.closest("[data-recipe-line]") : null;
+    return line ? parseInt(line.getAttribute("data-recipe-line"), 10) : -1;
+  }
+  function bindRecipeEditor() {
+    var card = $("recipes-card");
+    if (!card) return;
+    card.addEventListener("click", function (e) {
+      var t = e.target;
+      var id = recipeRowId(t);
+      if (t.hasAttribute("data-recipe-edit")) {
+        expandedRecipeId = expandedRecipeId === id ? null : id;
+        renderRecipesSetting();
+        return;
+      }
+      if (!id) return;
+      if (t.hasAttribute("data-hide-toggle")) {
+        commitRecipe(id, function (r) { r.hidden = !r.hidden; }, "Recipe hidden");
+        return;
+      }
+      if (t.hasAttribute("data-line-remove")) {
+        var ridx = recipeLineIdx(t);
+        commitRecipe(id, function (r) { r.lines.splice(ridx, 1); }, "Recipe line removed");
+        return;
+      }
+      if (t.hasAttribute("data-add-line") || t.hasAttribute("data-add-pair")) {
+        var recipes = settings().recipes || [];
+        var recipe = recipes.find(function (r) { return r.id === id; });
+        if (!recipe) return;
+        var used = {};
+        recipeLineItems(recipe).forEach(function (it) { used[it] = true; });
+        var free = Object.keys(L.ITEMS).filter(function (it) { return !used[it]; });
+        var row = document.querySelector('[data-recipe-row="' + id + '"]');
+        var errEl = row ? row.querySelector("[data-recipe-error]") : null;
+        if (t.hasAttribute("data-add-line")) {
+          if (!free.length) { if (errEl) errEl.textContent = "Every item is already in this craft — nothing left to add."; return; }
+          commitRecipe(id, function (r) { r.lines.push({ item: free[0], qty: 1, per: 6 }); }, "Recipe line added");
+        } else {
+          if (free.length < 2) { if (errEl) errEl.textContent = "Need two unused items for a pair — this craft already uses nearly everything."; return; }
+          commitRecipe(id, function (r) { r.lines.push({ items: [free[0], free[1]], qty: 1, per: 6 }); }, "Recipe pair added");
+        }
+        return;
+      }
+      if (t.hasAttribute("data-new-item-cancel")) {
+        pendingNewItem = null;
+        renderRecipesSetting();
+        return;
+      }
+      if (t.hasAttribute("data-new-item-create")) {
+        var nameEl = card.querySelector("[data-new-item-name]");
+        var unitEl = card.querySelector("[data-new-item-unit]");
+        var name = nameEl ? nameEl.value.trim() : "";
+        var row2 = document.querySelector('[data-recipe-row="' + id + '"]');
+        var errEl2 = row2 ? row2.querySelector("[data-recipe-error]") : null;
+        if (!name) { if (errEl2) errEl2.textContent = "Give the new item a name."; return; }
+        var slug = slugify(name);
+        if (Object.keys(L.ITEMS).indexOf(slug) >= 0) { if (errEl2) errEl2.textContent = "An item with that name already exists."; return; }
+        var pend = pendingNewItem;
+        var unit = unitEl ? unitEl.value.trim() : "";
+        commitRecipe(id, function (r) {
+          var s = settings();
+          s.customItems = s.customItems || [];
+          s.customItems.push({ id: slug, name: name, unit: unit });
+          var ln = r.lines[pend.lineIdx];
+          if (ln && Array.isArray(ln.items)) ln.items[pend.slot] = slug;
+          else if (ln) ln.item = slug;
+        }, "Item added: " + name);
+        pendingNewItem = null;
+        return;
+      }
+    });
+    card.addEventListener("change", function (e) {
+      var t = e.target;
+      var id = recipeRowId(t);
+      if (!id) return;
+      if (t.hasAttribute("data-recipe-name")) {
+        var v = t.value.trim();
+        applyRecipeEdit(id, function (r) { r.name = v; }, "Recipe renamed");
+        return;
+      }
+      var lidx = recipeLineIdx(t);
+      if (lidx < 0) return;
+      if (t.hasAttribute("data-line-item") || t.hasAttribute("data-line-item2")) {
+        if (t.value === "__new__") {
+          pendingNewItem = { recipeId: id, lineIdx: lidx, slot: t.hasAttribute("data-line-item2") ? 1 : 0 };
+          renderRecipesSetting();
+          return;
+        }
+        var slot = t.hasAttribute("data-line-item2") ? 1 : 0;
+        var val = t.value;
+        applyRecipeEdit(id, function (r) {
+          var ln = r.lines[lidx];
+          if (Array.isArray(ln.items)) ln.items[slot] = val;
+          else ln.item = val;
+        }, "Recipe line updated");
+        return;
+      }
+      if (t.hasAttribute("data-line-qty")) {
+        var q = Number(t.value);
+        applyRecipeEdit(id, function (r) { r.lines[lidx].qty = q; }, "Recipe line updated");
+        return;
+      }
+      if (t.hasAttribute("data-line-per")) {
+        var p = Number(t.value);
+        applyRecipeEdit(id, function (r) { r.lines[lidx].per = p; }, "Recipe line updated");
+        return;
+      }
+    });
+    $("recipe-add-btn").addEventListener("click", function () {
+      var name = $("recipe-add-name").value.trim();
+      var code = $("recipe-add-code").value.trim().toUpperCase();
+      var errEl = $("recipe-add-error");
+      var fail = function (m) { errEl.textContent = m; };
+      if (!name) { fail("Give the craft a name."); return; }
+      if (!/^[A-Z]{2,4}$/.test(code)) { fail("Code must be 2–4 letters."); return; }
+      var recipes = settings().recipes || [];
+      if (recipes.some(function (r) { return r.code.toUpperCase() === code; })) { fail("That code is already used."); return; }
+      var base = slugify(name), slug = base, n = 2;
+      var ids = recipes.map(function (r) { return r.id; });
+      while (ids.indexOf(slug) >= 0) slug = base + "-" + (n++);
+      recipes.push({ id: slug, code: code, name: name, hidden: false, lines: [] });
+      saveData("Recipe added: " + name).then(function () {
+        $("recipe-add-name").value = "";
+        $("recipe-add-code").value = "";
+        errEl.textContent = "";
+        syncCatalog();
+        renderAll();
+      });
+    });
+  }
+  function recipeLineItems(recipe) {
+    var ids = [];
+    (recipe.lines || []).forEach(function (ln) {
+      if (Array.isArray(ln.items)) ids.push.apply(ids, ln.items);
+      else if (ln.item) ids.push(ln.item);
+    });
+    return ids;
+  }
+
   /* ---------- wiring ---------- */
   function renderAll() {
     renderSettings();
@@ -2382,6 +2658,7 @@
     renderBinSettings();
     renderBulkTabSetting();
     renderNamesSetting();
+    renderRecipesSetting();
     renderPack();
     renderBulk();
     renderInventory();
@@ -2483,6 +2760,7 @@
        markup, and a viewer never sees them. */
     $("set-packed-by").addEventListener("change", saveNamesSetting);
     $("set-counted-by").addEventListener("change", saveNamesSetting);
+    bindRecipeEditor();
     $("btn-print-menu").addEventListener("click", function () {
       var menu = $("print-menu");
       var open = menu.hidden;
