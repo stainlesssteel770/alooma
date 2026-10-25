@@ -165,6 +165,7 @@
     var prim = $("sheet-primary");
     prim.textContent = opts.primary || "Confirm";
     prim.classList.toggle("danger", !!opts.primaryDanger);
+    prim.classList.toggle("success", !!opts.primarySuccess);
     var cancelBtn = $("sheet-cancel");
     cancelBtn.textContent = opts.cancelLabel || "Cancel";
     cancelBtn.classList.toggle("btn-primary", !!opts.cancelFilled);
@@ -863,6 +864,7 @@
         title: "Multiple of the same craft detected",
         summary: lines.join(" · ") + ". Was this intentional?",
         primary: "YES",
+        primarySuccess: true,
         cancelLabel: "NO",
         cancelDanger: true,
         onConfirm: function () { action(); },
@@ -1068,21 +1070,9 @@
     if (!requireEditor()) return;
     var kits = parseInt($("bulk-kits").value, 10);
     if (!state.bulkCraft || !L.validKits(kits)) return;
-    var craftId = state.bulkCraft;
-    var sku = L.sku(craftId, kits);
-    /* v3 D1: the same order twice is almost always a double tap — ask first */
-    var dup = bulkLines.some(function (ln) { return ln.craftId === craftId && ln.kits === kits; });
-    if (dup) {
-      openSheet({
-        title: sku + " is already in the list.",
-        summary: "Add another " + sku + " to the list?",
-        primary: "Add another",
-        cancelLabel: "Keep one",
-        onConfirm: function () { queueBulkLine(craftId, kits); }
-      });
-      return;
-    }
-    queueBulkLine(craftId, kits);
+    /* Batch C item 3: no prompt while adding — the duplicate check fires
+       at Record all only (the old v3 D1 add-time prompt is gone). */
+    queueBulkLine(state.bulkCraft, kits);
   }
   /* Brief item 2: after an Add, the new card must clear the toast too,
      not just the bar + nav. Scrolling up only grows the gap to a
@@ -1148,7 +1138,30 @@
       });
     });
     var skus = lines.map(function (ln) { return L.sku(ln.craftId, ln.kits); });
-    openSheet({
+    /* Batch C item 3: the duplicate check fires here, at Record all only —
+       same wording and YES-green / NO-red styling as Packing's check. */
+    var bulkCounts = {};
+    lines.forEach(function (ln) { bulkCounts[ln.craftId] = (bulkCounts[ln.craftId] || 0) + 1; });
+    var bulkDupIds = Object.keys(bulkCounts).filter(function (id) { return bulkCounts[id] > 1; });
+    if (bulkDupIds.length) {
+      var dlines = bulkDupIds.map(function (id) {
+        var ls = lines.filter(function (ln) { return ln.craftId === id; });
+        return L.craftById(id).name + " x" + ls.length + " (" + ls.map(function (ln) { return ln.kits + " kits"; }).join(" + ") + ")";
+      });
+      openSheet({
+        title: "Multiple of the same craft detected",
+        summary: dlines.join(" · ") + ". Was this intentional?",
+        primary: "YES",
+        primarySuccess: true,
+        cancelLabel: "NO",
+        cancelDanger: true,
+        onConfirm: function () { openRecordConfirm(); },
+        onCancel: function () { renderBulk(); }
+      });
+      return;
+    }
+    openRecordConfirm();
+    function openRecordConfirm() { openSheet({
       title: "Record all",
       sub: lines.length + (lines.length === 1 ? " order: " : " orders: ") +
         skus.slice(0, 3).join(", ") + (skus.length > 3 ? " +" + (skus.length - 3) + " more" : "") + " · hand-packed",
@@ -1174,7 +1187,7 @@
           toast("Recorded " + lines.length + " hand-packed order" + (lines.length === 1 ? "" : "s") + ".");
         });
       }
-    });
+    }); }
   }
 
   /* ---------- Inventory tab ---------- */
