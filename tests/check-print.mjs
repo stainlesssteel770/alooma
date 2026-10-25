@@ -202,21 +202,17 @@ try {
     await page.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);
     await page.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
     await sleep(150);
-    console.log("queueAdd", name, kits, "add disabled =", await page.$eval("#btn-queue-add", e => e.disabled),
-      "sku =", await page.$eval("#pack-sku", e => e.textContent));
     await page.evaluate(() => { document.querySelector("#btn-queue-add").click(); });
     await sleep(250);
-    console.log("queueAdd", name, kits, "lines now =", await page.$$eval("#pack-queue .queue-line", els => els.length));
   }
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await queueAdd("The Cakery", 36);
   await queueAdd("Tambourines", 12);
-  await queueAdd("Blooming Mirrors", 6);
+  await queueAdd("Hafrashat Challah", 18);
   await page.evaluate(() => { document.querySelector("#btn-queue-print").click(); });
   await sleep(300);
   const allTitles = await page.$$eval("#print-area .print-page .label-title", els => els.map(e => e.textContent));
-  console.log("Print-all titles:", JSON.stringify(allTitles));
-  ok(JSON.stringify(allTitles) === JSON.stringify(["The Cakery", "Tambourines", "Blooming Mirrors"]), "Print all: one job, sections in queue order");
+  ok(JSON.stringify(allTitles) === JSON.stringify(["The Cakery", "Tambourines", "Hafrashat Challah"]), "Print all: one job, sections in queue order");
   await page.pdf({ path: "/tmp/alooma-printall.pdf", preferCSSPageSize: true, printBackground: true });
   await checkGeometry("/tmp/alooma-printall.pdf", "Print all (3 crafts)");
 
