@@ -147,7 +147,8 @@ try {
   await waitFor(() => remote.inventory["tambourines"].qty === 150, "merged tambourines reach 150");
   eq(remote.inventory["tambourines"].qty, 150, "E4: my +50 and their +100 are BOTH in stock");
   eq(remote.inventory["tree-mirror"].qty, -6, "E4: my offline hand-pack deduction landed too");
-  eq(remote.history.some(h => h.type === "hand-packed"), true, "E4: my pack is in History");
+  /* Batch C A1: Bulk-recorded entries are typed "bulk", not "hand-packed". */
+  eq(remote.history.some(h => h.type === "bulk"), true, "E4: my pack is in History");
   eq(remote.history.some(h => h.type === "received" && h.item === "tambourines" && h.amount === 50), true, "E4: my delivery is in History");
   eq(remote.history.some(h => h.id === "their-1"), true, "E4: their delivery is still in History (no overwrite)");
   await waitFor(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.queue.v1") || "[]").length)) === 0, "queue drains after sync");
