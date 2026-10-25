@@ -104,7 +104,7 @@ try {
     await page.click(`.kits-chip[data-for="pack"][data-kits="${kits}"]`);
     await sleep(150);
   }
-  async function singleSheet(craft, kits, tag) {
+  async function singleSheet(craft, kits, tag, boxesOn) {
     await load();
     await pick(craft.name, kits);
     await page.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
@@ -125,7 +125,7 @@ try {
        ~47pt, one more row ~28pt; if p1gap covers it, the spill is a
        fragmentation quirk, not a real shortage. */
     if (kits === 6) {
-      console.log(`PACKGEO ${craft.name} p1gap=${bottomGap(pages[0])}pt p1rows=${p1rows} pages=${pages.length}`);
+      console.log(`${boxesOn ? "BOXGEO" : "PACKGEO"} ${craft.name} p1gap=${bottomGap(pages[0])}pt p1rows=${p1rows} pages=${pages.length}`);
     }
   }
 
@@ -141,6 +141,12 @@ try {
   remote.settings.boxes = ["Big Box", "Small Box"];
   remote.settings.boxRules = [{ craftId: "cak", kits: 36, boxes: ["Big Box", "Small Box"] }];
   await singleSheet(CRAFTS.find(c => c.id === "cak"), 36, "cak-36-boxes");
+  /* ---- Renames report: every craft at 6 with a BOXES rule on ---- */
+  remote.settings.boxes = ["Big Box"];
+  remote.settings.boxRules = CRAFTS.map(c => ({ craftId: c.id, kits: 6, boxes: ["Big Box"] }));
+  for (const craft of CRAFTS) {
+    await singleSheet(craft, 6, craft.id + "-6-boxes", true);
+  }
   remote.settings.features.boxes = false;
 
   /* ---- The brief's exact Print-all case ---- */
