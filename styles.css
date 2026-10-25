@@ -369,3 +369,16 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 .badge-view { cursor: pointer; }
 .device-code { font-size: 30px; font-weight: 800; letter-spacing: 4px; text-align: center; margin: 10px 0 4px; }
 .card-sep { border: none; border-top: 1px solid var(--line); margin: 14px 0; }
+
+/* Recipe editor (sub-batch b): list rows + per-craft line editor. */
+.recipe-row { border-top: 1px solid var(--line); padding: 10px 0; }
+.recipe-row:first-child { border-top: none; }
+.recipe-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.recipe-code { color: #666; }
+.recipe-hidden { background: #eee; border-radius: 8px; padding: 1px 8px; font-size: 12px; }
+.recipe-count { color: #666; margin-left: auto; }
+.recipe-editor { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+.recipe-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.recipe-line select { flex: 1 1 140px; }
+.recipe-line input[type="number"] { width: 64px; }
+.recipe-new-item { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
