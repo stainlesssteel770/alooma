@@ -31,6 +31,9 @@ jobs:
       - name: UI tests (real buttons, editor flows, Batch A safety)
         run: node tests/test-ui.mjs
 
+      - name: Queue tests (multi-craft packing queue)
+        run: node tests/test-queue.mjs
+
       - name: Layout audit (real geometry at 360/390px — nothing clipped or off-screen)
         if: always()
         run: node tests/test-layout.mjs
