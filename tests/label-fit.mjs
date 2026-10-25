@@ -194,6 +194,17 @@ try {
     return (titles.length ? titles.join("+") : "notitle") + (p.text.includes("Counted by") ? "+foot" : "");
   });
   console.log(`COUNT pages=${cntPages.length} perPage=[${cntPerPage.join(" | ")}]`);
+  /* Spill detail: for each group, which pages carry its title and which
+     of its item names sit on its LAST page (the spilled rows, if any). */
+  const allGroupNames = [...CRAFTS.map(c => c.name), "Shared items"];
+  for (const gname of allGroupNames) {
+    const gpages = cntPages.map((p, i) => p.text.includes(gname) ? i + 1 : -1).filter(i => i >= 0);
+    if (!gpages.length) continue;
+    const lastPage = cntPages[gpages[gpages.length - 1] - 1];
+    const craft = CRAFTS.find(c => c.name === gname);
+    const lastRows = craft ? craft.items.map(ln => L.ITEMS[ln.item]).filter(nm => nm && lastPage.text.includes(nm)) : [];
+    console.log(`COUNTDETAIL ${gname} pages=[${gpages.join(",")}] lastPageRows=[${lastRows.join(" | ")}]`);
+  }
 
   console.log("LABEL FIT DONE");
 } finally {
