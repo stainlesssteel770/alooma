@@ -155,6 +155,17 @@ try {
   await queueAdd("The Cakery", 18);
   await page.evaluate(() => { document.querySelector("#btn-queue-print").click(); });
   await sleep(400);
+  /* Batch C item 3: BM appears 3x in this queue, so Print all opens the
+     duplicate check first — confirm YES, or nothing prints at all (the
+     first audit run measured exactly that blocked state: 1 blank page). */
+  await page.evaluate(() => {
+    const bd = document.querySelector("#sheet-backdrop");
+    const title = document.querySelector("#sheet-title");
+    if (bd && !bd.hidden && title && title.textContent.includes("Multiple of the same craft")) {
+      document.querySelector("#sheet-primary").click();
+    }
+  });
+  await sleep(400);
   const allPdf = path.join(OUT, "printall-5.pdf");
   await page.pdf({ path: allPdf, preferCSSPageSize: true, printBackground: true });
   const allPages = await parsePdf(allPdf);
