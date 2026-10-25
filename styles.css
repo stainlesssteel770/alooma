@@ -281,9 +281,11 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   /* Brief item 1: Bulk content gets bottom padding equal to the sticky bar
      plus the fixed nav, so no form/list line ever sits under either. The
      scroll margin lets a newly added card scroll fully into view above
-     the bar (item 2). */
+     the bar, toast and nav (item 2). */
   #tab-bulk { padding-bottom: 150px; }
-  #bulk-lines > *, #pack-queue > * { scroll-margin-bottom: 150px; }
+  /* scroll-margin must clear bar + toast + nav (the bar sits directly
+     below the new card in flow, so the card has to rise past all three) */
+  #bulk-lines > *, #pack-queue > * { scroll-margin-bottom: 210px; }
   .toast { bottom: 132px; left: 8px; right: 8px; transform: none; max-width: none; font-size: 14px; padding: 12px 14px; }
   /* Brief item 14: the header status must never run off the right edge.
      Shrink the header spacing/type on phones so badge + status fit one
