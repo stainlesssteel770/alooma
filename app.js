@@ -539,6 +539,19 @@
     if (extra) Object.keys(extra).forEach(function (k) { e[k] = extra[k]; });
     return e;
   }
+  /* Recipe (c): a pack-time snapshot — each line as {item, name, qty}
+     with the name as it stood when packed. Reprint and the History
+     effect list read names from it when present; legacy entries
+     without one fall back to current names. */
+  function snapshotPack(pack) {
+    return pack.map(function (r) { return { item: r.item, name: r.name, qty: r.qty }; });
+  }
+  function snapshotName(entry, itemId) {
+    if (entry.recipe) {
+      for (var i = 0; i < entry.recipe.length; i++) if (entry.recipe[i].item === itemId) return entry.recipe[i].name;
+    }
+    return L.ITEMS[itemId] || itemId;
+  }
   /* Apply effects + log entry + save. Returns a promise. */
   function commitChange(entry, commitMsg) {
     L.applyEffects(state.data.inventory, entry.effects, +1);
@@ -946,12 +959,13 @@
     var html = lines.map(function (ln) { return packSheetSection(ln.craftId, ln.kits, queueLineBoxes(ln), by); }).join("");
     var entries = lines.map(function (ln) {
       var craft = L.craftById(ln.craftId);
-      var extra = { craftId: ln.craftId, kits: ln.kits };
+      var pack = L.computePack(ln.craftId, ln.kits);
+      var extra = { craftId: ln.craftId, kits: ln.kits, recipe: snapshotPack(pack) };
       if (by) extra.packedBy = by;
       return newEntry(
         "packed",
         "Packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
-        L.computePack(ln.craftId, ln.kits).map(function (r) { return { item: r.item, delta: -r.qty }; }),
+        pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
         extra
       );
     });
@@ -1040,6 +1054,7 @@
            can restore the line and step the walk back to it. */
         extra.queueLine = { craftId: ln.craftId, kits: ln.kits };
         extra.queueIndex = i;
+        extra.recipe = snapshotPack(pack);
         var entry = newEntry(
           "packed",
           "Packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
@@ -1250,11 +1265,12 @@
            applied locally like a delivery, then a SINGLE save for the batch. */
         lines.slice().reverse().forEach(function (ln) {
           var craft = L.craftById(ln.craftId);
+          var pack = L.computePack(ln.craftId, ln.kits);
           var entry = newEntry(
             "bulk",
             "Bulk " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
-            L.computePack(ln.craftId, ln.kits).map(function (r) { return { item: r.item, delta: -r.qty }; }),
-            { craftId: ln.craftId, kits: ln.kits }
+            pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
+            { craftId: ln.craftId, kits: ln.kits, recipe: snapshotPack(pack) }
           );
           L.applyEffects(state.data.inventory, entry.effects, +1);
           state.data.history.unshift(entry);
@@ -1564,7 +1580,7 @@
       var div = document.createElement("div");
       div.className = "history-entry" + (entry.undone ? " undone" : "");
       var eff = entry.effects.map(function (e) {
-        return esc(L.ITEMS[e.item] || e.item) + " " + (e.delta > 0 ? "+" : "") + e.delta;
+        return esc(snapshotName(entry, e.item)) + " " + (e.delta > 0 ? "+" : "") + e.delta;
       });
       var summary = eff.slice(0, 3).join(" · ");
       if (eff.length > 3) summary += " · +" + (eff.length - 3) + " more";
@@ -1596,11 +1612,13 @@
         if (rb) rb.addEventListener("click", function () {
           /* Reprint recomputes boxes from the CURRENT box rule, keeps the
              entry's own Packed-by name (blank if none was stored — never
-             the currently stored name), and changes nothing: no stock
-             move, no new History entry, no save. */
+             the currently stored name), prints the entry's snapshot rows
+             when present (legacy entries recompute from the current
+             recipe), and changes nothing: no stock move, no new History
+             entry, no save. */
           var boxes = settings().features.boxes ? L.boxRuleFor(settings(), entry.craftId, entry.kits) : null;
           var date = new Date(entry.ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-          printHtml(packSheetSection(entry.craftId, entry.kits, boxes, entry.packedBy, { date: date, reprint: true }));
+          printHtml(packSheetSection(entry.craftId, entry.kits, boxes, entry.packedBy, { date: date, reprint: true, pack: entry.recipe }));
         });
       }
     });
@@ -1634,7 +1652,7 @@
     };
     if (skipConfirm) { doUndo(); return; }
     var eff = entry.effects.map(function (e) {
-      return (L.ITEMS[e.item] || e.item) + " " + (e.delta > 0 ? "+" : "") + e.delta;
+      return snapshotName(entry, e.item) + " " + (e.delta > 0 ? "+" : "") + e.delta;
     });
     var summary = eff.slice(0, 3).join(" · ") + (eff.length > 3 ? " · +" + (eff.length - 3) + " more" : "");
     openSheet({
@@ -1705,7 +1723,10 @@
           var pack = L.computePack(entry.craftId, k);
           var verb = entry.type === "packed" ? "Packed" : entry.type === "bulk" ? "Bulk" : "Hand-packed";
           var craft = L.craftById(entry.craftId);
-          var updates = { kits: k };
+          /* Recipe (c): an edit re-packs at the new kits, so the
+             snapshot refreshes to the new pack (current names) — a
+             reprint after an edit must match the edited entry. */
+          var updates = { kits: k, recipe: snapshotPack(pack) };
           /* Batch C item 10: keep a later walk-undo consistent with the
              edit — the restored line carries the edited kit count. */
           if (entry.queueLine) updates.queueLine = { craftId: entry.craftId, kits: k };
@@ -1737,7 +1758,10 @@
   function packSheetSection(craftId, kits, boxes, by, opts) {
     opts = opts || {};
     var craft = L.craftById(craftId);
-    var pack = L.computePack(craftId, kits);
+    /* Recipe (c): a snapshot reprint renders its frozen rows (names +
+       totals). The Per-6 column stays from the current recipe — it is
+       a rate reference, and renames never change quantities. */
+    var pack = opts.pack || L.computePack(craftId, kits);
     var binsOn = settings().features.bins;
     var sheetPack = pack.slice();
     if (packSortBin && binsOn) {
@@ -1780,7 +1804,7 @@
     function doPrint() {
       clearError();
       var by = storedBy(PACKBY_LS);
-      var extra = { craftId: craft.id, kits: cur.kits };
+      var extra = { craftId: craft.id, kits: cur.kits, recipe: snapshotPack(cur.pack) };
       if (by) extra.packedBy = by;
       var entry = newEntry(
         "packed",
