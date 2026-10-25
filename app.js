@@ -1192,7 +1192,7 @@
     function openRecordConfirm() { openSheet({
       title: "Record all",
       sub: lines.length + (lines.length === 1 ? " order: " : " orders: ") +
-        skus.slice(0, 3).join(", ") + (skus.length > 3 ? " +" + (skus.length - 3) + " more" : "") + " · hand-packed",
+        skus.slice(0, 3).join(", ") + (skus.length > 3 ? " +" + (skus.length - 3) + " more" : "") + " · bulk",
       summary: packSummary(aggPack),
       primary: "Subtract from inventory",
       onConfirm: function () {
@@ -1201,8 +1201,8 @@
         lines.slice().reverse().forEach(function (ln) {
           var craft = L.craftById(ln.craftId);
           var entry = newEntry(
-            "hand-packed",
-            "Hand-packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
+            "bulk",
+            "Bulk " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
             L.computePack(ln.craftId, ln.kits).map(function (r) { return { item: r.item, delta: -r.qty }; }),
             { craftId: ln.craftId, kits: ln.kits }
           );
@@ -1211,8 +1211,8 @@
         });
         bulkLines = [];
         renderAll();
-        saveData("Hand-packed " + lines.length + " order(s)").then(function () {
-          toast("Recorded " + lines.length + " hand-packed order" + (lines.length === 1 ? "" : "s") + ".");
+        saveData("Bulk " + lines.length + " order(s)").then(function () {
+          toast("Recorded " + lines.length + " bulk order" + (lines.length === 1 ? "" : "s") + ".");
         });
       }
     }); }
@@ -1497,8 +1497,8 @@
   }
 
   /* ---------- History tab ---------- */
-  var TYPE_LABEL = { "received": "Received", "packed": "Packed", "hand-packed": "Hand-packed", "count-fix": "Count fix", "import": "Backup import" };
-  var TYPE_DOT = { "packed": "#1A7336", "hand-packed": "#20242B", "received": "#5C6570", "count-fix": "#8A4B00", "import": "#5C6570" };
+  var TYPE_LABEL = { "received": "Received", "packed": "Packed", "hand-packed": "Hand-packed", "bulk": "Bulk", "count-fix": "Count fix", "import": "Backup import" };
+  var TYPE_DOT = { "packed": "#1A7336", "hand-packed": "#20242B", "bulk": "#3A6EA5", "received": "#5C6570", "count-fix": "#8A4B00", "import": "#5C6570" };
   function fmtDateRel(iso) {
     var d = new Date(iso), now = new Date();
     var sameDay = d.toDateString() === now.toDateString();
@@ -1620,7 +1620,7 @@
             .then(function () { toast("Entry updated."); });
         }
       });
-    } else if (entry.type === "packed" || entry.type === "hand-packed") {
+    } else if (entry.type === "packed" || entry.type === "hand-packed" || entry.type === "bulk") {
       var craft0 = L.craftById(entry.craftId);
       editSheetOriginal = entry.kits;
       openSheet({
@@ -1633,7 +1633,7 @@
           if (!L.validKits(k)) { toast("Kits must be a multiple of 6."); return; }
           if (k === entry.kits) return;
           var pack = L.computePack(entry.craftId, k);
-          var verb = entry.type === "packed" ? "Packed" : "Hand-packed";
+          var verb = entry.type === "packed" ? "Packed" : entry.type === "bulk" ? "Bulk" : "Hand-packed";
           var craft = L.craftById(entry.craftId);
           var updates = { kits: k };
           /* Batch C item 10: keep a later walk-undo consistent with the
