@@ -112,8 +112,13 @@ try {
     req.continue();
   });
   const load = async () => {
-    await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
-    await sleep(500);
+    /* NOTE: networkidle0 hangs on reloads here (the reload after a
+       page.pdf() never reached 500ms of quiet) — load + an explicit
+       readiness signal (craft buttons rendered = data loaded + first
+       render done) is deterministic instead. */
+    await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "load", timeout: 30000 });
+    await page.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 6, { timeout: 15000 });
+    await sleep(300);
     await page.evaluate(() => { window.print = () => {}; });
   };
   await load();
