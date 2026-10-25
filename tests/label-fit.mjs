@@ -206,6 +206,20 @@ try {
     console.log(`COUNTDETAIL ${gname} pages=[${gpages.join(",")}] lastPageRows=[${lastRows.join(" | ")}]`);
   }
 
+  /* Geometry probe: why does MI count spill one row while BM count fits
+     12? Report MI count page-7's text runs (title lines? row lines? bottom
+     gap) and MI pack page-1's for comparison. */
+  const miCountPages = cntPages.map((p, i) => p.text.includes("Miniature Interiors") ? i + 1 : -1).filter(i => i >= 0);
+  if (miCountPages.length) {
+    const p7 = cntPages[miCountPages[0] - 1];
+    const titleRuns = p7.items.filter(it => it.s.includes("Miniature Interiors"));
+    console.log(`COUNTGEO MI count p${miCountPages[0]}: titleRuns=${titleRuns.length} titleY=[${titleRuns.map(it => Math.round(it.y)).join(",")}] bottomGap=${bottomGap(p7)}pt items=${p7.items.length}`);
+  }
+  const miPack = await parsePdf(path.join(OUT, "mi-6.pdf"));
+  const p1 = miPack[0];
+  const titleRuns1 = p1.items.filter(it => it.s.includes("Miniature Interiors"));
+  console.log(`COUNTGEO MI pack p1: titleRuns=${titleRuns1.length} titleY=[${titleRuns1.map(it => Math.round(it.y)).join(",")}] bottomGap=${bottomGap(p1)}pt items=${p1.items.length} pages=${miPack.length}`);
+
   console.log("LABEL FIT DONE");
 } finally {
   await browser.close();
