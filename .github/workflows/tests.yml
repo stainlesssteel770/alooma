@@ -34,20 +34,20 @@ jobs:
       - name: Queue tests (multi-craft packing queue)
         run: node tests/test-queue.mjs
 
-      - name: Tab guard tests (leaving a tab never eats unfinished work)
-        run: node tests/test-tabguards.mjs
-
-      - name: Byline tests (Packed by / Counted by fields)
+      - name: Byline tests (Packed by / Counted by in Settings)
         run: node tests/test-byline.mjs
-
-      - name: Clear-all tests (Clear all on Packing + Bulk)
-        run: node tests/test-clearall.mjs
 
       - name: Batch A tests (Bulk padding, toast, kits error, header, Bulk wording, Bulk toggle)
         run: node tests/test-batcha.mjs
 
       - name: Redesign tests (Packing chips/Queue mode/Names/Clear-all header/walk)
         run: node tests/test-redesign.mjs
+
+      - name: Leave-rule tests (A3 unified tab guard)
+        run: node tests/test-leaverule.mjs
+
+      - name: Print-done tests (A4 print completes orders)
+        run: node tests/test-printdone.mjs
 
       - name: Layout audit (real geometry at 360/390px — nothing clipped or off-screen)
         if: always()
