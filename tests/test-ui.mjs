@@ -378,7 +378,7 @@ try {
   const putsBeforeBatch = putCount;
   await page.click("#btn-bulk-record");
   await sleep(250);
-  eq(await page.$eval("#sheet-title", e => e.textContent), "Hand-packed", "Bulk: batch confirm sheet");
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Record all", "Bulk: batch confirm sheet");
   eq(await page.$eval("#sheet-sub", e => e.textContent.includes("BM-6") && e.textContent.includes("TAM-12")), true, "Bulk: sheet names both orders");
   await page.click("#sheet-primary");
   await sleep(600);
