@@ -29,6 +29,8 @@ jobs:
         run: node tests/test-logic.js
       - name: Label-fit audit (item 9 — report only, never fails the build; runs early so the skip chain can't hide it)
         run: node tests/label-fit.mjs
+      - name: Recipe tests (editor sub-batch a — catalog migration + line kinds)
+        run: node tests/test-recipes.mjs
 
       # Speed rule (2026-10-25): the suites changed most recently run
       # first, so their failures surface in minutes, not at step 20.
