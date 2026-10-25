@@ -89,6 +89,12 @@ try {
   const page = await browser.newPage();
   await page.setViewport({ width: 390, height: 844 });
   page.on("pageerror", e => console.log("PAGEERROR " + e.message));
+  /* ROOT CAUSE (second failure): the app's beforeunload guard (item 2)
+     correctly blocks a reload while a queue is printed/started — the
+     reload then stalls behind the leave-confirm dialog until the goto
+     timeout. The script's own reloads accept that dialog; the guard
+     itself is covered by test-tabguards, not bypassed here. */
+  page.on("dialog", d => { d.accept().catch(() => {}); });
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "alooma", login: "testeditor" }));
   });
