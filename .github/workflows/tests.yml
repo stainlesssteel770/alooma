@@ -46,6 +46,9 @@ jobs:
       - name: Leave-rule tests (A3 unified tab guard)
         run: node tests/test-leaverule.mjs
 
+      - name: Back-button tests (item 15 hash history)
+        run: node tests/test-backbutton.mjs
+
       - name: Print-done tests (A4 print completes orders)
         run: node tests/test-printdone.mjs
 
