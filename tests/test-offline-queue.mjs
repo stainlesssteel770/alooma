@@ -98,6 +98,21 @@ try {
   await sleep(150);
   await page.click("#btn-bulk-add");
   await sleep(200);
+  /* DIAG: Batch B added the Bulk header row above the lines; if the
+     Record button now parks under the fixed desktop toast, the tap hits
+     UNDO and silently undoes the Add (Batch A intercept, back). */
+  await page.evaluate(() => {
+    const rec = document.querySelector("#btn-bulk-record");
+    const r = rec.getBoundingClientRect();
+    const t = document.querySelector("#toast");
+    const tr = t.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    console.log("REC-DIAG lines=" + document.querySelectorAll("#bulk-lines .hand-line").length +
+      " recRect=" + JSON.stringify([Math.round(r.top), Math.round(r.bottom), Math.round(r.left), Math.round(r.width)]) +
+      " recDisabled=" + rec.disabled +
+      " toastHidden=" + t.hidden + " toastRect=" + JSON.stringify([Math.round(tr.top), Math.round(tr.bottom)]) +
+      " hitAtRecCenter=" + (hit ? (hit.id || hit.tagName + "." + hit.className) : "none"));
+  });
   await page.click("#btn-bulk-record");
   await sleep(300);
   await page.click("#sheet-primary");
