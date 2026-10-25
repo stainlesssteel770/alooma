@@ -502,6 +502,13 @@ try {
   await sleep(700);
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
+  /* Tab guards (brief item 2): the pack -> bulk switch at line 345 cleared
+     the Cakery-18 selection, so B1 re-picks it here — the picker is open
+     on arrival, exactly as the brief specifies. */
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+  await sleep(150);
+  await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
+  await sleep(150);
   eq(await page.$eval("#pack-picker-summary", e => e.hidden), false, "B1: picker folded into summary line after choosing");
   eq(await page.$eval("#pack-summary-text", e => e.textContent), "The Cakery · 18 kits", "B1: summary line names craft + kits");
   eq(await page.$eval("#pack-picker", e => e.hidden), true, "B1: full picker hidden once folded");
