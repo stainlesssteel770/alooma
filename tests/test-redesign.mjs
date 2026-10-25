@@ -61,7 +61,19 @@ try {
   await sleep(700);
   await page.evaluate(() => { window.print = () => {}; });
   async function tab(name) {
-    await page.click(`[data-tab="${name}"]`); await sleep(300);
+    try {
+      await page.click(`[data-tab="${name}"]`);
+    } catch (e) {
+      /* Diagnostic: a tab button with no box means applyTabAccess hid it —
+         dump the actual button states instead of guessing. */
+      const dump = await page.evaluate(() => [...document.querySelectorAll("#tabs button")].map(b => {
+        const r = b.getBoundingClientRect();
+        return b.getAttribute("data-tab") + ":hidden=" + b.hidden + ":rect=" + Math.round(r.width) + "x" + Math.round(r.height) + ":active=" + b.classList.contains("active");
+      }).join(" | "));
+      console.log("TAB-CLICK-FAILED " + name + " :: " + dump + " :: sheetOpen=" + await page.$eval("#sheet-backdrop", x => !x.hidden).catch(() => "?"));
+      throw e;
+    }
+    await sleep(300);
     /* A3 (Batch B): switching tabs with unsaved work prompts Discard /
        Stay — this suite always discards, so a prompt must not stall it. */
     const prompted = await page.evaluate(() => {
