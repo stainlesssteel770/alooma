@@ -235,7 +235,7 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 /* Brief 5c: the single-craft action row — exactly Queue / Print / Hand pack. */
 .single-actions { display: flex; gap: 8px; margin: 14px 0 4px; }
 .single-actions[hidden] { display: none !important; }
-.single-actions .btn { flex: 1; min-height: 48px; }
+.single-actions .btn { flex: 1; min-height: 48px; padding: 10px 8px; }
 /* Brief 5a: the manual kits box replaces the chips, with a way back. */
 #pack-kits-manual { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
 #pack-kits-manual[hidden] { display: none !important; }
