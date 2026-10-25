@@ -34,6 +34,9 @@ jobs:
       - name: Queue tests (multi-craft packing queue)
         run: node tests/test-queue.mjs
 
+      - name: Tab guard tests (leaving a tab never eats unfinished work)
+        run: node tests/test-tabguards.mjs
+
       - name: Layout audit (real geometry at 360/390px — nothing clipped or off-screen)
         if: always()
         run: node tests/test-layout.mjs
