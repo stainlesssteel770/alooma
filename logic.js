@@ -15,7 +15,7 @@
   var ITEMS = {
     /* Blooming Mirrors */
     "tree-mirror": "Tree Mirror",
-    "colored-clay-tool-tray": "Clay & Tool Box + 6 Toothpicks",
+    "colored-clay-tool-tray": "Clay Tray + 6 Toothpicks",
     "white-clay": "White Clay",
     "grass-pack-of-6": "Grass (pack of 6)",
     "double-sided-tape": "Double Sided tape",
