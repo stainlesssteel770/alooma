@@ -665,8 +665,14 @@
       row.className = "queue-line" + (dups[ln.craftId] ? " dup" : "");
       /* A4: no printed state — every line's kits stay editable until it is
          printed (which now completes it) or hand-packed. */
+      /* Item 6: a manually typed kits value (42, 48, 60…) is not a chip
+         value, so without it the select shows 6 while the line still
+         holds the real count — and touching it would silently change
+         the line. Include the real value in sorted position. */
+      var kitOpts = [6, 12, 18, 24, 30, 36];
+      if (kitOpts.indexOf(ln.kits) < 0) { kitOpts.push(ln.kits); kitOpts.sort(function (a, b) { return a - b; }); }
       var sel = '<select class="queue-kits" data-qidx="' + i + '" aria-label="Kits for ' + esc(L.sku(ln.craftId, ln.kits)) + '">' +
-        [6, 12, 18, 24, 30, 36].map(function (k) { return '<option value="' + k + '"' + (k === ln.kits ? " selected" : "") + ">" + k + "</option>"; }).join("") + "</select>";
+        kitOpts.map(function (k) { return '<option value="' + k + '"' + (k === ln.kits ? " selected" : "") + ">" + k + "</option>"; }).join("") + "</select>";
       row.innerHTML = "<span>" + esc(craft.name) + " · </span>" + sel + "<span> kits · " + esc(L.sku(ln.craftId, ln.kits)) + "</span>" +
         '<button type="button" class="btn btn-quiet queue-remove" data-qidx="' + i + '" aria-label="Remove ' + esc(L.sku(ln.craftId, ln.kits)) + '">✕</button>';
       wrap.appendChild(row);
