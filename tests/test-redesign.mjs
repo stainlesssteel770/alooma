@@ -155,15 +155,14 @@ try {
   await sleep(150);
   await page.evaluate(() => { const i = document.querySelector("#pack-kits"); i.focus(); i.value = "120"; i.dispatchEvent(new Event("input", { bubbles: true })); });
   await sleep(200);
-  /* Batch C item 12: typing above 96 kits asks first — the confirm is
-     guarded so the suite fails red (not crashes) on old code, where no
-     sheet opens. */
+  /* Item 5: 120 is below the 240 threshold, so no large-order sheet
+     opens here — the section's real check is that the manual box
+     holds the typed value. */
   const largeOpen7 = await page.evaluate(() => {
     const bd = document.querySelector("#sheet-backdrop");
     return bd && !bd.hidden && document.querySelector("#sheet-title").textContent.includes("Large order");
   });
-  eq(largeOpen7, true, "7: typing 120 opens the large-order confirm");
-  if (largeOpen7) { await page.click("#sheet-primary"); await sleep(200); }
+  eq(largeOpen7, false, "7: typing 120 no longer asks (below the 240 threshold)");
   eq(await page.$eval("#pack-kits", e => e.value), "120", "7: manual box types 120 (no collapse at 12)");
   await page.evaluate(() => document.querySelector("#pack-kits-chips").click());
   await sleep(150);
@@ -392,12 +391,18 @@ try {
   await sleep(250);
   eq(await sheetIsOpen(), false, "12: exactly 240 does not ask");
   eq(await page.$eval("#pack-kits", e => e.value), "240", "12: 240 stays in the box");
-  /* Submit path: a large value set without focus asks when submitted. */
-  await page.evaluate(() => { const i = document.querySelector("#pack-kits"); i.value = "300"; i.dispatchEvent(new Event("input", { bubbles: true })); });
+  /* Submit path: a large value set without focus asks when submitted.
+     306, not 300 — 300 was already confirmed above, and confirming
+     remembers the amount, so resubmitting it must NOT ask again. The
+     open check comes first: the title text lingers in the hidden
+     sheet, so a bare title read would pass vacuously on a closed
+     sheet and the next click would throw. */
+  await page.evaluate(() => { const i = document.querySelector("#pack-kits"); i.value = "306"; i.dispatchEvent(new Event("input", { bubbles: true })); });
   await sleep(250);
   eq(await sheetIsOpen(), false, "12: unfocused large value asks nothing until submitted");
   await page.click("#btn-pack-queue");
   await sleep(300);
+  eq(await sheetIsOpen(), true, "12: submitting opens the sheet");
   eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: submitting a large order asks first");
   await page.click("#sheet-primary");
   await sleep(300);
