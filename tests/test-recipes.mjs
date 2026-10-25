@@ -314,7 +314,15 @@ try {
   await pick("Tambourines", 6);
   await page.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
   await sleep(400);
-  eq(await pdfPages("tam"), 2, "browser: TAM above the max (10 lines) spills to two pages, never shrinks");
+  /* Renames: TAM's 10 lines now fit (Tam Decor Tray/Stack + Tam
+     Instructions are shorter), so the above-the-max spill proof moves
+     to BM's 12 lines — the section still proves both halves: 9 fits,
+     over-max spills instead of shrinking. */
+  eq(await pdfPages("tam"), 1, "browser: TAM 10 lines now fit after the renames");
+  await pick("Blooming Mirrors", 6);
+  await page.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
+  await sleep(400);
+  eq(await pdfPages("bm"), 2, "browser: BM above the max (12 lines) spills to two pages, never shrinks");
 
   /* ---- Sub-batch (b) sections: editor UI + validation + hide/unhide ---- */
   const newContext = async () => (browser.createBrowserContext ? await browser.createBrowserContext() : await browser.createIncognitoBrowserContext());
