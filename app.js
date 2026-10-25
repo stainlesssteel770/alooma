@@ -1502,12 +1502,19 @@
       var headRow = mode === "count"
         ? "<tr><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Should be</th><th>Counted</th></tr>"
         : "<tr><th>Item</th><th class='qty'>On hand</th></tr>";
-      var foot = mode === "count" ? '<div class="print-foot"><div>Counted by: ' + (byVal("count-by") ? esc(byVal("count-by")) : "____________________") + '</div><div>Date: ____________</div></div>' : "";
       return '<section class="print-page"><table><thead>' +
         '<tr class="p-title"><th colspan="' + cols + '"><div class="label-title">' + esc(g.name) + '</div><div class="label-sub">' + (mode === "count" ? "Count sheet · " : "Inventory · ") + date + "</div></th></tr>" +
-        headRow + "</thead><tbody>" + rows + "</tbody></table>" + foot + "</section>";
-    }).join("");
-    printHtml(sections);
+        headRow + "</thead><tbody>" + rows + "</tbody></table></section>";
+    });
+    /* Brief item 4: the count footer prints ONCE, after the last section —
+       in flow inside it, so it either sits under the last table or, kept
+       whole by break-inside: avoid, flows onto one final label. */
+    if (mode === "count") {
+      var by = byVal("count-by");
+      var footHtml = '<div class="print-foot"><div>Counted by: ' + (by ? esc(by) : "____________________") + '</div><div>Date: ____________</div></div>';
+      sections[sections.length - 1] = sections[sections.length - 1].replace(/<\/section>$/, footHtml + "</section>");
+    }
+    printHtml(sections.join(""));
   }
 
   /* ---------- v3 E2: reorder list ---------- */
