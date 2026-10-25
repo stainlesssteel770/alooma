@@ -15,7 +15,7 @@
   var ITEMS = {
     /* Blooming Mirrors */
     "tree-mirror": "Tree Mirror",
-    "colored-clay-tool-tray": "Colored Clay & Tool tray (with 6 toothpicks)",
+    "colored-clay-tool-tray": "clay & tool box + 6 toothpicks",
     "white-clay": "White Clay",
     "grass-pack-of-6": "Grass (pack of 6)",
     "double-sided-tape": "Double Sided tape",
@@ -77,7 +77,7 @@
     "mi-name-label": "MI Name label",
     "mi-placemats": "MI Placemats",
     "mi-instructions": "MI Instructions brochure",
-    "english-ay-printout": "English AY Printout - by request only",
+    "english-ay-printout": "AY - Special request",
     /* Shared (counted once in inventory, used by several crafts) */
     "scissors": "Scissors",
     "tacky-glue": "Tacky Glue",
@@ -188,8 +188,118 @@
     }
   ];
 
+  /* ---------- Active catalog (recipe editor, sub-batch a) ----------
+     The ITEMS/CRAFTS above stay verbatim as the built-in defaults. The app
+     sets the active catalog from synced data (settings.recipes /
+     settings.customItems) after every load; everything below reads the
+     active catalog through curCrafts()/curItems(), so call signatures
+     don't change. setCatalog(null) restores the built-ins (used by tests).
+     New line shapes (recipes use `lines`, defaults use `items`):
+     - per-N: { item, qty, per } (per defaults to 6).
+     - alternating pair: { items: [a, b], qty, per: 6 } — one editor row,
+       two pack entries; total = kits/6 * qty, first ceil(total/2),
+       second floor(total/2). This is how JCA's trays convert. */
+  var activeCrafts = CRAFTS;
+  var activeItems = ITEMS; /* id -> display-name string, exactly as before */
+  var activeUnits = {};    /* custom item id -> unit string; built-ins "" */
+  function curCrafts() { return activeCrafts; }
+  function curItems() { return activeItems; }
+  function craftLines(c) { return c.lines || c.items; }
+  function itemName(id) { var n = activeItems[id]; return typeof n === "string" ? n : ""; }
+  function itemUnit(id) { return activeUnits[id] || ""; }
+  function convertLine(ln) {
+    if (ln.rule === "tier18") return { item: ln.item, qty: 1, per: 18 };
+    return { item: ln.item, qty: ln.q6, per: 6 };
+  }
+  function builtInRecipes() {
+    return CRAFTS.map(function (c) {
+      var lines = [];
+      for (var i = 0; i < c.items.length; i++) {
+        var ln = c.items[i];
+        if (ln.rule === "trayA") {
+          var nxt = c.items[i + 1];
+          if (nxt && nxt.rule === "trayB") {
+            lines.push({ items: [ln.item, nxt.item], qty: 1, per: 6 });
+            i++; /* the trayB line is consumed by the pair */
+          } else {
+            lines.push({ item: ln.item, qty: 1, per: 6 }); /* unreachable for the defaults; defensive */
+          }
+        } else if (ln.rule === "trayB") {
+          lines.push({ item: ln.item, qty: 1, per: 6 }); /* unpaired trayB; defensive */
+        } else {
+          lines.push(convertLine(ln));
+        }
+      }
+      return { id: c.id, code: c.code, name: c.name, hidden: false, lines: lines };
+    });
+  }
+  function isValidLine(ln) {
+    if (!ln || typeof ln !== "object") return false;
+    if (Array.isArray(ln.items)) {
+      return ln.items.length === 2 && typeof ln.items[0] === "string" && typeof ln.items[1] === "string" &&
+        ln.items[0] !== ln.items[1] && Number.isInteger(ln.qty) && ln.qty > 0;
+    }
+    return typeof ln.item === "string" && !!ln.item &&
+      Number.isInteger(ln.qty) && ln.qty > 0 &&
+      (ln.per === undefined || (Number.isInteger(ln.per) && ln.per > 0));
+  }
+  function normalizeRecipes(input) {
+    if (!Array.isArray(input) || !input.length) return builtInRecipes();
+    var out = [], seenIds = {}, seenCodes = {};
+    input.forEach(function (r) {
+      if (!r || typeof r.id !== "string" || !r.id || seenIds[r.id]) return;
+      if (typeof r.name !== "string" || !r.name.trim()) return;
+      if (typeof r.code !== "string" || !/^[A-Za-z]{2,4}$/.test(r.code)) return;
+      if (seenCodes[r.code.toUpperCase()]) return;
+      if (!Array.isArray(r.lines)) return;
+      var lines = [];
+      r.lines.forEach(function (ln) {
+        if (!isValidLine(ln)) return;
+        if (Array.isArray(ln.items)) lines.push({ items: [ln.items[0], ln.items[1]], qty: ln.qty, per: 6 });
+        else lines.push({ item: ln.item, qty: ln.qty, per: ln.per || 6 });
+      });
+      seenIds[r.id] = true;
+      seenCodes[r.code.toUpperCase()] = true;
+      out.push({ id: r.id, code: r.code.toUpperCase(), name: r.name, hidden: !!r.hidden, lines: lines });
+    });
+    return out.length ? out : builtInRecipes();
+  }
+  function normalizeCustomItems(input) {
+    if (!Array.isArray(input)) return [];
+    var out = [], seen = {};
+    input.forEach(function (it) {
+      if (!it || typeof it.id !== "string" || !it.id || seen[it.id]) return;
+      if (typeof it.name !== "string" || !it.name.trim()) return;
+      if (it.id in ITEMS) return; /* cannot shadow a built-in id */
+      seen[it.id] = true;
+      out.push({ id: it.id, name: it.name, unit: typeof it.unit === "string" ? it.unit : "" });
+    });
+    return out;
+  }
+  function setCatalog(recipes, customItems) {
+    var customs = normalizeCustomItems(customItems);
+    activeCrafts = normalizeRecipes(recipes);
+    activeItems = Object.assign({}, ITEMS);
+    activeUnits = {};
+    customs.forEach(function (it) { activeItems[it.id] = it.name; activeUnits[it.id] = it.unit; });
+  }
+  function resetCatalog() {
+    activeCrafts = CRAFTS;
+    activeItems = ITEMS;
+    activeUnits = {};
+  }
+  /* Max recipe lines that fit ONE 4x6 label with title + subtitle + footer
+     at the original sizes — MEASURED by the item-9 label-fit audit (CI run
+     40209337998): a complete sheet (rows + footer) fits up to 9 rows
+     (JCA's 9 rows fit with 9pt spare) while 10 rows spill the footer alone
+     to a second label (TAM). Row heights vary with name wrapping, so 9 is
+     the largest row count OBSERVED fitting with footer; spill stays the
+     fallback. The (b) editor warns above this count, never blocks. */
+  var MAX_LINES_ONE_LABEL = 9;
+
   function craftById(id) {
-    for (var i = 0; i < CRAFTS.length; i++) if (CRAFTS[i].id === id) return CRAFTS[i];
+    var crafts = curCrafts();
+    for (var i = 0; i < crafts.length; i++) if (crafts[i].id === id) return crafts[i];
     return null;
   }
 
@@ -197,22 +307,50 @@
     return Number.isInteger(kits) && kits > 0 && kits % 6 === 0;
   }
 
-  /* Quantity of one recipe line for an order of `kits` kits. */
+  /* Quantity of one recipe line for an order of `kits` kits.
+     Fix 1 (approved): per-6 lines keep TODAY'S formula verbatim
+     (qty * (kits/6), fractional for non-multiple manual counts); ceil
+     applies ONLY to per!=6 lines (reproduces tier18 exactly). Old shapes
+     (q6 / tier18 / trayA / trayB) keep working for the built-in defaults.
+     For a pair line, lineQty returns the COMBINED total; use pairQtys
+     for the A/B split. */
   function lineQty(ln, kits) {
+    if (Array.isArray(ln.items)) return (kits / 6) * ln.qty;
+    if (typeof ln.qty === "number") {
+      var per = (Number.isInteger(ln.per) && ln.per > 0) ? ln.per : 6;
+      if (per === 6) return ln.qty * (kits / 6);
+      return Math.ceil(kits / per) * ln.qty;
+    }
     if (ln.rule === "tier18") return Math.ceil(kits / 18);
     if (ln.rule === "trayA") return Math.ceil(kits / 6 / 2);
     if (ln.rule === "trayB") return Math.floor(kits / 6 / 2);
     return ln.q6 * (kits / 6);
   }
 
-  /* Full pack list for a craft + kit count: [{item, name, qty}] in recipe order. */
+  /* A/B split of an alternating-pair line: [first, second]. */
+  function pairQtys(ln, kits) {
+    var total = (kits / 6) * ln.qty;
+    return [Math.ceil(total / 2), Math.floor(total / 2)];
+  }
+
+  /* Full pack list for a craft + kit count: [{item, name, qty}] in recipe order.
+     Pair lines expand to two entries (A then B), so converted JCA packs
+     exactly like the old trayA/trayB lines did. */
   function computePack(craftId, kits) {
     var craft = craftById(craftId);
     if (!craft) throw new Error("Unknown craft: " + craftId);
     if (!validKits(kits)) throw new Error("Kits must be a positive multiple of 6 (got " + kits + ")");
-    return craft.items.map(function (ln) {
-      return { item: ln.item, name: ITEMS[ln.item], qty: lineQty(ln, kits) };
+    var items = curItems(), out = [];
+    craftLines(craft).forEach(function (ln) {
+      if (Array.isArray(ln.items)) {
+        var q = pairQtys(ln, kits);
+        out.push({ item: ln.items[0], name: items[ln.items[0]], qty: q[0] });
+        out.push({ item: ln.items[1], name: items[ln.items[1]], qty: q[1] });
+      } else {
+        out.push({ item: ln.item, name: items[ln.item], qty: lineQty(ln, kits) });
+      }
     });
+    return out;
   }
 
   function sku(craftId, kits) {
@@ -220,12 +358,14 @@
     return craft.code + "-" + kits;
   }
 
-  /* Which crafts use each item (for inventory grouping). */
+  /* Which crafts use each item (for inventory grouping). Pair lines
+     count for both of their items. */
   function itemCrafts() {
     var map = {};
-    CRAFTS.forEach(function (c) {
-      c.items.forEach(function (ln) {
-        (map[ln.item] = map[ln.item] || []).push(c.id);
+    curCrafts().forEach(function (c) {
+      craftLines(c).forEach(function (ln) {
+        var ids = Array.isArray(ln.items) ? ln.items : [ln.item];
+        ids.forEach(function (id) { (map[id] = map[id] || []).push(c.id); });
       });
     });
     return map;
@@ -233,27 +373,38 @@
 
   /* Inventory groups: items used by >1 craft go under "shared"; the rest
      under their only craft. Returns [{id, name, items:[itemId...]}] in
-     craft order with Shared last. */
+     craft order with Shared last, plus a trailing "Added items" group for
+     catalog items no craft uses yet (new items, before any recipe uses
+     them). Hidden crafts still count as using their items. */
   function inventoryGroups() {
     var usage = itemCrafts();
-    var groups = CRAFTS.map(function (c) {
+    var groups = curCrafts().map(function (c) {
+      var ids = [];
+      craftLines(c).forEach(function (ln) {
+        var lineIds = Array.isArray(ln.items) ? ln.items : [ln.item];
+        lineIds.forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); });
+      });
       return {
         id: c.id, name: c.name,
-        items: c.items.map(function (ln) { return ln.item; })
-          .filter(function (id) { return usage[id].length === 1; })
+        items: ids.filter(function (id) { return usage[id].length === 1; })
       };
     });
-    var shared = Object.keys(ITEMS).filter(function (id) { return usage[id] && usage[id].length > 1; });
+    var shared = Object.keys(curItems()).filter(function (id) { return usage[id] && usage[id].length > 1; });
     /* keep shared items in a stable, sensible order */
     var sharedOrder = ["scissors", "tacky-glue", "permanent-markers"];
-    shared.sort(function (a, b) { return sharedOrder.indexOf(a) - sharedOrder.indexOf(b); });
+    shared.sort(function (a, b) {
+      var oa = sharedOrder.indexOf(a), ob = sharedOrder.indexOf(b);
+      return (oa < 0 ? 999 : oa) - (ob < 0 ? 999 : ob);
+    });
     groups.push({ id: "shared", name: "Shared items", items: shared });
+    var added = Object.keys(curItems()).filter(function (id) { return !usage[id]; });
+    if (added.length) groups.push({ id: "added", name: "Added items", items: added });
     return groups;
   }
 
   function emptyData() {
     var inv = {};
-    Object.keys(ITEMS).forEach(function (id) { inv[id] = { qty: 0, threshold: null }; });
+    Object.keys(curItems()).forEach(function (id) { inv[id] = { qty: 0, threshold: null }; });
     return { version: 1, inventory: inv, history: [] };
   }
 
@@ -267,7 +418,9 @@
       features: { boxes: false, bins: false },
       boxes: ["Box A", "Box B", "Box C"],
       boxRules: [],
-      bins: {}
+      bins: {},
+      recipes: builtInRecipes(),
+      customItems: []
     };
   }
   function normalizeSettings(s) {
@@ -298,9 +451,18 @@
     } else {
       s.boxes = d.boxes.slice();
     }
+    /* Recipes + custom items (editor sub-batch a): normalized here so stored
+       data is always clean. Box rules below validate against THESE recipes
+       (not the active catalog), so a merged rule for a new craft survives
+       even when the catalog hasn't been set from this data yet. Old data
+       without recipes normalizes to the built-ins, so old rules keep working. */
+    s.recipes = normalizeRecipes(s.recipes);
+    s.customItems = normalizeCustomItems(s.customItems);
+    var knownCrafts = {};
+    s.recipes.forEach(function (r) { knownCrafts[r.id] = true; });
     if (!Array.isArray(s.boxRules)) s.boxRules = [];
     s.boxRules = s.boxRules.filter(function (r) {
-      return r && craftById(r.craftId) && validKits(r.kits) && Array.isArray(r.boxes) && r.boxes.length > 0;
+      return r && knownCrafts[r.craftId] && validKits(r.kits) && Array.isArray(r.boxes) && r.boxes.length > 0;
     }).map(function (r) {
       var mapped = [];
       r.boxes.forEach(function (b) {
@@ -356,15 +518,26 @@
   }
 
   var api = {
-    ITEMS: ITEMS, CRAFTS: CRAFTS, craftById: craftById, validKits: validKits,
-    lineQty: lineQty, computePack: computePack, sku: sku,
+    craftById: craftById, validKits: validKits,
+    lineQty: lineQty, pairQtys: pairQtys, computePack: computePack, sku: sku,
     itemCrafts: itemCrafts, inventoryGroups: inventoryGroups,
     emptyData: emptyData, applyEffects: applyEffects,
     BOX_IDS: BOX_IDS, defaultSettings: defaultSettings,
     normalizeSettings: normalizeSettings, boxRuleFor: boxRuleFor,
     boxLabel: boxLabel, boxesText: boxesText,
-    defaultBins: defaultBins, binFor: binFor
+    defaultBins: defaultBins, binFor: binFor,
+    setCatalog: setCatalog, resetCatalog: resetCatalog,
+    builtInRecipes: builtInRecipes, normalizeRecipes: normalizeRecipes,
+    normalizeCustomItems: normalizeCustomItems,
+    itemName: itemName, itemUnit: itemUnit,
+    MAX_LINES_ONE_LABEL: MAX_LINES_ONE_LABEL
   };
+  /* ITEMS/CRAFTS stay live views of the ACTIVE catalog: the app and the
+     tests read L.ITEMS / L.CRAFTS everywhere, and those reads must see
+     custom crafts/items once a catalog is set. (Defaults are still the
+     values before any setCatalog call, so existing suites are unaffected.) */
+  Object.defineProperty(api, "ITEMS", { get: function () { return activeItems; } });
+  Object.defineProperty(api, "CRAFTS", { get: function () { return activeCrafts; } });
   root.ALOOMA = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
