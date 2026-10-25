@@ -325,6 +325,7 @@ try {
   const linesBefore = await page.$$eval("#bulk-lines .hand-line", els => els.length);
   await page.click("#btn-bulk-add");
   await sleep(300);
+  eq(await bulkSheetOpen(), true, "12: bulk submitting opens the sheet");
   eq(await page.$eval("#sheet-title", e => e.textContent), "Large order", "12: bulk submitting 246 asks first");
   await page.click("#sheet-primary");
   await sleep(300);
