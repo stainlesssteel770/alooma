@@ -28,6 +28,14 @@ jobs:
       - name: Logic tests (stock math, recipes, history)
         run: node tests/test-logic.js
 
+      # Speed rule (2026-10-25): the suites changed most recently run
+      # first, so their failures surface in minutes, not at step 20.
+      - name: Print-done tests (A4 print completes orders)
+        run: node tests/test-printdone.mjs
+
+      - name: Redesign tests (Packing chips/Queue mode/Names/Clear-all header/walk)
+        run: node tests/test-redesign.mjs
+
       - name: UI tests (real buttons, editor flows, Batch A safety)
         run: node tests/test-ui.mjs
 
@@ -40,17 +48,11 @@ jobs:
       - name: Batch A tests (Bulk padding, toast, kits error, header, Bulk wording, Bulk toggle)
         run: node tests/test-batcha.mjs
 
-      - name: Redesign tests (Packing chips/Queue mode/Names/Clear-all header/walk)
-        run: node tests/test-redesign.mjs
-
       - name: Leave-rule tests (A3 unified tab guard)
         run: node tests/test-leaverule.mjs
 
       - name: Back-button tests (item 15 hash history)
         run: node tests/test-backbutton.mjs
-
-      - name: Print-done tests (A4 print completes orders)
-        run: node tests/test-printdone.mjs
 
       - name: Layout audit (real geometry at 360/390px — nothing clipped or off-screen)
         if: always()
