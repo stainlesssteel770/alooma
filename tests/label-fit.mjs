@@ -227,6 +227,35 @@ try {
   const titleRuns1 = p1.items.filter(it => it.s.includes("Miniature Interiors"));
   console.log(`COUNTGEO MI pack p1: titleRuns=${titleRuns1.length} titleY=[${titleRuns1.map(it => Math.round(it.y)).join(",")}] bottomGap=${bottomGap(p1)}pt items=${p1.items.length} pages=${miPack.length}`);
 
+  /* ---- MI count fragmentation experiment (user-authorized): four
+     variants, NO app change — each injects one CSS override into the
+     count sheet and re-measures whether AY pulls up onto MI's first
+     page. Baseline: MI count spans 2 pages, AY alone on the 2nd.
+     NOHDR: no repeated header. NOAVOID: rows may split across pages.
+     ORPHANS: orphans/widows 1. NOFOOT: footer hidden (does it reserve
+     or push space at the page bottom?). */
+  const FRAG_VARIANTS = [
+    ["NOHDR", "#print-area thead { display: table-row-group !important; }"],
+    ["NOAVOID", "#print-area tbody tr { break-inside: auto !important; }"],
+    ["ORPHANS", "#print-area table { orphans: 1 !important; widows: 1 !important; } #print-area tr { orphans: 1; widows: 1; }"],
+    ["NOFOOT", "#print-area .print-foot { display: none !important; }"],
+  ];
+  for (const [tag, css] of FRAG_VARIANTS) {
+    await load();
+    await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); document.querySelector("#btn-print-count").click(); });
+    await sleep(400);
+    await page.evaluate(c => { const s = document.createElement("style"); s.textContent = c; document.head.appendChild(s); }, css);
+    await sleep(200);
+    const fragPdf = path.join(OUT, "frag-" + tag.toLowerCase() + ".pdf");
+    await page.pdf({ path: fragPdf, preferCSSPageSize: true, printBackground: true });
+    const fragPages = await parsePdf(fragPdf);
+    const miFirst = fragPages.findIndex(p => p.text.includes("Miniature Interiors")) + 1;
+    const sharedPage = fragPages.findIndex(p => p.text.includes("Shared items")) + 1;
+    const miLast = (sharedPage > 0 ? sharedPage - 1 : fragPages.length);
+    const ayPage = fragPages.findIndex(p => p.text.includes("AY - Special Request")) + 1;
+    console.log(`FRAG ${tag} miPages=${miFirst ? (miLast - miFirst + 1) : 0} miFirst=${miFirst} ayPage=${ayPage} fixed=${ayPage === miFirst && miFirst > 0}`);
+  }
+
   console.log("LABEL FIT DONE");
 } finally {
   await browser.close();
