@@ -93,7 +93,7 @@ try {
 
   /* Confirm sheet: Hand pack path; v2 A5 check-all asks first, then Complete.
      v2 A2: this order is short (parchment at 0) so the sheet shows the red block */
-  await page.click("#btn-mode-hand");
+  await page.click("#btn-pack-hand");
   await sleep(200);
   await page.click("#btn-check-all");
   await sleep(200);
