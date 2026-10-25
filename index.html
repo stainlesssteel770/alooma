@@ -73,6 +73,10 @@
       <button type="button" id="btn-mode-hand" class="btn mode-btn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 12.5L12 21 3 12V3.5H11.5L20.5 12.5z"/><circle cx="8" cy="8" r="1.6"/></svg>Hand pack</button>
     </div>
     <p id="pack-help" class="pack-help">Pick a craft, then the number of kits.</p>
+    <div class="byline-row editor-only">
+      <label for="pack-by">Packed by <span class="hint">(optional)</span></label>
+      <input type="text" id="pack-by" placeholder="Name" autocomplete="off" aria-label="Packed by (optional)">
+    </div>
     <p id="pack-error" class="field-error"></p>
     <div id="pack-warning" class="warning" hidden></div>
     <div id="pack-order" hidden>
@@ -177,6 +181,10 @@
       <h3>Enter counted numbers</h3>
       <p class="hint">Type the real counted number for any item you counted, leave the rest blank, then apply. Each changed item is logged as a count fix. Tip: tapping any item in the list also lets you receive stock, fix its count, or set its low-stock warning.</p>
       <div id="count-entry-list"></div>
+      <div class="byline-row editor-only">
+        <label for="count-by">Counted by <span class="hint">(optional)</span></label>
+        <input type="text" id="count-by" placeholder="Name" autocomplete="off" aria-label="Counted by (optional)">
+      </div>
       <div class="btn-row">
         <button id="btn-apply-counts" class="btn btn-primary">Apply counts</button>
         <button id="btn-cancel-counts" class="btn">Cancel</button>
