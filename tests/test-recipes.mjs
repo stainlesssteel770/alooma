@@ -642,7 +642,9 @@ try {
   await printSheet();
   await page.pdf({ path: "/tmp/alooma-recipes-clay.pdf", preferCSSPageSize: true, printBackground: true });
   const clayDoc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync("/tmp/alooma-recipes-clay.pdf")) }).promise;
-  const clayItems = (await (await clayDoc.getPage(1)).getTextContent()).items.filter(it => it.str.includes("Clay"));
+  /* "Clay Tray" is unique to the renamed item — plain "Clay" would also
+     match BM's "White Clay" row. */
+  const clayItems = (await (await clayDoc.getPage(1)).getTextContent()).items.filter(it => it.str.includes("Clay Tray"));
   eq(clayItems.length, 1, "(d) Clay name is one unbroken line on the BM label");
   eq(clayItems[0] && clayItems[0].str, "Clay Tray + 6 Toothpicks", "(d) BM label shows the renamed Clay item");
 
