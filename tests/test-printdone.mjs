@@ -99,12 +99,12 @@ try {
   }
 
   /* ---- 1. Single Print (covered) completes immediately ---- */
-  await pickPack("Blooming Mirrors", 6);
+  await pickPack("Hafrashat Challah", 6);
   await page.click("#btn-pack-print");
   await sleep(400);
-  eq(await page.$eval("#print-area", e => e.textContent.includes("Blooming Mirrors")), true, "single print: sheet printed");
+  eq(await page.$eval("#print-area", e => e.textContent.includes("Hafrashat Challah")), true, "single print: sheet printed");
   eq(remote.history.length, 1, "single print: one History entry at print time");
-  eq(remote.history[0].title, "Packed Blooming Mirrors — 6 kits (BM-6)", "single print: entry title");
+  eq(remote.history[0].title, "Packed Hafrashat Challah — 6 kits (HCB-6)", "single print: entry title");
   eq(remote.inventory["heat-gun"].qty, 99, "single print: stock deducted once");
   eq(await page.$eval("#pack-kits", e => e.value), "", "single print: pick cleared");
   eq(await page.$eval("#pack-single-actions", e => e.hidden), true, "single print: single actions hidden with no pick");
@@ -115,7 +115,7 @@ try {
   /* ---- 2. Single Print (short): Go back prints nothing; Print anyway completes ---- */
   remote.inventory["heat-gun"].qty = 0;
   await reloadApp();
-  await pickPack("Blooming Mirrors", 6);
+  await pickPack("Hafrashat Challah", 6);
   await page.click("#btn-pack-print");
   await sleep(300);
   eq(await sheetOpen(), true, "short print: shortage sheet opens");
@@ -148,7 +148,7 @@ try {
     "Packed Tambourines — 12 kits (TAM-12)",
     "Packed Blooming Mirrors — 6 kits (BM-6)"
   ], "print all: entries newest first");
-  eq(remote.inventory["heat-gun"].qty, 99, "print all: BM-6 deducted once");
+  eq(remote.inventory["heat-gun"].qty, 99, "print all: HCB-18 deducted once");
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 0, "print all: queue cleared");
   eq(await page.$eval("#pack-queue-actions", e => e.hidden), true, "print all: back to single view (queue actions hidden)");
   await toastUndo();
@@ -174,7 +174,7 @@ try {
   await reloadApp();
 
   /* ---- 5. Hand pack still completes at the end, not at any print ---- */
-  await pickPack("Blooming Mirrors", 6);
+  await pickPack("Hafrashat Challah", 6);
   await page.click("#btn-pack-hand");
   await sleep(200);
   eq(remote.history.length, 0, "hand pack: nothing recorded before Complete");
@@ -188,7 +188,7 @@ try {
   await sleep(600);
   eq(remote.history.length, 1, "hand pack: one entry after Complete");
   eq(remote.inventory["heat-gun"].qty, 99, "hand pack: stock deducted at Complete");
-  eq(await page.$eval("#pack-sku", e => e.textContent), "BM-6", "hand pack: pick stays after Complete (unchanged behavior)");
+  eq(await page.$eval("#pack-sku", e => e.textContent), "HCB-6", "hand pack: pick stays after Complete (unchanged behavior)");
 
   /* ---- 6. History-tab Undo still MARKS undone (does not splice) ---- */
   await page.click('[data-tab="history"]');
