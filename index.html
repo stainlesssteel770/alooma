@@ -42,21 +42,9 @@
   <!-- PACKING -->
   <section id="tab-pack" class="tab-panel active">
     <h2 class="sr-only">Pack an order</h2>
-    <div id="pack-picker-summary" class="picker-summary" hidden>
-      <span id="pack-summary-text"></span>
-      <button type="button" id="btn-pack-change" class="btn btn-quiet">Change</button>
-    </div>
     <div id="pack-picker">
     <div class="craft-grid" id="pack-crafts"></div>
     <div class="kits-block">
-      <div class="kits-row">
-        <label for="pack-kits">Number of kits</label>
-        <div class="stepper">
-          <button type="button" id="pack-minus" aria-label="6 fewer kits">−</button>
-          <input type="number" id="pack-kits" min="6" step="6" value="" placeholder="—" inputmode="numeric" aria-label="Number of kits">
-          <button type="button" id="pack-plus" aria-label="6 more kits">+</button>
-        </div>
-      </div>
       <div class="chips" id="pack-chips">
         <button type="button" class="kits-chip" data-for="pack" data-kits="6">6</button>
         <button type="button" class="kits-chip" data-for="pack" data-kits="12">12</button>
@@ -64,19 +52,22 @@
         <button type="button" class="kits-chip" data-for="pack" data-kits="24">24</button>
         <button type="button" class="kits-chip" data-for="pack" data-kits="30">30</button>
         <button type="button" class="kits-chip" data-for="pack" data-kits="36">36</button>
+        <button type="button" class="kits-chip" id="pack-kits-plus" aria-label="Type a kit amount">+</button>
+      </div>
+      <div id="pack-kits-manual" hidden>
+        <label for="pack-kits">Number of kits</label>
+        <input type="number" id="pack-kits" min="6" step="6" value="" placeholder="—" inputmode="numeric" aria-label="Number of kits">
+        <button type="button" id="pack-kits-chips" class="btn btn-quiet">Chips</button>
       </div>
       <div class="sku-box">Order SKU: <strong id="pack-sku">—</strong></div>
     </div>
     </div>
-    <div id="pack-mode" class="mode-row" hidden role="group" aria-label="How is this order being packed?">
-      <button type="button" id="btn-print-sheet" class="btn mode-btn" aria-label="Print packing sheet (4×6)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8V3.5h10V8"/><rect x="4" y="8" width="16" height="7.5" rx="2"/><path d="M7 13.5h10V21H7z"/></svg>Print</button>
-      <button type="button" id="btn-mode-hand" class="btn mode-btn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 12.5L12 21 3 12V3.5H11.5L20.5 12.5z"/><circle cx="8" cy="8" r="1.6"/></svg>Hand pack</button>
+    <div id="pack-single-actions" class="single-actions" hidden>
+      <button type="button" id="btn-pack-queue" class="btn">Queue</button>
+      <button type="button" id="btn-pack-print" class="btn">Print</button>
+      <button type="button" id="btn-pack-hand" class="btn">Hand pack</button>
     </div>
     <p id="pack-help" class="pack-help">Pick a craft, then the number of kits.</p>
-    <div class="byline-row editor-only">
-      <label for="pack-by">Packed by <span class="hint">(optional)</span></label>
-      <input type="text" id="pack-by" placeholder="Name" autocomplete="off" aria-label="Packed by (optional)">
-    </div>
     <p id="pack-error" class="field-error"></p>
     <div id="pack-warning" class="warning" hidden></div>
     <div id="pack-order" hidden>
@@ -113,15 +104,16 @@
       <p class="hint editor-note" hidden>View-only on this device — connect a GitHub token in Settings to record packing.</p>
     </div>
     <div id="pack-queue-block" class="queue-block">
-      <h3 class="queue-title">Queue</h3>
+      <div id="pack-queue-head" class="list-head-row">
+        <h3>Queue (<span id="pack-queue-count">0</span>)</h3>
+        <button type="button" id="btn-queue-clear" class="btn btn-quiet editor-only" hidden>Clear all</button>
+      </div>
       <div id="pack-queue"></div>
-      <div class="queue-actions">
+      <div id="pack-queue-actions" class="queue-actions" hidden>
         <button type="button" id="btn-queue-add" class="btn" disabled>Add to queue</button>
         <button type="button" id="btn-queue-print" class="btn" disabled>Print all</button>
         <button type="button" id="btn-queue-hand" class="btn" disabled>Hand pack all</button>
-      </div>
-      <div class="clear-row editor-only">
-        <button type="button" id="btn-queue-clear" class="btn btn-quiet" hidden>Clear all</button>
+        <button type="button" id="btn-queue-done" class="btn">Done</button>
       </div>
     </div>
   </section>
@@ -151,13 +143,14 @@
       <div class="sku-box">Order SKU: <strong id="bulk-sku">—</strong></div>
     </div>
     <p id="bulk-error" class="field-error"></p>
+    <div id="bulk-lines-head" class="list-head-row">
+      <h3>Orders (<span id="bulk-lines-count">0</span>)</h3>
+      <button type="button" id="btn-bulk-clear" class="btn btn-quiet editor-only" hidden>Clear all</button>
+    </div>
     <div id="bulk-lines"></div>
     <div class="action-bar">
       <button id="btn-bulk-add" class="btn btn-secondary editor-only" disabled>Choose a craft</button>
       <button id="btn-bulk-record" class="btn btn-primary editor-only" disabled>Record all</button>
-    </div>
-    <div class="clear-row editor-only">
-      <button type="button" id="btn-bulk-clear" class="btn btn-quiet" hidden>Clear all</button>
     </div>
     <p class="hint editor-note" hidden>View-only on this device — connect in Settings to record hand-packing.</p>
   </section>
@@ -187,10 +180,6 @@
       <h3>Enter counted numbers</h3>
       <p class="hint">Type the real counted number for any item you counted, leave the rest blank, then apply. Each changed item is logged as a count fix. Tip: tapping any item in the list also lets you receive stock, fix its count, or set its low-stock warning.</p>
       <div id="count-entry-list"></div>
-      <div class="byline-row editor-only">
-        <label for="count-by">Counted by <span class="hint">(optional)</span></label>
-        <input type="text" id="count-by" placeholder="Name" autocomplete="off" aria-label="Counted by (optional)">
-      </div>
       <div class="btn-row">
         <button id="btn-apply-counts" class="btn btn-primary">Apply counts</button>
         <button id="btn-cancel-counts" class="btn">Cancel</button>
@@ -315,6 +304,17 @@
       <h3>Bulk tab</h3>
       <p class="hint">Bulk records orders packed outside the app. Off by default — turn it on to show the Bulk tab.</p>
       <label class="toggle-row editor-only"><input type="checkbox" id="set-bulk-on"> Show the Bulk tab</label>
+    </div>
+
+    <div class="card">
+      <h3>Names</h3>
+      <p class="hint">Saved on this device. Printed sheets use the Packed-by name and count sheets the Counted-by name; History shows who packed or counted each order.</p>
+      <label class="editor-only">Packed by
+        <input type="text" id="set-packed-by" placeholder="Name" autocomplete="off">
+      </label>
+      <label class="editor-only">Counted by
+        <input type="text" id="set-counted-by" placeholder="Name" autocomplete="off">
+      </label>
     </div>
 
     <div class="card">
