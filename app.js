@@ -1592,8 +1592,17 @@
     return v !== prefill;
   }
   function entryInputsDirty() {
+    /* Only OPEN forms count: Cancel hides a form but leaves its typed
+       values in the DOM until the next open re-renders fresh inputs, and
+       a hidden form is cancelled work, not work in progress. Counting
+       hidden forms broke test-ui's inventory -> pack switch after the
+       D5 count block (stale heat-gun value in the hidden count form
+       fired the guard). */
     var dirty = false;
-    document.querySelectorAll("#count-entry-list input[data-item], #delivery-entry-list input[data-item]").forEach(function (inp) {
+    if (!$("count-entry").hidden) document.querySelectorAll("#count-entry-list input[data-item]").forEach(function (inp) {
+      if (inp.value !== "") dirty = true;
+    });
+    if (!$("delivery-entry").hidden) document.querySelectorAll("#delivery-entry-list input[data-item]").forEach(function (inp) {
       if (inp.value !== "") dirty = true;
     });
     return dirty;
