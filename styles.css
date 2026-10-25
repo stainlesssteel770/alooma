@@ -337,7 +337,15 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   #print-area .label-sub { font-size: 13.5pt; font-weight: 700; margin: 2pt 0 0; }
   #print-area td.qty, #print-area th.qty { text-align: center; font-weight: 700; white-space: nowrap; }
   #print-area td.qty.regular { font-weight: 400; }
-  #print-area td.counted-cell { width: 0.95in; }
+  /* Count-fit (item 9 follow-up): the count table's extra columns steal
+     width from Item under auto layout, so long names wrap to an extra
+     line and borderline sections (Blooming Mirrors) spill to a 2nd label
+     while the 2-column inventory sheet fits. Give Item its width back:
+     the handwriting cell was 0.95in — 0.65in still holds a 4-digit count —
+     and trim the Should-be cell's side padding (its width is its numbers,
+     so padding is its only slack). Text size and row height untouched. */
+  #print-area td.counted-cell { width: 0.65in; }
+  #print-area td.qty.regular { padding-left: 3pt; padding-right: 3pt; }
   #print-area td.tick, #print-area th.tick { width: 16pt; text-align: center; }
   #print-area td.bin { font-weight: 700; white-space: nowrap; width: 40pt; }
   #print-area .tick-box { display: inline-block; width: 10pt; height: 10pt; border: 1.5pt solid #000; }
