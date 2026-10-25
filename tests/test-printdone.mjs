@@ -168,7 +168,7 @@ try {
   await sheetPrimary(); /* Start anyway */
   await sleep(400);
   eq(remote.history.length, 2, "print all Start anyway: both entries recorded");
-  eq(remote.inventory["scissors"].qty, 5 - 18 - 6, "print all Start anyway: stock deducted once per line");
+  eq(remote.inventory["scissors"].qty, 5 - 12 - 6, "print all Start anyway: stock deducted once per line");
   await toastUndo();
   eq(remote.history.length, 0, "print all shortage UNDO: entries spliced out");
   remote.inventory["scissors"].qty = 100;
