@@ -319,6 +319,9 @@ async function tab(name) {
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat")).click());
+  /* A3: the History detour discarded the CAK-18 pick, so the kits must be
+     re-picked here — craft alone leaves the picker with no kits. */
+  await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await sleep(200);
   eq(await page.$eval("#pack-sku", e => e.textContent), "HCB-18", "Flow: pack picker set to HCB-18");
   eq(await page.$eval("#pack-single-actions", e => e.hidden), false, "Flow: Queue / Print / Hand pack appear once craft+kits are chosen");
