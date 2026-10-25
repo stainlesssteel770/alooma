@@ -37,6 +37,9 @@ jobs:
       - name: Tab guard tests (leaving a tab never eats unfinished work)
         run: node tests/test-tabguards.mjs
 
+      - name: Byline tests (Packed by / Counted by fields)
+        run: node tests/test-byline.mjs
+
       - name: Layout audit (real geometry at 360/390px — nothing clipped or off-screen)
         if: always()
         run: node tests/test-layout.mjs
