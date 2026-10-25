@@ -281,6 +281,9 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   .craft-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .craft-btn { min-height: 64px; }
   .kits-block .chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  /* Pack's chips toggle with the "+" manual box: hidden must win over the
+     grid display above, or "+" never hides the chips at phone widths. */
+  .kits-block .chips[hidden] { display: none !important; }
   /* Pack carries a seventh chip ("+") after 36. */
   #pack-chips { grid-template-columns: repeat(7, 1fr); }
   .kits-block .kits-chip { padding: 9px 2px; text-align: center; }
