@@ -274,6 +274,11 @@
           state.offline = true;
           state.loadedAt = snap.at ? new Date(snap.at) : new Date();
           normalizeData();
+          /* The base above was cloned pre-normalization; re-clone after so
+             an old snapshot (no recipes keys) diffs empty too, exactly
+             like the online path — otherwise the first save would carry a
+             phantom recipes migration. */
+          state.localBase = clone(state.data);
           state.loadFailed = false;
           document.body.classList.remove("load-failed");
           $("load-failed").hidden = true;
@@ -308,11 +313,16 @@
   function normalizeData() {
     if (!state.data || typeof state.data !== "object") state.data = L.emptyData();
     if (!state.data.inventory) state.data.inventory = {};
+    state.data.settings = L.normalizeSettings(state.data.settings);
+    /* Recipe editor (a): the active catalog comes from synced settings —
+       set it before filling inventory rows so custom items get rows too.
+       Old data without recipes normalizes to the built-ins, so the
+       catalog is identical and the next diff is empty (no phantom save). */
+    L.setCatalog(state.data.settings.recipes, state.data.settings.customItems);
     Object.keys(L.ITEMS).forEach(function (id) {
       if (!state.data.inventory[id]) state.data.inventory[id] = { qty: 0, threshold: null };
     });
     if (!Array.isArray(state.data.history)) state.data.history = [];
-    state.data.settings = L.normalizeSettings(state.data.settings);
   }
   function settings() {
     if (!state.data.settings) state.data.settings = L.defaultSettings();
@@ -348,7 +358,7 @@
       var at = a.threshold != null ? a.threshold : null, bt = b.threshold != null ? b.threshold : null;
       if (at !== bt) fields[id] = { threshold: bt };
     });
-    ["features", "boxes", "boxRules", "bins"].forEach(function (k) {
+    ["features", "boxes", "boxRules", "bins", "recipes", "customItems"].forEach(function (k) {
       if (JSON.stringify((from.settings || {})[k]) !== JSON.stringify((to.settings || {})[k])) setKeys[k] = clone((to.settings || {})[k]);
     });
     var empty = !Object.keys(deltas).length && !Object.keys(sets).length && !Object.keys(fields).length &&
@@ -532,13 +542,19 @@
   }
 
   /* ---------- rendering: shared ---------- */
+  /* Pack entries in a craft: pair lines count as two (their A/B entries),
+     so converted JCA still shows "9 items" like the old 9 lines did. */
+  function craftEntryCount(c) {
+    var lines = c.lines || c.items;
+    return lines.reduce(function (n, ln) { return n + (Array.isArray(ln.items) ? ln.items.length : 1); }, 0);
+  }
   function craftButtons(containerId, selectedId, onPick) {
     var box = $(containerId); box.innerHTML = "";
     L.CRAFTS.forEach(function (c) {
       var b = document.createElement("button");
       b.className = "craft-btn" + (c.id === selectedId ? " selected" : "");
       b.innerHTML = (c.id === selectedId ? '<span class="craft-check" aria-hidden="true">✓</span>' : "") +
-        esc(c.name) + "<small>" + esc(c.code) + " · " + c.items.length + " items</small>";
+        esc(c.name) + "<small>" + esc(c.code) + " · " + craftEntryCount(c) + " items</small>";
       b.addEventListener("click", function () { onPick(c.id); });
       box.appendChild(b);
     });
@@ -1698,8 +1714,11 @@
         return ba < bb ? -1 : ba > bb ? 1 : 0;
       });
     }
+    /* Per-6 column from a 6-kit pack: shape-agnostic (pair lines expand
+       to their A/B entries, tier lines compute to 1) and identical to the
+       old per-line map for every built-in craft. */
     var per6 = {};
-    craft.items.forEach(function (ln) { per6[ln.item] = L.lineQty(ln, 6); });
+    L.computePack(craftId, 6).forEach(function (r) { per6[r.item] = r.qty; });
     var rows = sheetPack.map(function (r) {
       return '<tr><td class="tick"><span class="tick-box"></span></td><td>' + esc(r.name) + "</td>" +
         (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), r.item)) + "</td>" : "") +
