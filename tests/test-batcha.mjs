@@ -332,6 +332,44 @@ try {
   eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "12: bulk submitting confirm closes the sheet");
   eq(await page.$$eval("#bulk-lines .hand-line", els => els.length), linesBefore + 1, "12: bulk submitting confirm adds the line");
 
+  /* ---- Item 4: the Added toast stays clear of the Record bar on
+     short content (Mark's repro: BM + 6, first Add, toast exactly on
+     the Record bar) at both phone heights. Section 2's toast check
+     passes on taller content; this one needs the bar in-flow, where
+     the post-Add scroll transitions it to stuck under the toast. */
+  async function item4ToastOk(label) {
+    const r = await page.evaluate(() => {
+      const t = document.querySelector("#toast");
+      if (!t || t.hidden) return "toast hidden";
+      const tr = t.getBoundingClientRect();
+      const bar = document.querySelector("#tab-bulk .action-bar").getBoundingClientRect();
+      const nav = document.querySelector("#tabs").getBoundingClientRect();
+      const over = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+      if (over(tr, bar)) return "toast over bar";
+      if (over(tr, nav)) return "toast over nav";
+      return "ok";
+    });
+    eq(r, "ok", label);
+  }
+  async function item4ShortAdd() {
+    /* Short content: clear the list first when Clear-all is offered
+       (2+ lines), then a single Add is the repro. */
+    const canClear = await page.evaluate(() => { const b = document.querySelector("#btn-bulk-clear"); return b && !b.hidden; });
+    if (canClear) {
+      await page.click("#btn-bulk-clear");
+      await sleep(250);
+      await page.click("#sheet-primary");
+      await sleep(250);
+    }
+    await bulkAdd("Blooming Mirrors", 6);
+  }
+  await item4ShortAdd();
+  await item4ToastOk("item4-390x664: Added toast clear of the Record bar");
+  await page.setViewport({ width: 390, height: 844 });
+  await sleep(300);
+  await item4ShortAdd();
+  await item4ToastOk("item4-390x844: Added toast clear of the Record bar");
+
   console.log(fail ? "BATCHA TESTS FAILED (" + fail + ")" : "all batcha tests passed (" + pass + ")");
 } finally {
   await browser.close();
