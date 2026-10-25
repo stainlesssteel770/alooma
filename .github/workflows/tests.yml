@@ -40,6 +40,9 @@ jobs:
       - name: Byline tests (Packed by / Counted by fields)
         run: node tests/test-byline.mjs
 
+      - name: Clear-all tests (Clear all on Packing + Bulk)
+        run: node tests/test-clearall.mjs
+
       - name: Layout audit (real geometry at 360/390px — nothing clipped or off-screen)
         if: always()
         run: node tests/test-layout.mjs
