@@ -300,7 +300,18 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   .kits-block .kits-chip { padding: 9px 2px; text-align: center; }
   /* Item 11: the pack table's last row clears the sticky Complete bar + nav. */
   #pack-order { padding-bottom: 150px; }
-  #tab-pack { padding-bottom: 150px; }
+  #tab-pack { padding-bottom: 220px; }
+  /* Item 1 fold-in (user): pin the queue row above the fixed tab bar
+     like the other action bars, so Done is always tappable on first
+     paint. Fixed, not sticky: sticky would not lift the row on first
+     paint — the run-2 probe showed Done's in-flow bottom at 654 of
+     664, its center (616) under the tab bar's top edge (605). The
+     220px padding lets the last queue line scroll fully above the
+     pinned row (row ~126px + 66px tab clearance + slack). During a
+     walk the row unpins (static) so it never covers the sticky
+     Complete bar, which shares the same bottom band. */
+  #pack-queue-actions { position: fixed; left: 20px; right: 20px; bottom: 66px; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -4px 14px rgba(31,35,40,.08); padding: 10px 0; margin-top: 0; }
+  #pack-queue-actions.walking { position: static; }
   /* Brief item 1: Bulk content gets bottom padding equal to the sticky bar
      plus the fixed nav, so no form/list line ever sits under either. The
      scroll margin lets a newly added card scroll fully into view above
