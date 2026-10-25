@@ -258,7 +258,10 @@ try {
   await page.click("#btn-enter-counts");
   await sleep(300);
   await page.type("#count-entry-list input[data-item]", "3");
-  await page.click("#btn-cancel-counts");
+  /* Cancel sits at the bottom of a 62-item list, under the fixed tab bar
+     in a headless viewport — test-ui clicks it via evaluate for the same
+     reason; the app behavior (form hides, values stay) is what's asserted. */
+  await page.evaluate(() => document.querySelector("#btn-cancel-counts").click());
   await sleep(200);
   await tab("history");
   eq(await sheetVisible(), false, "cancelled count form: leaving does not prompt");
