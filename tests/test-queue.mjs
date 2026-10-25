@@ -79,11 +79,17 @@ try {
   await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
   await sleep(500);
 
+  /* Queue mode: the first line enters it via the Queue button (the pick
+     becomes line 1); later lines use Add. The picker never folds now, so
+     real clicks work throughout. */
+  async function queueFirst(craftName, kits) {
+    await page.evaluate(name => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), craftName);
+    await page.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
+    await sleep(150);
+    await page.click("#btn-pack-queue");
+    await sleep(250);
+  }
   async function addLine(craftName, kits) {
-    /* Programmatic clicks for the picker: it folds once a craft + valid kits
-       are chosen, so real clicks would miss hidden chips. The queue buttons
-       themselves live outside the picker and get real clicks. */
-    await page.evaluate(() => { document.querySelector("#btn-pack-change").click(); });
     await page.evaluate(name => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(name)).click(), craftName);
     await page.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
     await sleep(150);
@@ -93,8 +99,7 @@ try {
   async function queueLines() {
     return page.$$eval("#pack-queue .queue-line", els => els.map(e => ({
       text: e.textContent.replace(/\s+/g, " ").trim(),
-      dup: e.classList.contains("dup"),
-      hasComplete: !!e.querySelector(".queue-complete")
+      dup: e.classList.contains("dup")
     })));
   }
   async function sheetVisible() {
@@ -113,8 +118,8 @@ try {
     await sleep(500);
   }
 
-  /* ---- 1. Print all: 3 crafts, one job, queue order, per-line Complete ---- */
-  await addLine("The Cakery", 36);
+  /* ---- 1. Print all: 3 crafts, one job, queue order — and it COMPLETES ---- */
+  await queueFirst("The Cakery", 36);
   await addLine("Tambourines", 12);
   await addLine("Hafrashat Challah", 18);
   const q1 = await queueLines();
@@ -126,16 +131,8 @@ try {
   eq(sections, ["The Cakery", "Tambourines", "Hafrashat Challah"], "Print all: one job, one section per craft, queue order kept");
   const subtitles = await page.$$eval("#print-area .print-page .label-sub", els => els.map(e => e.textContent.replace(/\s+/g, " ").trim()));
   eq(subtitles, ["Total kits: 36 Order ID: ____________", "Total kits: 12 Order ID: ____________", "Total kits: 18 Order ID: ____________"], "Print all: each section keeps its own kit count");
-  const qAfterPrint = await queueLines();
-  eq(qAfterPrint.every(l => l.hasComplete), true, "Print all: every line now offers its own Complete");
-  /* Complete each line in order */
-  for (let i = 0; i < 3; i++) {
-    await page.click("#pack-queue .queue-line .queue-complete");
-    await sleep(300);
-    await sheetPrimary();
-    await sleep(400);
-  }
-  eq(remoteData.history.length, 3, "Print all + Complete each: 3 History entries");
+  eq((await queueLines()).length, 0, "Print all: the queue clears — printing completed every line");
+  eq(remoteData.history.length, 3, "Print all: 3 History entries at print time (A4)");
   eq(remoteData.history.map(h => h.title), [
     "Packed Hafrashat Challah — 18 kits (HCB-18)",
     "Packed Tambourines — 12 kits (TAM-12)",
@@ -143,25 +140,16 @@ try {
   ], "Print all: entries carry the right SKUs (newest first)");
   eq(remoteData.inventory["heart-jewelry-box"].qty, 64, "deduction: CAK-36 took 36 Heart Jewelry Boxes (100 -> 64)");
   eq(remoteData.inventory["scissors"].qty, 82, "deduction: shared Scissors across the queue (CAK 12 + TAM 6 = 18, 100 -> 82)");
-  eq((await queueLines()).length, 0, "queue: completed lines leave the queue");
-  /* Undo one entry from History (via the confirm sheet): the CAK-36 entry
-     (third in newest-first order). Undo marks it undone and reverses its
-     effects exactly — the entry stays in History, it is not deleted. */
-  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
-  await sleep(300);
-  await page.evaluate(() => document.querySelectorAll(".history-entry .btn-undo")[2].click());
-  await sleep(300);
-  eq(await page.$eval("#sheet-title", e => e.textContent), "Undo this entry?", "undo uses the confirm sheet");
-  await sheetPrimary();
-  await sleep(400);
-  eq(remoteData.history.length, 3, "undo keeps the entry in History (marked undone, not deleted)");
-  eq(remoteData.history[2].undone, true, "undo marks the CAK-36 entry undone");
-  eq(remoteData.inventory["heart-jewelry-box"].qty, 100, "undo restores the deducted stock");
-  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
-  await sleep(300);
+  /* A4: the print toast's UNDO splices every entry out of History (unlike
+     History's own Undo, which marks entries undone) and restores stock. */
+  await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
+  await sleep(600);
+  eq(remoteData.history.length, 0, "Print all UNDO: every entry spliced out of History");
+  eq(remoteData.inventory["heart-jewelry-box"].qty, 100, "Print all UNDO: stock restored");
+  eq(remoteData.inventory["scissors"].qty, 100, "Print all UNDO: shared stock restored");
 
   /* ---- 2. Hand pack all walks the checklists in order ---- */
-  await addLine("Blooming Mirrors", 6);
+  await queueFirst("Blooming Mirrors", 6);
   await addLine("Tambourines", 12);
   await addLine("Judaic Clay-Art", 6);
   await page.click("#btn-queue-hand");
@@ -183,18 +171,33 @@ try {
   eq(await page.$eval("#pack-queue-progress", e => e.textContent), "Craft 3 of 3", "Hand pack all: completing craft 2 opens craft 3 automatically");
   await completeChecklist();
   eq((await queueLines()).length, 0, "Hand pack all: last Complete returns to an empty Packing tab");
-  eq(remoteData.history.length, 6, "Hand pack all: 3 more entries (3 kept, one undone + 3 new)");
+  eq(remoteData.history.length, 3, "Hand pack all: 3 entries (the print job was undone out of History)");
   eq(remoteData.history.slice(0, 3).map(h => h.title), [
     "Packed Judaic Clay-Art — 6 kits (JCA-6)",
     "Packed Tambourines — 12 kits (TAM-12)",
     "Packed Blooming Mirrors — 6 kits (BM-6)"
   ], "Hand pack all: newest entries are the walked crafts, newest first");
+  /* Undo one entry from History (via the confirm sheet): the BM-6 entry
+     (third in newest-first order). Undo marks it undone and reverses its
+     effects exactly — the entry stays in History, it is not deleted. */
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
+  await sleep(300);
+  await page.evaluate(() => document.querySelectorAll(".history-entry .btn-undo")[2].click());
+  await sleep(300);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Undo this entry?", "undo uses the confirm sheet");
+  await sheetPrimary();
+  await sleep(400);
+  eq(remoteData.history.length, 3, "undo keeps the entry in History (marked undone, not deleted)");
+  eq(remoteData.history[2].undone, true, "undo marks the BM-6 entry undone");
+  eq(remoteData.inventory["heat-gun"].qty, 100, "undo restores the deducted stock (BM-6 heat gun 99 -> 100)");
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(300);
 
   /* ---- 3. Combined shortage across the queue is caught before starting ---- */
   remoteData.inventory["scissors"].qty = 5;
   remoteSha = "sha-q-short";
   await reloadApp();
-  await addLine("The Cakery", 36);
+  await queueFirst("The Cakery", 36);
   await addLine("Tambourines", 12);
   await page.click("#btn-queue-print");
   await sleep(300);
@@ -218,7 +221,7 @@ try {
   resetRemote();
   remoteSha = "sha-q-dup";
   await reloadApp();
-  await addLine("The Cakery", 12);
+  await queueFirst("The Cakery", 12);
   await addLine("The Cakery", 18);
   eq(await sheetVisible(), false, "duplicates: no warning while adding the second Cakery line");
   await page.click("#btn-queue-print");
@@ -239,16 +242,14 @@ try {
   await sleep(300);
   const dupSections = await page.$$eval("#print-area .print-page .label-sub", els => els.map(e => e.textContent.replace(/\s+/g, " ").trim()));
   eq(dupSections, ["Total kits: 12 Order ID: ____________", "Total kits: 18 Order ID: ____________"], "duplicates: YES keeps two separate sheets, never merged");
-  for (let i = 0; i < 2; i++) {
-    await page.click("#pack-queue .queue-line .queue-complete");
-    await sleep(300);
-    await sheetPrimary();
-    await sleep(400);
-  }
+  eq((await queueLines()).length, 0, "duplicates: YES completes both lines — the queue clears");
   eq(remoteData.history.slice(0, 2).map(h => h.title), [
     "Packed The Cakery — 18 kits (CAK-18)",
     "Packed The Cakery — 12 kits (CAK-12)"
   ], "duplicates: YES gives two separate entries and SKUs (newest first)");
+  await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
+  await sleep(600);
+  eq(remoteData.history.length, 0, "duplicates: print UNDO removes both entries");
 
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
