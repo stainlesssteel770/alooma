@@ -147,6 +147,14 @@ try {
   await page.click("#sheet-primary");
   await sleep(700);
   eq(remoteData.history[0].packedBy, "Sara", "queue line complete: packedBy stored");
+  /* Complete the second line too: leaving Pack with a printed line left
+     would fire the tab guard, and section 6 needs a clean switch. */
+  await page.click("#pack-queue .queue-line .queue-complete");
+  await sleep(250);
+  await page.click("#sheet-primary");
+  await sleep(700);
+  eq(remoteData.history[0].packedBy, "Sara", "queue line 2 complete: packedBy stored");
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 0, "queue line 2 complete: queue empty");
 
   /* ---- 6. Count with a name: entries + count sheet carry it ---- */
   await tab("inventory");
