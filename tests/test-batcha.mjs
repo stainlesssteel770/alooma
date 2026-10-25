@@ -223,7 +223,9 @@ try {
     return "ok";
   });
   eq(packToastOk, "ok", "2b: pack toast clear of bar/nav");
-  eq(await page.evaluate(() => { const s = document.querySelector("#toast .nowrap"); return s ? s.textContent : null; }), "BM-6", "2b: pack toast SKU in a nowrap span");
+  /* Item 7: the pack toast's span now holds the whole "(BM-6)" —
+     parens inside the span is the fix, not a regression. */
+  eq(await page.evaluate(() => { const s = document.querySelector("#toast .nowrap"); return s ? s.textContent : null; }), "(BM-6)", "2b: pack toast SKU in a nowrap span");
 
   /* ---- 8. Discard on a tab switch leaves a clean form, no red error ---- */
   await tab("pack");
