@@ -280,6 +280,52 @@ try {
   });
   eq(tblOk, true, "11: pack table's last row clears the sticky bar and nav at bottom scroll");
 
+  /* ---- 10: walk undo restores stock + the queue line, steps back ---- */
+  /* The walk sits at Craft 1 of 4 (BM-6 loaded). Complete it, then undo
+     from the toast: stock returns, the line returns, the walk steps back. */
+  await page.click("#btn-check-all");
+  await sleep(200);
+  await page.click("#sheet-primary"); /* Mark all */
+  await sleep(200);
+  await page.click("#btn-complete-pack");
+  await sleep(250);
+  await page.click("#sheet-primary"); /* Subtract from inventory */
+  await sleep(600);
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 3, "10: completing the first line removes it from the queue");
+  eq(await txt("#pack-queue-progress"), "Craft 2 of 4", "10: walk advances to Craft 2 of 4");
+  eq(remote.inventory["tree-mirror"].qty, 94, "10: BM-6 deducted 6 tree mirrors");
+  await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
+  await sleep(600);
+  eq(remote.inventory["tree-mirror"].qty, 100, "10: toast undo restores the stock");
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 4, "10: toast undo restores the queue line");
+  eq(await txt("#pack-queue-progress"), "Craft 1 of 4", "10: walk steps back to Craft 1 of 4");
+  eq(await txt("#pack-sku"), "BM-6", "10: walk steps back to the restored BM-6 line");
+  eq(remote.history.length, 1, "10: the undone entry stays in History");
+  eq(remote.history[0].undone, true, "10: the undone entry is marked undone");
+  /* Finish the walk, then undo its last entry from History: the line
+     comes back and the walk steps back to it, on the Pack tab. */
+  for (let c = 0; c < 4; c++) {
+    await page.click("#btn-check-all");
+    await sleep(200);
+    await page.click("#sheet-primary"); /* Mark all */
+    await sleep(200);
+    await page.click("#btn-complete-pack");
+    await sleep(250);
+    await page.click("#sheet-primary"); /* Subtract from inventory */
+    await sleep(600);
+  }
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 0, "10: finishing the walk empties the queue");
+  await tab("history");
+  await sleep(300);
+  await page.evaluate(() => document.querySelector(".history-entry .btn-undo").click());
+  await sleep(300);
+  await page.click("#sheet-primary"); /* Undo this entry? */
+  await sleep(600);
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 1, "10: History undo restores the finished line");
+  eq(await page.$eval("#tab-pack", e => e.classList.contains("active")), true, "10: History undo steps back to the Pack tab");
+  eq(await txt("#pack-queue-progress"), "Craft 1 of 1", "10: restored walk is Craft 1 of 1");
+  eq(await txt("#pack-sku"), "BM-6", "10: restored line is the last BM-6");
+
   console.log("REDESIGN TESTS: " + passes + " passed, " + failures + " failed");
   process.exit(failures ? 1 : 0);
 } finally {
