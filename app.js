@@ -1819,6 +1819,10 @@
   function discardInvHistChanges() {
     invOpenItem = null;
     document.querySelectorAll("#count-entry-list input[data-item], #delivery-entry-list input[data-item]").forEach(function (inp) { inp.value = ""; });
+    /* Discard clears the open forms themselves, not just their inputs — an
+       emptied form left open after Discard reads as still-in-progress. */
+    $("count-entry").hidden = true;
+    $("delivery-entry").hidden = true;
     dismissSheet();
     renderInventory();
   }
