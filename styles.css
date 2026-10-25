@@ -285,10 +285,15 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   #tab-bulk { padding-bottom: 150px; }
   #bulk-lines > *, #pack-queue > * { scroll-margin-bottom: 150px; }
   .toast { bottom: 132px; left: 8px; right: 8px; transform: none; max-width: none; font-size: 14px; padding: 12px 14px; }
-  /* Brief item 14: the header status wraps under the badge instead of
-     running off the right edge on narrow phones. */
-  .header-status { flex-wrap: wrap; justify-content: flex-end; }
-  .save-status { flex: 1 1 100%; text-align: right; }
+  /* Brief item 14: the header status must never run off the right edge.
+     Shrink the header spacing/type on phones so badge + status fit one
+     row at 390px; the wrap below is only a fallback for wider renderings
+     (it wraps instead of clipping). The status must NOT be forced to its
+     own row — flex-basis 100% did that and pushed Inventory down 24px. */
+  .app-header { padding: 10px 12px; gap: 12px; }
+  .badge { padding: 0 10px; }
+  .header-status { flex-wrap: wrap; justify-content: flex-end; gap: 6px; min-width: 0; }
+  .save-status { text-align: right; font-size: 13px; }
   .header-text p { display: none; }
 }
 
