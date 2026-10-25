@@ -52,6 +52,8 @@ await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 try {
   const page = await browser.newPage();
+  page.on("pageerror", e => console.log("PAGEERROR " + e.message));
+  page.on("console", m => { if (m.type() === "error") console.log("CONSOLE-ERROR " + m.text()); });
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "alooma", login: "testeditor" }));
   });
@@ -113,13 +115,20 @@ try {
 
   /* ---- 1. Print all: 3 crafts, one job, queue order, per-line Complete ---- */
   await addLine("The Cakery", 36);
+  console.log("DIAG after CAK-36:", JSON.stringify(await queueLines()));
   await addLine("Tambourines", 12);
+  console.log("DIAG after TAM-12:", JSON.stringify(await queueLines()));
   await addLine("Hafrashat Challah", 18);
+  console.log("DIAG after HCB-18:", JSON.stringify(await queueLines()));
   const q1 = await queueLines();
   eq(q1.length, 3, "queue: 3 lines present");
   eq(q1.every(l => l.text.includes("kits")), true, "queue: lines show craft + kits");
   await page.click("#btn-queue-print");
   await sleep(300);
+  console.log("DIAG after Print all: sections =", await page.$$eval("#print-area .print-page", els => els.length),
+    "print-area children =", await page.$eval("#print-area", e => e.children.length),
+    "add disabled =", await page.$eval("#btn-queue-add", e => e.disabled),
+    "print disabled =", await page.$eval("#btn-queue-print", e => e.disabled));
   const sections = await page.$$eval("#print-area .print-page", els => els.map(e => e.querySelector(".label-title").textContent));
   eq(sections, ["The Cakery", "Tambourines", "Hafrashat Challah"], "Print all: one job, one section per craft, queue order kept");
   const subtitles = await page.$$eval("#print-area .print-page .label-sub", els => els.map(e => e.textContent.replace(/\s+/g, " ").trim()));
