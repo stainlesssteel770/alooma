@@ -442,7 +442,9 @@ try {
   eq(remote.history.some(e => e.title && e.title.includes("Tambourines") && e.title.includes("6 kits")), true, "(b) walk second line completed too");
   eq(remote.inventory["scissors"].qty, 94, "(b) hidden-line walk deducted stock (scissors 100-3-3)");
   await goSettings(hpage);
-  await hpage.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
+  /* Edit toggles: the hide step left BM's editor OPEN, so only click Edit
+     if the hide toggle is not already showing. */
+  await hpage.evaluate(() => { if (!document.querySelector('[data-recipe-row="bm"] [data-hide-toggle]')) document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click(); });
   await sleep(300);
   await hpage.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-hide-toggle]').click());
   await sleep(500);
