@@ -302,10 +302,12 @@ try {
   await sleep(600);
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 3, "10: completing the first line removes it from the queue");
   eq(await txt("#pack-queue-progress"), "Craft 2 of 4", "10: walk advances to Craft 2 of 4");
-  eq(remote.inventory["tree-mirror"].qty, 94, "10: BM-6 deducted 6 tree mirrors");
+  /* Baseline is 94, not 100: section 5e already printed one BM-6 (100-6).
+     This completion takes it to 88; the toast undo returns it to 94. */
+  eq(remote.inventory["tree-mirror"].qty, 88, "10: BM-6 deducted 6 tree mirrors");
   await page.evaluate(() => [...document.querySelectorAll("#toast button")].find(b => b.textContent === "UNDO").click());
   await sleep(600);
-  eq(remote.inventory["tree-mirror"].qty, 100, "10: toast undo restores the stock");
+  eq(remote.inventory["tree-mirror"].qty, 94, "10: toast undo restores the stock");
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 4, "10: toast undo restores the queue line");
   eq(await txt("#pack-queue-progress"), "Craft 1 of 4", "10: walk steps back to Craft 1 of 4");
   eq(await txt("#pack-sku"), "BM-6", "10: walk steps back to the restored BM-6 line");
