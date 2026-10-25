@@ -42,6 +42,7 @@ try {
   await page.setRequestInterception(true);
   page.on("request", req => {
     const url = req.url();
+    console.log("REQ-LOG " + req.method() + " " + url);
     if (url.includes("/contents/data.json")) {
       if (req.method() === "PUT") {
         const body = JSON.parse(req.postData() || "{}");
