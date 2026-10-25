@@ -193,6 +193,28 @@ try {
   await page.pdf({ path: "/tmp/alooma-packsheet-hcb.pdf", preferCSSPageSize: true, printBackground: true });
   await checkGeometry("/tmp/alooma-packsheet-hcb.pdf", "pack sheet HCB-12");
 
+  /* Print all (queue, brief item 1): 3 crafts, one job, queue order — the
+     geometry gate runs on it too, like every other print.
+     Programmatic clicks: the picker folds once a craft + kits are chosen,
+     so real clicks would miss hidden chips. */
+  async function queueAdd(name, kits) {
+    await page.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);
+    await page.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
+    await sleep(150);
+    await page.evaluate(() => { document.querySelector("#btn-queue-add").click(); });
+    await sleep(250);
+  }
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await queueAdd("The Cakery", 36);
+  await queueAdd("Tambourines", 12);
+  await queueAdd("Blooming Mirrors", 6);
+  await page.evaluate(() => { document.querySelector("#btn-queue-print").click(); });
+  await sleep(300);
+  const allTitles = await page.$$eval("#print-area .print-page .label-title", els => els.map(e => e.textContent));
+  ok(JSON.stringify(allTitles) === JSON.stringify(["The Cakery", "Tambourines", "Blooming Mirrors"]), "Print all: one job, sections in queue order");
+  await page.pdf({ path: "/tmp/alooma-printall.pdf", preferCSSPageSize: true, printBackground: true });
+  await checkGeometry("/tmp/alooma-printall.pdf", "Print all (3 crafts)");
+
   /* ---- Inventory report ---- */
   await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); document.querySelector("#btn-print-inventory").click(); });
   await sleep(300);
