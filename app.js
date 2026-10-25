@@ -1725,14 +1725,14 @@
         (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), r.item)) + "</td>" : "") +
         '<td class="qty regular">' + per6[r.item] + '</td><td class="qty">' + r.qty + "</td></tr>";
     }).join("");
-    return '<section class="print-page"><table><thead>' +
+    return '<section class="print-page pack-sheet"><table><thead>' +
       '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title">' + esc(craft.name) + "</div>" +
       '<div class="label-sub">Total kits: ' + kits + " &nbsp;&nbsp; Order ID: ____________</div>" +
       "</th></tr>" +
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>" +
-      '<div class="print-foot">' + (boxes && boxes.length ? '<div class="foot-boxes">BOXES: ' + esc(boxes.join(" + ")) + "</div>" : "") +
-      "<div>Packed by: " + (by ? esc(by) : "____________________") + "</div><div>Date: " + (opts.date ? esc(opts.date) : "____________") + "</div>" +
+      '<div class="print-foot">' + (boxes && boxes.length ? '<span class="foot-boxes">BOXES: ' + esc(boxes.join(" + ")) + " · </span>" : "") +
+      "<span>Packed by: " + (by ? esc(by) : "____________") + " · </span><span>Date: " + (opts.date ? esc(opts.date) : "__________") + "</span>" +
       (opts.reprint ? "<div>REPRINT</div>" : "") + "</div></section>";
   }
   /* A4: single Print prints this one craft's sheet and completes it at the
