@@ -64,6 +64,9 @@ jobs:
       - name: Desktop screenshots (desktop brief — evidence at 768/1280/1440/1920)
         run: node tests/shots-desktop.mjs
 
+      - name: Brief deliverables (3-craft Print all, single sheets ±BOXES, count sheet with name, phone screenshots)
+        run: node tests/make-deliverables.mjs
+
       - name: Upload screenshots and print PDFs
         if: always()
         uses: actions/upload-artifact@v4
