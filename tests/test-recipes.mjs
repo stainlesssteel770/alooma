@@ -488,7 +488,9 @@ try {
   eq(qtyOf(rows, "Widget X"), "6", "(b) new item packs (BM-6 Widget X 6)");
   eq(remote.inventory["widget-x"].qty, 94, "(b) new-item pack deducted stock");
   await goSettings(page);
-  await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
+  /* Same toggle hazard as the unhide step: BM's editor stayed open through
+     the print/delivery steps, so only click Edit if it is not already open. */
+  await page.evaluate(() => { if (!document.querySelector('[data-recipe-row="bm"] [data-line-remove]')) document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click(); });
   await sleep(300);
   await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-line-remove]').click());
   await sleep(500);
