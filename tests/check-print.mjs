@@ -198,6 +198,33 @@ try {
   await page.pdf({ path: "/tmp/alooma-packsheet-hcb.pdf", preferCSSPageSize: true, printBackground: true });
   await checkGeometry("/tmp/alooma-packsheet-hcb.pdf", "pack sheet HCB-12");
 
+  /* Single-line pack footer (MI/TAM spill fix): BOXES + Packed by + Date
+     share one footer line at the same 12.5pt, and pack sheets trim their
+     title/footer spacing — MI must fit one label, TAM at most two (two is
+     accepted if it still spills). */
+  async function singlePack(name, kits, file) {
+    await page.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);
+    await page.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
+    await sleep(300);
+    await page.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
+    await sleep(300);
+    await page.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(file)) }).promise;
+    const p1 = await doc.getPage(1);
+    const tc = await p1.getTextContent();
+    const runs = tc.items.filter(it => it.str.trim()).map(it => ({ s: it.str, y: it.transform[5] }));
+    const pb = runs.find(r => r.s.includes("Packed by"));
+    const dt = runs.find(r => r.s.includes("Date:"));
+    const dy = (pb && dt) ? Math.abs(pb.y - dt.y).toFixed(1) : "?";
+    ok(!!pb && !!dt && Math.abs(pb.y - dt.y) < 4, name + "-" + kits + ": footer is one line (Packed by and Date share a baseline, dy=" + dy + "pt)");
+    await checkGeometry(file, name + "-" + kits + " single-line footer");
+    return doc.numPages;
+  }
+  const miPages = await singlePack("Miniature Interiors", 6, "/tmp/alooma-packsheet-mi.pdf");
+  ok(miPages === 1, "pack sheet MI-6: one label after the single-line footer + trims (" + miPages + " pages)");
+  const tamPages = await singlePack("Tambourines", 6, "/tmp/alooma-packsheet-tam.pdf");
+  ok(tamPages <= 2, "pack sheet TAM-6: at most two labels (" + tamPages + " pages; two is accepted if it still spills)");
+
   /* Print all (queue, brief item 1): 3 crafts, one job, queue order — the
      geometry gate runs on it too, like every other print. The first line
      enters Queue mode via the Queue button; the rest Add. */
