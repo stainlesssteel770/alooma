@@ -1834,6 +1834,21 @@
   }
 
   /* ---------- Settings: connect / disconnect / backup ---------- */
+  /* Batch C item 15: each tab is a history step (#pack, #bulk, …) so the
+     phone Back button goes to the previous tab. User tab switches
+     pushState (in requestTab); programmatic switches — the applyTabAccess
+     fallback, a popstate Discard — only replaceState, never adding an
+     entry. pushState/replaceState never fire hashchange, so the handler
+     below only ever sees browser Back/forward presses. */
+  var userNavigated = false; /* any user tab switch or hash navigation yet */
+  var leaveFromHash = false; /* the open leave prompt came from Back/forward */
+  var suppressHashNav = false; /* ignore the hashchange a Stay forward() causes */
+  function pushTabState(name) {
+    try { var h = "#" + name; if (window.location.hash !== h) history.pushState(null, "", h); } catch (e) {}
+  }
+  function syncTabHash(name) {
+    try { var h = "#" + name; if (window.location.hash !== h) history.replaceState(null, "", h); } catch (e) {}
+  }
   function activateTab(name) {
     document.querySelectorAll("#tabs button").forEach(function (x) {
       var on = x.getAttribute("data-tab") === name;
@@ -1843,6 +1858,7 @@
     document.querySelectorAll(".tab-panel").forEach(function (x) { x.classList.toggle("active", x.id === "tab-" + name); });
     if (name === "settings") renderBackupNote();
     currentTab = name;
+    syncTabHash(name);
   }
   /* ---------- A3: one leave rule for every tab ---------- */
   /* Nothing clears silently anymore. If anything is chosen or unsaved —
@@ -1928,19 +1944,42 @@
   }
   function requestTab(name) {
     if (name === currentTab) return;
+    userNavigated = true;
     if (hasUnsaved()) {
       var saved = saveSheetState();
+      /* leaveFromHash stays as the hashchange handler set it (true for a
+         Back/forward prompt, false for a tab click) — it decides below
+         whether Discard pushes a new entry or not. */
       openSheet({
         title: "Unsaved changes",
         summary: "You have unsaved changes.",
         primary: "Stay and finish",
         cancelLabel: "Discard",
         cancelDanger: true,
-        onConfirm: function () { restoreSheetState(saved); },
-        onCancel: function () { discardAllUnsaved(); activateTab(name); }
+        onConfirm: function () {
+          restoreSheetState(saved);
+          /* A prompt opened by Back/forward must also restore the
+             history position — forward() returns to the entry Back
+             came from, and the suppress flag swallows its hashchange. */
+          if (leaveFromHash) {
+            leaveFromHash = false;
+            suppressHashNav = true;
+            try { history.forward(); } catch (e) {}
+          }
+        },
+        onCancel: function () {
+          var fromHash = leaveFromHash;
+          leaveFromHash = false;
+          discardAllUnsaved();
+          /* History is already AT the target entry after a Back press,
+             so Discard must not push — only a tab click adds an entry. */
+          if (!fromHash) pushTabState(name);
+          activateTab(name);
+        }
       });
       return;
     }
+    pushTabState(name);
     activateTab(name);
   }
   function settingsDirty() {
@@ -2629,8 +2668,23 @@
 
     /* render the static shells first so the page is usable while data loads */
     if (!state.data) state.data = L.emptyData();
+    /* Batch C item 15: a shared link (or a reload) carrying #tab opens on
+       that tab; applyTabAccess in renderAll corrects it if the tab is
+       hidden (Bulk off, view-only). The post-load re-apply covers the
+       gap where the empty-data shell has bulkTab OFF but the loaded
+       data has it ON. */
+    var initialHashTab = null;
+    var hm = window.location.hash.match(/^#(pack|bulk|inventory|history|settings)$/);
+    if (hm) { initialHashTab = hm[1]; activateTab(initialHashTab); }
     renderAll();
-    loadData().then(function () { renderAll(); flushQueue(); });
+    loadData().then(function () {
+      renderAll();
+      if (!userNavigated && initialHashTab) {
+        var b = document.querySelector('[data-tab="' + initialHashTab + '"]');
+        if (b && !b.hidden && initialHashTab !== currentTab) activateTab(initialHashTab);
+      }
+      flushQueue();
+    });
     /* v3 E4: connectivity changes drive the queue */
     window.addEventListener("online", function () { state.offline = false; refreshSyncStatus(); flushQueue(); });
     window.addEventListener("offline", function () { state.offline = true; refreshSyncStatus(); });
@@ -2641,6 +2695,33 @@
         ev.preventDefault();
         ev.returnValue = "";
       }
+    });
+
+    /* Batch C item 15: Back/forward between tabs routes through the same
+       A3 leave rule as a tab tap. A prompt opened this way gets Stay =
+       forward-restore (in requestTab's onConfirm) and Discard = switch
+       with no new history entry (history is already AT the target
+       entry; activateTab's replaceState is a no-op). A sheet already
+       open is closed first — except the leave prompt itself, which owns
+       the decision already — and Stay restores it via saveSheetState. */
+    window.addEventListener("hashchange", function () {
+      if (suppressHashNav) { suppressHashNav = false; return; }
+      userNavigated = true;
+      var m = window.location.hash.match(/^#(pack|bulk|inventory|history|settings)$/);
+      if (!m) return;
+      var name = m[1];
+      if (name === currentTab) return;
+      var btn = document.querySelector('[data-tab="' + name + '"]');
+      if (!btn || btn.hidden) { syncTabHash(currentTab); return; }
+      var saved = saveSheetState();
+      if (saved && saved.title === "Unsaved changes") return;
+      if (!$("sheet-backdrop").hidden) dismissSheet();
+      if (hasUnsaved()) {
+        leaveFromHash = true;
+        requestTab(name);
+        return;
+      }
+      activateTab(name);
     });
     if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
       navigator.serviceWorker.register("sw.js").catch(function () {});
