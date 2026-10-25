@@ -28,7 +28,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
 Object.keys(remoteData.inventory).forEach(k => { remoteData.inventory[k] = { qty: 100, threshold: null }; });
 remoteData.history = [];
-if (remoteData.settings && remoteData.settings.features) { remoteData.settings.features.boxes = false; remoteData.settings.features.bins = false; }
+if (remoteData.settings && remoteData.settings.features) { remoteData.settings.features.boxes = false; remoteData.settings.features.bins = false; remoteData.settings.features.bulkTab = true; }
 let remoteSha = "sha-c1";
 let putCount = 0;
 const b64e = s => Buffer.from(s, "utf8").toString("base64");
