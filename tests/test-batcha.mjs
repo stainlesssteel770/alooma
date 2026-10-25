@@ -172,7 +172,13 @@ try {
     if (over(tr, nav)) return "toast over nav";
     const cs = getComputedStyle(t);
     const lh = cs.lineHeight === "normal" ? parseFloat(cs.fontSize) * 1.2 : parseFloat(cs.lineHeight);
-    if (tr.height > lh + 26) return "toast wraps (" + Math.round(tr.height) + "px vs line " + Math.round(lh) + "px)";
+    /* Height alone can't prove one line: the UNDO button's 44px min-height
+       sets the toast floor at 68px even for a single line. A message
+       wrapping to 3+ lines would push past ~87px; the short fixed text
+       ("Added TAM-12") plus the nowrap SKU is what guarantees one line. */
+    const spanH = document.querySelector("#toast .nowrap")?.getBoundingClientRect().height || 0;
+    if (tr.height > 76) return "toast wraps (" + Math.round(tr.height) + "px)";
+    if (spanH > lh + 6) return "toast SKU wraps";
     return "ok";
   });
   eq(toastOk, "ok", "2: toast clear of bar/card/nav, on one line");
@@ -235,6 +241,11 @@ try {
 
   /* ---- 13. Bulk wording ---- */
   await tab("bulk");
+  /* Section 8's tab dance cleared the list under the old rules, so build
+     it fresh here — Record all with an empty list opens no sheet, and the
+     title assert would read a stale sheet title. */
+  await bulkAdd("Blooming Mirrors", 6);
+  await bulkAdd("Tambourines", 12);
   await page.click("#btn-bulk-record");
   await sleep(300);
   eq(await page.$eval("#sheet-title", e => e.textContent), "Record all", "13: Record all sheet titled 'Record all'");
