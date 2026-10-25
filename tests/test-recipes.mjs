@@ -636,6 +636,16 @@ try {
   await sleep(300);
   eq(await page.evaluate(() => document.querySelector(".history-entry .history-effects")?.textContent.includes("Renamed Widget")), true, "(c) new entry effect list shows the new name");
 
+  /* ---- (d) Clay rename fits one line on the BM label ---- */
+  await resetSeed();
+  await pick("Blooming Mirrors", 6);
+  await printSheet();
+  await page.pdf({ path: "/tmp/alooma-recipes-clay.pdf", preferCSSPageSize: true, printBackground: true });
+  const clayDoc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync("/tmp/alooma-recipes-clay.pdf")) }).promise;
+  const clayItems = (await (await clayDoc.getPage(1)).getTextContent()).items.filter(it => it.str.includes("Clay"));
+  eq(clayItems.length, 1, "(d) Clay name is one unbroken line on the BM label");
+  eq(clayItems[0] && clayItems[0].str, "Clay Tray + 6 Toothpicks", "(d) BM label shows the renamed Clay item");
+
   console.log(fail ? "RECIPE TESTS FAILED (" + fail + ")" : "all recipe tests passed (" + pass + " checks)");
 } finally {
   await browser.close();
