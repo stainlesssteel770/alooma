@@ -598,6 +598,44 @@ try {
   eq(remote.history[0] && remote.history[0].title, "Packed Blooming Mirrors — 6 kits (BM-6)", "(b) old history title unchanged after rename");
   eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors Renamed"))), true, "(b) renamed craft shows new name in picker");
 
+  /* ---- (c) History snapshot + reprint/effect freeze ---- */
+  /* Seed a one-line custom craft + custom item, pack it, rename the
+     item (mock-side, as a rename would land in customItems), and prove
+     the old entry keeps the old name everywhere while a new pack uses
+     the new name. */
+  remote.settings = { features: { boxes: false, bins: false, bulkTab: true }, boxes: [], boxRules: [], bins: {},
+    recipes: [{ id: "snap", code: "SNP", name: "Snap Test", hidden: false, lines: [{ item: "test-widget", qty: 6, per: 6 }] }],
+    customItems: [{ id: "test-widget", name: "Test Widget", unit: "each" }] };
+  Object.keys(remote.inventory).forEach(k => { remote.inventory[k] = { qty: 100, threshold: null }; });
+  remote.inventory["test-widget"] = { qty: 100, threshold: null };
+  remote.history = [];
+  await load(1);
+  await pick("Snap Test", 6);
+  await printSheet(); /* single print -> "packed" entry with snapshot */
+  eq(remote.history[0] && remote.history[0].recipe && remote.history[0].recipe[0] && remote.history[0].recipe[0].name, "Test Widget", "(c) snapshot stores the name at pack time");
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
+  await sleep(300);
+  eq(await page.evaluate(() => document.querySelector(".history-entry .history-effects")?.textContent.includes("Test Widget")), true, "(c) effect list shows the packed name");
+  /* Rename the item, reload, and prove the old entry is frozen. */
+  remote.settings.customItems[0].name = "Renamed Widget";
+  await load(1);
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
+  await sleep(300);
+  eq(await page.evaluate(() => document.querySelector(".history-entry .history-effects")?.textContent.includes("Test Widget")), true, "(c) effect list keeps the old name after rename");
+  eq(await page.evaluate(() => document.querySelector(".history-entry .history-effects")?.textContent.includes("Renamed Widget")), false, "(c) effect list does not pick up the new name");
+  /* Reprint shows the old name. */
+  await page.evaluate(() => document.querySelector(".history-entry .btn-reprint").click());
+  await sleep(400);
+  eq(await page.evaluate(() => document.querySelector("#print-area").textContent.includes("Test Widget")), true, "(c) reprint keeps the old name after rename");
+  eq(await page.evaluate(() => document.querySelector("#print-area").textContent.includes("Renamed Widget")), false, "(c) reprint does not pick up the new name");
+  /* A new pack uses the new name. */
+  await pick("Snap Test", 6);
+  await printSheet();
+  eq(remote.history[0] && remote.history[0].recipe && remote.history[0].recipe[0].name, "Renamed Widget", "(c) new pack snapshots the new name");
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
+  await sleep(300);
+  eq(await page.evaluate(() => document.querySelector(".history-entry .history-effects")?.textContent.includes("Renamed Widget")), true, "(c) new entry effect list shows the new name");
+
   console.log(fail ? "RECIPE TESTS FAILED (" + fail + ")" : "all recipe tests passed (" + pass + " checks)");
 } finally {
   await browser.close();
