@@ -185,6 +185,11 @@ try {
   await page.screenshot({ path: path.join(ROOT, "screenshots/handpack-2of3.png"), fullPage: true });
 
   /* ---- C. Single sheets: WITH and WITHOUT the BOXES line ---- */
+  /* Sections A + B already deducted CAK-36 twice (100 -> 64 -> 28), and a
+     third CAK-36 needs 36 on eight lines — without a restock this print
+     correctly opens the shortage sheet instead of printing, and the PDF
+     would capture section A's box-less print. Restock to the seed first. */
+  Object.keys(remoteData.inventory).forEach(k => { remoteData.inventory[k].qty = 100; });
   remoteData.settings.features.boxes = true;
   remoteData.settings.boxes = ["Big Box", "Small Box"];
   remoteData.settings.boxRules = [{ craftId: "cak", kits: 36, boxes: ["Big Box", "Small Box"] }];
