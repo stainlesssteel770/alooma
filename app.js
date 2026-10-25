@@ -124,7 +124,7 @@
     sheetCancelCb = opts.onCancel || null;
     $("sheet-backdrop").hidden = false;
   }
-  function closeSheet() { $("sheet-backdrop").hidden = true; sheetCb = null; sheetCancelCb = null; }
+  function closeSheet() { $("sheet-backdrop").hidden = true; sheetCb = null; sheetCancelCb = null; editSheetOriginal = null; }
   function dismissSheet() { var cb = sheetCancelCb; closeSheet(); if (cb) cb(); }
   function packSummary(pack) {
     var shorts = [];
@@ -1345,6 +1345,7 @@
   function editEntry(entry) {
     if (!requireEditor()) return;
     if (entry.type === "received") {
+      editSheetOriginal = entry.amount;
       openSheet({
         title: "Edit entry",
         sub: "Received — " + (L.ITEMS[entry.item] || ""),
@@ -1359,6 +1360,7 @@
         }
       });
     } else if (entry.type === "count-fix") {
+      editSheetOriginal = entry.counted;
       openSheet({
         title: "Edit entry",
         sub: "Count fix — " + (L.ITEMS[entry.item] || ""),
@@ -1376,6 +1378,7 @@
       });
     } else if (entry.type === "packed" || entry.type === "hand-packed") {
       var craft0 = L.craftById(entry.craftId);
+      editSheetOriginal = entry.kits;
       openSheet({
         title: "Edit entry",
         sub: craft0.name + " — currently " + entry.kits + " kits (" + L.sku(entry.craftId, entry.kits) + ")",
@@ -1549,6 +1552,131 @@
     });
     document.querySelectorAll(".tab-panel").forEach(function (x) { x.classList.toggle("active", x.id === "tab-" + name); });
     if (name === "settings") renderBackupNote();
+    currentTab = name;
+  }
+  /* ---------- tab-switch guards (brief item 2) ---------- */
+  /* Leaving a tab never silently eats unfinished work:
+     - Packing -> anywhere with a printed/started queue prompts (Leave keeps
+       the queue and proceeds; Discard clears it and proceeds).
+     - Packing -> Bulk also clears the single craft+kits selection and any
+       un-started queue, no prompt. Leaving Packing for other tabs clears
+       an un-started queue but keeps the single selection.
+     - Bulk -> Packing clears the bulk craft/kits/lines, no prompt.
+     - Inventory/History -> anywhere with unsaved work prompts (Stay keeps
+       everything; Discard clears it and proceeds).
+     The prompts reuse the confirm sheet; when one fires while another
+     sheet is open (an edit sheet), Stay restores that sheet exactly. */
+  var currentTab = "pack";
+  var editSheetOriginal = null; /* set by editEntry; cleared by closeSheet */
+  function hasStartedQueue() {
+    return packQueue.some(function (ln) { return ln.printed; }) || queueHandIdx >= 0;
+  }
+  function startedQueueCount() {
+    var n = 0;
+    packQueue.forEach(function (ln, i) { if (ln.printed || i === queueHandIdx) n++; });
+    return n;
+  }
+  function clearPackQueueAndWalk() {
+    packQueue = [];
+    endQueueWalk();
+    persistPackQueue();
+  }
+  function panelInputDirty() {
+    var inp = document.querySelector(".inv-panel-input");
+    if (!inp || invOpenItem === null) return false;
+    var rec = state.data.inventory[invOpenItem];
+    var prefill = "";
+    if (invPanelMode === "warning") prefill = (rec && rec.threshold !== null && rec.threshold !== undefined) ? String(rec.threshold) : "";
+    else if (invPanelMode === "bin") prefill = (settings().bins && settings().bins[invOpenItem]) || "";
+    var v = invPanelMode === "bin" ? inp.value.trim() : inp.value;
+    return v !== prefill;
+  }
+  function entryInputsDirty() {
+    var dirty = false;
+    document.querySelectorAll("#count-entry-list input[data-item], #delivery-entry-list input[data-item]").forEach(function (inp) {
+      if (inp.value !== "") dirty = true;
+    });
+    return dirty;
+  }
+  function editSheetDirty() {
+    if ($("sheet-backdrop").hidden || editSheetOriginal === null) return false;
+    if ($("sheet-input-wrap").hidden) return false;
+    return parseInt($("sheet-input").value, 10) !== editSheetOriginal;
+  }
+  function hasUnsavedInvHist() { return panelInputDirty() || entryInputsDirty() || editSheetDirty(); }
+  function discardInvHistChanges() {
+    invOpenItem = null;
+    document.querySelectorAll("#count-entry-list input[data-item], #delivery-entry-list input[data-item]").forEach(function (inp) { inp.value = ""; });
+    dismissSheet();
+    renderInventory();
+  }
+  function saveSheetState() {
+    if ($("sheet-backdrop").hidden) return null;
+    return {
+      title: $("sheet-title").textContent,
+      sub: $("sheet-sub").textContent,
+      summary: $("sheet-summary").textContent,
+      extraHtml: $("sheet-extra").innerHTML,
+      primary: $("sheet-primary").textContent,
+      primaryDanger: $("sheet-primary").classList.contains("danger"),
+      cancelLabel: $("sheet-cancel").textContent,
+      cancelFilled: $("sheet-cancel").classList.contains("btn-primary"),
+      cancelDanger: $("sheet-cancel").classList.contains("danger"),
+      input: $("sheet-input-wrap").hidden ? null : { label: $("sheet-input-label").textContent, value: $("sheet-input").value, min: $("sheet-input").min, step: $("sheet-input").step },
+      onConfirm: sheetCb,
+      onCancel: sheetCancelCb,
+      editOriginal: editSheetOriginal
+    };
+  }
+  function restoreSheetState(s) {
+    if (!s) return;
+    openSheet(s);
+    editSheetOriginal = s.editOriginal;
+  }
+  function requestTab(name) {
+    if (name === currentTab) return;
+    var leaving = currentTab;
+    if (leaving === "pack" && hasStartedQueue()) {
+      var n = startedQueueCount();
+      var saved = saveSheetState();
+      openSheet({
+        title: "Unfinished printed queue",
+        summary: "You have " + n + (n === 1 ? " craft" : " crafts") + " printed but not completed.",
+        primary: n === 1 ? "Leave it in the queue" : "Leave them in the queue",
+        cancelLabel: "Discard",
+        cancelDanger: true,
+        onConfirm: function () { restoreSheetState(saved); activateTab(name); },
+        onCancel: function () {
+          clearPackQueueAndWalk();
+          state.packCraft = null; $("pack-kits").value = ""; packMode = null;
+          renderPack();
+          activateTab(name);
+        }
+      });
+      return;
+    }
+    if ((leaving === "inventory" || leaving === "history") && hasUnsavedInvHist()) {
+      var saved2 = saveSheetState();
+      openSheet({
+        title: "Unsaved changes",
+        summary: "You have unsaved changes.",
+        primary: "Stay",
+        cancelLabel: "Discard",
+        cancelDanger: true,
+        onConfirm: function () { restoreSheetState(saved2); },
+        onCancel: function () { discardInvHistChanges(); activateTab(name); }
+      });
+      return;
+    }
+    if (leaving === "pack") {
+      clearPackQueueAndWalk();
+      if (name === "bulk") { state.packCraft = null; $("pack-kits").value = ""; packMode = null; packBoxOverride = null; }
+      renderPack();
+    } else if (leaving === "bulk" && name === "pack") {
+      state.bulkCraft = null; $("bulk-kits").value = ""; bulkLines = [];
+      renderBulk();
+    }
+    activateTab(name);
   }
   /* View-only devices see ONLY Inventory and History (the user's rule). The
      connect screen stays reachable by tapping the header badge. */
@@ -1876,9 +2004,9 @@
     } catch (e) { state.editor = null; }
 
     document.querySelectorAll("#tabs button").forEach(function (b) {
-      b.addEventListener("click", function () { activateTab(b.getAttribute("data-tab")); });
+      b.addEventListener("click", function () { requestTab(b.getAttribute("data-tab")); });
     });
-    $("conn-badge").addEventListener("click", function () { if (!state.editor) activateTab("settings"); });
+    $("conn-badge").addEventListener("click", function () { if (!state.editor) requestTab("settings"); });
     $("pack-kits").addEventListener("input", function () { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; packFoldOverride = false; renderPack(); });
     $("btn-pack-change").addEventListener("click", function () { packFoldOverride = true; renderPack(); });
     function wireStepper(inputId, minusId, plusId, renderFn) {
@@ -2125,6 +2253,16 @@
     /* v3 E4: connectivity changes drive the queue */
     window.addEventListener("online", function () { state.offline = false; refreshSyncStatus(); flushQueue(); });
     window.addEventListener("offline", function () { state.offline = true; refreshSyncStatus(); });
+    /* Brief item 2c: closing/reloading with unsaved Inventory/History work
+       or a started queue shows the browser's own generic prompt (its
+       wording can't be customized). Un-started queues persist on-device,
+       so they need no guard. */
+    window.addEventListener("beforeunload", function (ev) {
+      if (hasUnsavedInvHist() || hasStartedQueue()) {
+        ev.preventDefault();
+        ev.returnValue = "";
+      }
+    });
     if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
       navigator.serviceWorker.register("sw.js").catch(function () {});
     }
