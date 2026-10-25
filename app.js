@@ -894,6 +894,7 @@
     });
     printHtml(html);
     packQueue = [];
+    persistPackQueue(); /* A4: a printed queue must not come back on reload */
     endQueueWalk();
     queueMode = false;
     commitPrint(entries, "Printed " + lines.length + (lines.length === 1 ? " order" : " orders"));
