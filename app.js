@@ -12,7 +12,7 @@
 
   var state = {
     data: null, sha: null, editor: null, /* {token, owner, repo, login} */
-    packCraft: null, bulkCraft: null, loadedAt: null, packPrintedKey: null,
+    packCraft: null, bulkCraft: null, loadedAt: null,
     offline: false, savedData: null, localBase: null
   };
 
@@ -106,6 +106,28 @@
     if (!any) return;
     renderAll();
     saveData("Undo batch of " + entries.length).then(function () { toast("Undone — the whole batch was reversed."); });
+  }
+  /* A4 (Print = done): a print toast's UNDO is NOT History's Undo — it
+     splices the entry out of History entirely and reverses its effects, so
+     a printed sheet that never happened leaves no History trace. History's
+     own Undo button keeps marking entries undone. */
+  function undoPrintEntries(entries) {
+    entries.forEach(function (e) {
+      L.applyEffects(state.data.inventory, e.effects, -1);
+      var i = state.data.history.indexOf(e);
+      if (i >= 0) state.data.history.splice(i, 1);
+    });
+    renderAll();
+    saveData("Undid print");
+  }
+  function printToast(msg, entries) {
+    var html = esc(msg).replace(/([A-Z]{2,}-\d+)$/, "<span class=\"nowrap\">$1</span>");
+    showToast(html, "UNDO", function () { undoPrintEntries(entries); }, 10000);
+  }
+  function commitPrint(entries, toastMsg) {
+    entries.forEach(function (e) { L.applyEffects(state.data.inventory, e.effects, +1); state.data.history.unshift(e); });
+    renderAll();
+    return saveData(toastMsg).then(function () { printToast(toastMsg, entries); });
   }
   function lastDeliveryFor(itemId) {
     for (var i = 0; i < state.data.history.length; i++) {
@@ -537,18 +559,17 @@
     $("pack-progress-fill").style.width = total ? Math.round(checked / total * 100) + "%" : "0";
     var btn = $("btn-complete-pack");
     var kitsNow = parseInt($("pack-kits").value, 10);
-    var validSel = !!state.packCraft && L.validKits(kitsNow);
-    var printed = validSel && state.packPrintedKey === state.packCraft + ":" + kitsNow;
-    var ready = total > 0 && (checked === total || printed);
+    var ready = total > 0 && checked === total;
     btn.disabled = !ready;
     if (!state.packCraft) btn.textContent = "Choose a craft";
     else if (!L.validKits(kitsNow)) btn.textContent = "Choose kits";
     else if (!ready) btn.textContent = "Check " + (total - checked) + " more";
-    else btn.textContent = "Complete " + L.sku(state.packCraft, kitsNow) + (printed && checked < total ? " · from sheet" : "");
+    else btn.textContent = "Complete " + L.sku(state.packCraft, kitsNow);
     $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
   }
-  var packFoldOverride = false;
-  var packMode = null; /* null until the packer picks: "print" (sheet) or "hand" (checklist) */
+  var packMode = null; /* null until the packer taps Hand pack; "hand" shows the checklist */
+  var queueMode = false; /* Packing's Queue mode: pick lines, Add, Print all / Hand pack all */
+  var packKitsManual = false; /* kits entered by typing instead of chips */
   var bulkLines = []; /* [{craftId, kits}] queued on the Bulk import tab, in-memory only */
   var packSortBin = false; /* Batch C2: sort the pack list + sheet by bin */
   var packBoxOverride = null; /* null = use the box rule; an array = this order only */
@@ -562,19 +583,13 @@
   var queueHandIdx = -1; /* line being hand-packed, -1 = not hand-packing a queue */
   var queueHandTotal = 0; /* lines the current hand walk started with (for "Craft N of M") */
   var PACKQUEUE_LS = "alooma.packqueue.v1";
-  /* ---------- brief item 3: Packed by / Counted by ---------- */
-  /* Optional names, never blocking. Each remembers its own last value per
-     device (separate keys: the packer and the counter aren't always the
-     same person) and prefills from it; stored on the History entry and
-     printed on the sheet's byline instead of the blank when filled. */
+  /* ---------- brief item 3: Packed by / Counted by (Batch B: Settings) ---------- */
+  /* Optional names, never blocking. Each is stored per device under its own
+     key (the packer and the counter aren't always the same person), set in
+     Settings the moment it changes; stored on the History entry and printed
+     on the sheet's byline instead of the blank when filled. */
   var PACKBY_LS = "alooma.packedby.v1", COUNTBY_LS = "alooma.countedby.v1";
-  function byVal(id) { var el = $(id); return el ? el.value.trim() : ""; }
-  function rememberBy(key, name) { if (name) { try { localStorage.setItem(key, name); } catch (e) {} } }
-  function prefillBy(id, key) {
-    var el = $(id);
-    if (!el || el.value) return;
-    try { el.value = localStorage.getItem(key) || ""; } catch (e) {}
-  }
+  function storedBy(key) { try { return (localStorage.getItem(key) || "").trim(); } catch (e) { return ""; } }
   function persistPackQueue() { try { localStorage.setItem(PACKQUEUE_LS, JSON.stringify(packQueue)); } catch (e) { /* private mode etc. */ } }
   function loadPackQueue() {
     try {
@@ -583,7 +598,7 @@
       var arr = JSON.parse(raw);
       if (!Array.isArray(arr)) return;
       packQueue = arr.filter(function (ln) { return ln && L.craftById(ln.craftId) && L.validKits(ln.kits); })
-        .map(function (ln) { return { craftId: ln.craftId, kits: ln.kits, printed: !!ln.printed }; });
+        .map(function (ln) { return { craftId: ln.craftId, kits: ln.kits }; });
     } catch (e) { packQueue = []; }
   }
   function endQueueWalk() { queueHandIdx = -1; queueHandTotal = 0; }
@@ -602,19 +617,20 @@
     var dups = queueDupIds();
     var wrap = $("pack-queue");
     wrap.innerHTML = "";
+    /* Brief item 4: the count lives in the list's header row, beside Clear all. */
+    $("pack-queue-count").textContent = packQueue.length;
     if (!packQueue.length) {
-      wrap.innerHTML = '<p class="hint">No orders in the queue yet — pick a craft and kit amount above, then tap Add to queue.</p>';
+      wrap.innerHTML = '<p class="hint">No orders in the queue yet — pick a craft and kit amount above, then tap Queue.</p>';
     }
     packQueue.forEach(function (ln, i) {
       var craft = L.craftById(ln.craftId);
       var row = document.createElement("div");
       row.className = "queue-line" + (dups[ln.craftId] ? " dup" : "");
-      var sel = '<select class="queue-kits" data-qidx="' + i + '" aria-label="Kits for ' + esc(L.sku(ln.craftId, ln.kits)) + '"' + (ln.printed ? " disabled" : "") + ">" +
+      /* A4: no printed state — every line's kits stay editable until it is
+         printed (which now completes it) or hand-packed. */
+      var sel = '<select class="queue-kits" data-qidx="' + i + '" aria-label="Kits for ' + esc(L.sku(ln.craftId, ln.kits)) + '">' +
         [6, 12, 18, 24, 30, 36].map(function (k) { return '<option value="' + k + '"' + (k === ln.kits ? " selected" : "") + ">" + k + "</option>"; }).join("") + "</select>";
-      var complete = (ln.printed && queueHandIdx < 0)
-        ? '<button type="button" class="btn btn-primary editor-only queue-complete" data-qidx="' + i + '">Complete</button>' : "";
       row.innerHTML = "<span>" + esc(craft.name) + " · </span>" + sel + "<span> kits · " + esc(L.sku(ln.craftId, ln.kits)) + "</span>" +
-        complete +
         '<button type="button" class="btn btn-quiet queue-remove" data-qidx="' + i + '" aria-label="Remove ' + esc(L.sku(ln.craftId, ln.kits)) + '">✕</button>';
       wrap.appendChild(row);
     });
@@ -634,9 +650,6 @@
         persistPackQueue(); renderPack();
       });
     });
-    wrap.querySelectorAll(".queue-complete").forEach(function (b) {
-      b.addEventListener("click", function () { completeQueueLine(parseInt(b.getAttribute("data-qidx"), 10), false); });
-    });
     var cur = currentPack();
     $("btn-queue-add").disabled = !cur;
     var qa = $("btn-queue-add");
@@ -645,7 +658,16 @@
     $("btn-queue-print").disabled = !packQueue.length;
     $("btn-queue-hand").disabled = !packQueue.length;
     $("btn-queue-clear").hidden = packQueue.length < 2;
-    $("pack-queue-progress").textContent = queueHandIdx >= 0
+    /* Queue mode only: the bottom row (Add / Print all / Hand pack all /
+       Done) belongs to Queue mode — single mode shows the list alone. */
+    $("pack-queue-actions").hidden = !queueMode;
+    /* Item 11: during a walk the Add / Print all / Hand pack all buttons
+       hide; Done stays so the walk can be left. */
+    var walking = queueHandIdx >= 0;
+    $("btn-queue-add").hidden = walking;
+    $("btn-queue-print").hidden = walking;
+    $("btn-queue-hand").hidden = walking;
+    $("pack-queue-progress").textContent = walking
       ? "Craft " + (queueHandTotal - packQueue.length + 1) + " of " + queueHandTotal : "";
   }
   function currentBoxes() {
@@ -667,10 +689,13 @@
     renderQueue();
     craftButtons("pack-crafts", state.packCraft, function (id) {
       if (queueHandIdx >= 0) endQueueWalk(); /* picking a different craft mid-walk ends the walk; queued lines stay */
-      state.packCraft = id; packFoldOverride = false; renderPack();
+      state.packCraft = id; renderPack();
     });
     var kits = parseInt($("pack-kits").value, 10);
     markChips("pack", kits);
+    /* Chips or the manual box, never both (brief 5a). */
+    $("pack-chips").hidden = packKitsManual;
+    $("pack-kits-manual").hidden = !packKitsManual;
     var err = $("pack-error"), warn = $("pack-warning");
     err.textContent = ""; warn.hidden = true;
     var valid = L.validKits(kits);
@@ -680,11 +705,9 @@
     if (showKitsErr) err.textContent = kits ? "Kits are ordered in multiples of 6 — use the stepper or a chip (6, 12, 18, 24…)." : "Enter the number of kits — orders are multiples of 6.";
     $("pack-help").hidden = (state.packCraft && valid) || showKitsErr;
     $("pack-sku").textContent = valid && state.packCraft ? L.sku(state.packCraft, kits) : "—";
-    /* Batch B1: once craft + kits are chosen, fold the picker into one summary line */
-    var folded = !packFoldOverride && !!state.packCraft && valid;
-    $("pack-picker").hidden = folded;
-    $("pack-picker-summary").hidden = !folded;
-    if (folded) $("pack-summary-text").textContent = L.craftById(state.packCraft).name + " · " + kits + " kits";
+    /* Brief 5/6: the picker never collapses — the grid and chips stay open
+       with the choice highlighted, and the action row below is the only
+       thing that appears once both are chosen. */
     var selKey = state.packCraft + ":" + kits;
     if (selKey !== packSelKey) { packSelKey = selKey; packBoxOverride = null; packMode = null; $("pack-boxes-edit").hidden = true; }
     var tbody = $("pack-table").querySelector("tbody");
@@ -692,10 +715,10 @@
     if (!valid) {
       updatePackProgress();
       renderPackBoxes();
-      renderPackMode();
+      renderPackActions();
       return;
     }
-    if (!state.packCraft) { updatePackProgress(); renderPackBoxes(); renderPackMode(); return; }
+    if (!state.packCraft) { updatePackProgress(); renderPackBoxes(); renderPackActions(); return; }
     clearError(); /* v2 A1: a stale banner (e.g. from a Print tap) clears once the selection is valid */
     var pack = L.computePack(state.packCraft, kits);
     var binsOn = settings().features.bins;
@@ -749,7 +772,7 @@
     }
     updatePackProgress();
     renderPackBoxes();
-    renderPackMode();
+    renderPackActions();
   }
   function currentPack() {
     if (!state.packCraft) return null;
@@ -772,16 +795,15 @@
       summary: packSummary(cur.pack) + (boxes && boxes.length ? " · Boxes: " + L.boxesText(settings(), boxes) : ""),
       primary: "Subtract from inventory",
       onConfirm: function () {
-        var by = byVal("pack-by");
+        var by = storedBy(PACKBY_LS);
         var extra = { craftId: craft.id, kits: cur.kits };
-        if (by) { extra.packedBy = by; rememberBy(PACKBY_LS, by); }
+        if (by) extra.packedBy = by;
         var entry = newEntry(
           "packed",
           "Packed " + craft.name + " — " + cur.kits + " kits (" + L.sku(craft.id, cur.kits) + ")",
           cur.pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
           extra
         );
-        state.packPrintedKey = null;
         commitChange(entry, "Packed " + L.sku(craft.id, cur.kits));
       }
     };
@@ -850,14 +872,31 @@
     }
     action();
   }
+  /* A4: Print all prints AND completes every line at print time — stock
+     deducts and History logs now, and the queue clears back to single view.
+     One toast covers the whole job; its UNDO removes every entry. */
   function printQueueAll() {
     if (!packQueue.length) return;
     clearError();
-    var html = packQueue.map(function (ln) { return packSheetSection(ln.craftId, ln.kits, queueLineBoxes(ln), byVal("pack-by")); }).join("");
-    packQueue.forEach(function (ln) { ln.printed = true; });
-    persistPackQueue();
+    var by = storedBy(PACKBY_LS);
+    var lines = packQueue.slice();
+    var html = lines.map(function (ln) { return packSheetSection(ln.craftId, ln.kits, queueLineBoxes(ln), by); }).join("");
+    var entries = lines.map(function (ln) {
+      var craft = L.craftById(ln.craftId);
+      var extra = { craftId: ln.craftId, kits: ln.kits };
+      if (by) extra.packedBy = by;
+      return newEntry(
+        "packed",
+        "Packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
+        L.computePack(ln.craftId, ln.kits).map(function (r) { return { item: r.item, delta: -r.qty }; }),
+        extra
+      );
+    });
     printHtml(html);
-    renderQueue();
+    packQueue = [];
+    endQueueWalk();
+    queueMode = false;
+    commitPrint(entries, "Printed " + lines.length + (lines.length === 1 ? " order" : " orders"));
   }
   function loadQueueLineIntoPack(i) {
     var ln = packQueue[i];
@@ -868,18 +907,16 @@
     packMode = "hand";
     renderPack();
   }
-  /* Clear all: small quiet buttons, shown only at 2+ lines, always
-     confirming first (Clear in red, Cancel the filled default). A printed
-     or started queue says so in the confirm; clearing mid-walk ends the
-     walk and drops the loaded line, since it was a queue line. The bulk
-     pick itself (not yet added) is untouched — only the list clears. */
+  /* Clear all: small quiet buttons in the list headers, shown only at 2+
+     lines, always confirming first (Clear in red, Cancel the filled
+     default). A started walk says so in the confirm; clearing mid-walk
+     ends the walk and drops the loaded line, since it was a queue line.
+     The bulk pick itself (not yet added) is untouched — only the list clears. */
   function clearQueue() {
     if (!requireEditor()) return;
     if (packQueue.length < 2) return;
     var n = packQueue.length;
-    var printed = packQueue.filter(function (ln) { return ln.printed; }).length;
     var notes = [];
-    if (printed) notes.push(printed + (printed === 1 ? " craft printed" : " crafts printed") + " but not completed");
     if (queueHandIdx >= 0) notes.push("the craft you're hand-packing");
     openSheet({
       title: "Clear all " + n + " crafts?",
@@ -932,9 +969,9 @@
       summary: packSummary(pack) + (boxes && boxes.length ? " · Boxes: " + L.boxesText(settings(), boxes) : ""),
       primary: "Subtract from inventory",
       onConfirm: function () {
-        var by = byVal("pack-by");
+        var by = storedBy(PACKBY_LS);
         var extra = { craftId: ln.craftId, kits: ln.kits };
-        if (by) { extra.packedBy = by; rememberBy(PACKBY_LS, by); }
+        if (by) extra.packedBy = by;
         var entry = newEntry(
           "packed",
           "Packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
@@ -947,6 +984,7 @@
         if (advance) {
           if (!packQueue.length) {
             endQueueWalk();
+            queueMode = false; /* A4: finishing a walk leaves Queue mode */
             state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
             renderPack();
           } else {
@@ -975,16 +1013,17 @@
      (the on-screen checklist — the only place it shows). Separately, the Bulk
      import tab records orders that were already packed by hand: queue any mix
      of crafts and kit amounts, then record them all in one save. */
-  function renderPackMode() {
+  function renderPackActions() {
     var kits = parseInt($("pack-kits").value, 10);
     var hasSel = !!state.packCraft && L.validKits(kits);
-    var chosen = hasSel && packMode !== null;
-    $("pack-mode").hidden = !hasSel;
-    $("btn-print-sheet").classList.toggle("selected", packMode === "print");
-    $("btn-mode-hand").classList.toggle("selected", packMode === "hand");
-    $("pack-order").hidden = !chosen;
+    var walking = queueHandIdx >= 0;
+    /* Brief 5c: exactly Queue / Print / Hand pack, and only once both are
+       chosen — never in Queue mode, never mid-walk (item 11). */
+    $("pack-single-actions").hidden = !hasSel || queueMode || walking;
+    /* The checklist shows only while hand-packing (single or walk). */
+    $("pack-order").hidden = !(packMode === "hand" && hasSel);
     $("pack-checklist").hidden = packMode !== "hand";
-    if (!chosen) $("pack-warning").hidden = true;
+    if (!(hasSel && packMode === "hand")) $("pack-warning").hidden = true;
   }
   function renderBulk() {
     craftButtons("bulk-crafts", state.bulkCraft, function (id) { state.bulkCraft = id; renderBulk(); });
@@ -1022,6 +1061,7 @@
       ? "Record all · " + bulkLines.length + (bulkLines.length === 1 ? " order" : " orders")
       : "Record all";
     $("btn-bulk-clear").hidden = bulkLines.length < 2;
+    $("bulk-lines-count").textContent = bulkLines.length;
   }
   function addBulkLine() {
     if (!requireEditor()) return;
@@ -1262,7 +1302,6 @@
   }
   function renderCountEntry() {
     var list = $("count-entry-list"); list.innerHTML = "";
-    prefillBy("count-by", COUNTBY_LS); /* brief item 3: last counter name, if the field is empty */
     L.inventoryGroups().forEach(function (g) {
       var head = document.createElement("div");
       head.className = "entry-head";
@@ -1309,8 +1348,7 @@
       primary: "Apply counts",
       cancelLabel: "Edit numbers",
       onConfirm: function () {
-        var by = byVal("count-by");
-        if (by) rememberBy(COUNTBY_LS, by);
+        var by = storedBy(COUNTBY_LS);
         var entries = [];
         changes.forEach(function (ch) {
           var extra = { item: ch.item, counted: ch.counted };
@@ -1573,13 +1611,48 @@
       '<div class="print-foot">' + (boxes && boxes.length ? '<div class="foot-boxes">BOXES: ' + esc(boxes.join(" + ")) + "</div>" : "") +
       "<div>Packed by: " + (by ? esc(by) : "____________________") + "</div><div>Date: ____________</div></div></section>";
   }
-  function printPackSheet() {
-    var cur = currentPack(); if (!cur) { showError("Pick a craft and a valid number of kits first."); return; }
-    clearError();
-    /* Printing the sheet means they're packing from paper: unlock Complete for this exact order. */
-    state.packPrintedKey = cur.craft.id + ":" + cur.kits;
-    updatePackProgress();
-    printHtml(packSheetSection(cur.craft.id, cur.kits, currentBoxes(), byVal("pack-by")));
+  /* A4: single Print prints this one craft's sheet and completes it at the
+     same moment — stock deducts and History logs at print time. A short
+     order still asks first ("Print anyway"); a covered order prints at once.
+     The pick clears afterward so a second tap can't double-deduct. */
+  function printSingle() {
+    if (!requireEditor()) return;
+    var cur = currentPack(); if (!cur) return;
+    var craft = cur.craft;
+    var boxes = currentBoxes();
+    var shorts = cur.pack.filter(function (r) { return qtyOf(r.item) < r.qty; });
+    shorts.sort(function (a, b) { return (b.qty - qtyOf(b.item)) - (a.qty - qtyOf(a.item)); });
+    function doPrint() {
+      clearError();
+      var by = storedBy(PACKBY_LS);
+      var extra = { craftId: craft.id, kits: cur.kits };
+      if (by) extra.packedBy = by;
+      var entry = newEntry(
+        "packed",
+        "Packed " + craft.name + " — " + cur.kits + " kits (" + L.sku(craft.id, cur.kits) + ")",
+        cur.pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
+        extra
+      );
+      printHtml(packSheetSection(craft.id, cur.kits, boxes, by));
+      state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
+      commitPrint([entry], "Printed " + L.sku(craft.id, cur.kits));
+    }
+    if (shorts.length) {
+      openSheet({
+        title: craft.name,
+        sub: cur.kits + " kits · " + L.sku(craft.id, cur.kits),
+        summary: packSummary(cur.pack) + (boxes && boxes.length ? " · Boxes: " + L.boxesText(settings(), boxes) : ""),
+        extraHtml: '<div class="sheet-short"><p class="sheet-short-title">⚠ ' + shorts.length + (shorts.length === 1 ? " item short" : " items short") + "</p><ul>" +
+          shorts.map(function (r) { var have = qtyOf(r.item); return "<li>" + esc(r.name) + ": have " + have + ", need " + r.qty + ", short " + (r.qty - have) + "</li>"; }).join("") + "</ul></div>",
+        primary: "Print anyway",
+        primaryDanger: true,
+        cancelLabel: "Go back",
+        cancelFilled: true,
+        onConfirm: doPrint
+      });
+      return;
+    }
+    doPrint();
   }
   function printInventory(mode) {
     var binsOn = settings().features.bins;
@@ -1618,7 +1691,7 @@
        in flow inside it, so it either sits under the last table or, kept
        whole by break-inside: avoid, flows onto one final label. */
     if (mode === "count") {
-      var by = byVal("count-by");
+      var by = storedBy(COUNTBY_LS);
       var footHtml = '<div class="print-foot"><div>Counted by: ' + (by ? esc(by) : "____________________") + '</div><div>Date: ____________</div></div>';
       sections[sections.length - 1] = sections[sections.length - 1].replace(/<\/section>$/, footHtml + "</section>");
     }
@@ -1694,28 +1767,18 @@
     if (name === "settings") renderBackupNote();
     currentTab = name;
   }
-  /* ---------- tab-switch guards (brief item 2) ---------- */
-  /* Leaving a tab never silently eats unfinished work:
-     - Packing -> anywhere with a printed/started queue prompts (Leave keeps
-       the queue and proceeds; Discard clears it and proceeds).
-     - Packing -> Bulk also clears the single craft+kits selection and any
-       un-started queue, no prompt. Leaving Packing for other tabs clears
-       an un-started queue but keeps the single selection.
-     - Bulk -> Packing clears the bulk craft/kits/lines, no prompt.
-     - Inventory/History -> anywhere with unsaved work prompts (Stay keeps
-       everything; Discard clears it and proceeds).
-     The prompts reuse the confirm sheet; when one fires while another
-     sheet is open (an edit sheet), Stay restores that sheet exactly. */
+  /* ---------- A3: one leave rule for every tab ---------- */
+  /* Nothing clears silently anymore. If anything is chosen or unsaved —
+     a Pack pick, a queue, a Bulk list, an open inventory edit, or a name
+     typed in Settings but not yet saved — switching to ANY other tab asks
+     "Discard" or "Stay and finish". Discard clears it all and switches;
+     Stay keeps you there with everything exactly as it was. The same rule
+     feeds beforeunload (the browser's own prompt) and, in Batch C, the
+     Back-button hash steps. Settings toggles save the instant they change,
+     so they are never "unsaved"; the Names fields save on change (blur),
+     so a typed-but-unblurred name IS unsaved until it saves. */
   var currentTab = "pack";
   var editSheetOriginal = null; /* set by editEntry; cleared by closeSheet */
-  function hasStartedQueue() {
-    return packQueue.some(function (ln) { return ln.printed; }) || queueHandIdx >= 0;
-  }
-  function startedQueueCount() {
-    var n = 0;
-    packQueue.forEach(function (ln, i) { if (ln.printed || i === queueHandIdx) n++; });
-    return n;
-  }
   function clearPackQueueAndWalk() {
     packQueue = [];
     endQueueWalk();
@@ -1784,48 +1847,38 @@
   }
   function requestTab(name) {
     if (name === currentTab) return;
-    var leaving = currentTab;
-    if (leaving === "pack" && hasStartedQueue()) {
-      var n = startedQueueCount();
+    if (hasUnsaved()) {
       var saved = saveSheetState();
-      openSheet({
-        title: "Unfinished printed queue",
-        summary: "You have " + n + (n === 1 ? " craft" : " crafts") + " printed but not completed.",
-        primary: n === 1 ? "Leave it in the queue" : "Leave them in the queue",
-        cancelLabel: "Discard",
-        cancelDanger: true,
-        onConfirm: function () { restoreSheetState(saved); activateTab(name); },
-        onCancel: function () {
-          clearPackQueueAndWalk();
-          state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
-          renderPack();
-          activateTab(name);
-        }
-      });
-      return;
-    }
-    if ((leaving === "inventory" || leaving === "history") && hasUnsavedInvHist()) {
-      var saved2 = saveSheetState();
       openSheet({
         title: "Unsaved changes",
         summary: "You have unsaved changes.",
-        primary: "Stay",
+        primary: "Stay and finish",
         cancelLabel: "Discard",
         cancelDanger: true,
-        onConfirm: function () { restoreSheetState(saved2); },
-        onCancel: function () { discardInvHistChanges(); activateTab(name); }
+        onConfirm: function () { restoreSheetState(saved); },
+        onCancel: function () { discardAllUnsaved(); activateTab(name); }
       });
       return;
     }
-    if (leaving === "pack") {
-      clearPackQueueAndWalk();
-      if (name === "bulk") { state.packCraft = null; $("pack-kits").value = ""; packMode = null; packBoxOverride = null; packKitsTouched = false; }
-      renderPack();
-    } else if (leaving === "bulk" && name === "pack") {
-      state.bulkCraft = null; $("bulk-kits").value = ""; bulkLines = [];
-      renderBulk();
-    }
     activateTab(name);
+  }
+  function settingsDirty() {
+    var packed = $("set-packed-by"), counted = $("set-counted-by");
+    if (packed && packed.value !== storedBy(PACKBY_LS)) return true;
+    if (counted && counted.value !== storedBy(COUNTBY_LS)) return true;
+    return false;
+  }
+  function hasUnsaved() {
+    return !!state.packCraft || $("pack-kits").value !== "" ||
+      packQueue.length > 0 || bulkLines.length > 0 ||
+      hasUnsavedInvHist() || settingsDirty();
+  }
+  function discardAllUnsaved() {
+    state.packCraft = null; $("pack-kits").value = ""; packMode = null; packBoxOverride = null; packKitsTouched = false;
+    packQueue = []; endQueueWalk(); queueMode = false; persistPackQueue();
+    state.bulkCraft = null; $("bulk-kits").value = ""; bulkLines = [];
+    discardInvHistChanges();
+    renderAll(); /* re-renders Settings inputs from stored values, too */
   }
   /* View-only devices see ONLY Inventory and History (the user's rule). The
      connect screen stays reachable by tapping the header badge. */
@@ -2140,12 +2193,29 @@
     $("set-bulk-on").checked = !!(settings().features && settings().features.bulkTab);
   }
 
+  /* ---------- Settings: Names (brief 5e) ---------- */
+  /* Rendered from the per-device stored values; saved on change (blur/Enter),
+     not on every keystroke, so a typed-but-unblurred name counts as unsaved
+     under the A3 leave rule until it saves. */
+  function renderNamesSetting() {
+    $("set-packed-by").value = storedBy(PACKBY_LS);
+    $("set-counted-by").value = storedBy(COUNTBY_LS);
+  }
+  function saveNamesSetting() {
+    try {
+      var p = $("set-packed-by").value.trim(), c = $("set-counted-by").value.trim();
+      if (p) localStorage.setItem(PACKBY_LS, p); else localStorage.removeItem(PACKBY_LS);
+      if (c) localStorage.setItem(COUNTBY_LS, c); else localStorage.removeItem(COUNTBY_LS);
+    } catch (e) { /* private mode etc. */ }
+  }
+
   /* ---------- wiring ---------- */
   function renderAll() {
     renderSettings();
     renderBoxSettings();
     renderBinSettings();
     renderBulkTabSetting();
+    renderNamesSetting();
     renderPack();
     renderBulk();
     renderInventory();
@@ -2153,7 +2223,6 @@
   }
   function init() {
     loadPackQueue();
-    prefillBy("pack-by", PACKBY_LS); /* brief item 3: last packer name, per device */
     try {
       var saved = localStorage.getItem(LS_KEY);
       if (saved) state.editor = JSON.parse(saved);
@@ -2163,8 +2232,7 @@
       b.addEventListener("click", function () { requestTab(b.getAttribute("data-tab")); });
     });
     $("conn-badge").addEventListener("click", function () { if (!state.editor) requestTab("settings"); });
-    $("pack-kits").addEventListener("input", function () { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; packFoldOverride = false; renderPack(); });
-    $("btn-pack-change").addEventListener("click", function () { packFoldOverride = true; renderPack(); });
+    $("pack-kits").addEventListener("input", function () { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; renderPack(); });
     function wireStepper(inputId, minusId, plusId, renderFn) {
       $(minusId).addEventListener("click", function () {
         var v = parseInt($(inputId).value, 10);
@@ -2177,14 +2245,16 @@
         renderFn();
       });
     }
-    wireStepper("pack-kits", "pack-minus", "pack-plus", function () { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; packFoldOverride = false; renderPack(); });
-    document.querySelectorAll(".kits-chip").forEach(function (chip) {
+    document.querySelectorAll(".kits-chip[data-for]").forEach(function (chip) {
       chip.addEventListener("click", function () {
         var target = chip.getAttribute("data-for");
         $(target + "-kits").value = chip.getAttribute("data-kits");
-        if (target === "pack") { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; packFoldOverride = false; renderPack(); } else renderBulk();
+        if (target === "pack") { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; renderPack(); } else renderBulk();
       });
     });
+    /* Brief 5a: "+" swaps the chips for a manual number box; "Chips" swaps back. */
+    $("pack-kits-plus").addEventListener("click", function () { packKitsManual = true; renderPack(); $("pack-kits").focus(); });
+    $("pack-kits-chips").addEventListener("click", function () { packKitsManual = false; renderPack(); });
     $("btn-check-all").addEventListener("click", function () {
       var boxes = $("pack-table").querySelectorAll("tbody input[type=checkbox]");
       var allChecked = boxes.length > 0 && Array.prototype.every.call(boxes, function (cb) { return cb.checked; });
@@ -2222,6 +2292,11 @@
       settings().features.bulkTab = $("set-bulk-on").checked;
       saveData("Bulk tab " + (settings().features.bulkTab ? "on" : "off")).then(function () { renderAll(); });
     });
+    /* Names save per device on change only (see renderNamesSetting) — no
+       server save, and no editor gate: the fields are editor-only in the
+       markup, and a viewer never sees them. */
+    $("set-packed-by").addEventListener("change", saveNamesSetting);
+    $("set-counted-by").addEventListener("change", saveNamesSetting);
     $("btn-print-menu").addEventListener("click", function () {
       var menu = $("print-menu");
       var open = menu.hidden;
@@ -2297,8 +2372,19 @@
     });
     $("sheet-cancel").addEventListener("click", dismissSheet);
     $("sheet-backdrop").addEventListener("click", function (ev) { if (ev.target === $("sheet-backdrop")) dismissSheet(); });
-    $("btn-print-sheet").addEventListener("click", function () { packMode = "print"; renderPack(); printPackSheet(); });
-    $("btn-mode-hand").addEventListener("click", function () { packMode = "hand"; renderPack(); });
+    /* Brief 5c: the single-craft action row. Queue enters Queue mode with
+       this pick as the first line; Print prints and completes it now;
+       Hand pack opens the checklist for this one craft. */
+    $("btn-pack-queue").addEventListener("click", function () {
+      var cur = currentPack(); if (!cur) return;
+      packQueue.push({ craftId: cur.craft.id, kits: cur.kits });
+      persistPackQueue();
+      state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
+      queueMode = true;
+      renderPack();
+    });
+    $("btn-pack-print").addEventListener("click", printSingle);
+    $("btn-pack-hand").addEventListener("click", function () { packMode = "hand"; renderPack(); });
     $("bulk-kits").addEventListener("input", renderBulk);
     wireStepper("bulk-kits", "bulk-minus", "bulk-plus", renderBulk);
     $("btn-bulk-add").addEventListener("click", addBulkLine);
@@ -2320,9 +2406,10 @@
       var cur = currentPack(); if (!cur) return;
       /* No warning for adding the same craft twice — the duplicate pop-up
          fires at Print all / Hand pack all, not while adding. */
-      packQueue.push({ craftId: cur.craft.id, kits: cur.kits, printed: false });
+      packQueue.push({ craftId: cur.craft.id, kits: cur.kits });
       persistPackQueue();
-      packFoldOverride = true; /* picker stays open for the next line */
+      /* Bulk-like: the picker clears for the next line. */
+      state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
       renderPack();
       /* Brief item 2, same as Bulk: the new line scrolls fully into view
          above the bar. */
@@ -2332,6 +2419,16 @@
     $("btn-queue-print").addEventListener("click", function () { startQueue(printQueueAll); });
     $("btn-queue-hand").addEventListener("click", function () { startQueue(startHandPackAll); });
     $("btn-queue-clear").addEventListener("click", clearQueue);
+    $("btn-queue-done").addEventListener("click", function () {
+      /* Done keeps the saved queue — it only leaves Queue mode. Mid-walk,
+         Done ends the walk and clears the loaded line's table. */
+      if (queueHandIdx >= 0) {
+        endQueueWalk();
+        state.packCraft = null; $("pack-kits").value = ""; packMode = null;
+      }
+      queueMode = false;
+      renderPack();
+    });
     $("btn-bulk-clear").addEventListener("click", clearBulk);
     $("btn-print-inventory").addEventListener("click", function () { printInventory("report"); });
     $("btn-print-count").addEventListener("click", function () { printInventory("count"); });
@@ -2421,12 +2518,10 @@
     /* v3 E4: connectivity changes drive the queue */
     window.addEventListener("online", function () { state.offline = false; refreshSyncStatus(); flushQueue(); });
     window.addEventListener("offline", function () { state.offline = true; refreshSyncStatus(); });
-    /* Brief item 2c: closing/reloading with unsaved Inventory/History work
-       or a started queue shows the browser's own generic prompt (its
-       wording can't be customized). Un-started queues persist on-device,
-       so they need no guard. */
+    /* A3: closing/reloading with anything chosen or unsaved shows the
+       browser's own generic prompt (its wording can't be customized). */
     window.addEventListener("beforeunload", function (ev) {
-      if (hasUnsavedInvHist() || hasStartedQueue()) {
+      if (hasUnsaved()) {
         ev.preventDefault();
         ev.returnValue = "";
       }
