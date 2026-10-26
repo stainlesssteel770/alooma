@@ -610,6 +610,50 @@ try {
     });
   }
 
+  /* Retest item 6: the hand-pack Complete toast stays on one line —
+     full title at 390, one line (ellipsis tolerated) at 360. */
+  async function completeWalkToast() {
+    await page.click("#btn-check-all");
+    await sleep(250);
+    await sheetPrimary(); /* "Mark all" confirm */
+    await sleep(250);
+    await page.click("#btn-complete-pack");
+    await sleep(300);
+    await sheetPrimary(); /* subtract confirm */
+    await sleep(600);
+  }
+  await page.setViewport({ width: 390, height: 664 });
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
+  await reloadApp();
+  await queueFirst("Blooming Mirrors", 6);
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  await page.click("#btn-queue-hand");
+  await sleep(300);
+  await completeWalkToast();
+  const toast6 = await page.evaluate(() => {
+    const t = document.querySelector("#toast");
+    const m = document.querySelector("#toast .toast-msg");
+    return { h: t ? Math.round(t.getBoundingClientRect().height) : 0, noTrunc: m ? m.scrollWidth <= m.clientWidth : false, text: t ? t.textContent : "" };
+  });
+  eq(toast6.h <= 48, true, "item6: Complete toast is one line at 390 (h=" + toast6.h + ")");
+  eq(toast6.noTrunc, true, "item6: Complete toast shows the full title at 390");
+  eq(toast6.text.includes("Packed Blooming Mirrors — 6 kits (BM-6)"), true, "item6: Complete toast title present");
+  await page.setViewport({ width: 360, height: 664 });
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
+  await reloadApp();
+  await queueFirst("Miniature Interiors", 6);
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  await page.click("#btn-queue-hand");
+  await sleep(300);
+  await completeWalkToast();
+  const toast6b = await page.evaluate(() => {
+    const t = document.querySelector("#toast");
+    return t ? Math.round(t.getBoundingClientRect().height) : 0;
+  });
+  eq(toast6b <= 48, true, "item6: Complete toast is one line at 360 (h=" + toast6b + ")");
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();
