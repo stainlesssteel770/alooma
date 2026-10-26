@@ -312,6 +312,14 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
      width — long names still wrap as before, short ones stay whole. */
   #pack-table td { padding: 10px 6px; }
   #pack-table td .row-bin { display: block; }
+  /* Polish item 1, third attempt: bin-block alone did not free the name
+     (clay still wrapped at all widths in run 2) — the side columns were
+     still eating the name's room. Shrink only the side columns: smaller
+     checkbox with no UA margins (the whole row toggles on tap, so the
+     box itself need not be the full target) and tighter num padding
+     on headers and values alike (the header text drives num width). */
+  #pack-table input[type="checkbox"] { width: 24px; height: 24px; margin: 0; }
+  #pack-table th.num, #pack-table td.num { padding-left: 4px; padding-right: 4px; }
   .kits-block .chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
   /* Pack's chips toggle with the "+" manual box: hidden must win over the
      grid display above, or "+" never hides the chips at phone widths. */
