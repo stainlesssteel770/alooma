@@ -58,6 +58,26 @@ async function pageTexts(pdf) {
   }
   return out;
 }
+/* Fix-round item 9: printed line widths live in the PDF's vector rects,
+   not in text. A collapsed table splits its shared row border across a
+   break, so Cakery's page-1 bottom line printed at half width (the
+   before PDF: every page-1 table line h==2 units except the last,
+   h==1). This returns page 1's horizontal table lines (wide, thin
+   rects, excluding the taller header rule) — the assertion below
+   requires them ALL to share one height. */
+async function page1TableLineHeights(pdf) {
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(pdf)) }).promise;
+  const pg = await doc.getPage(1);
+  const ops = await pg.getOperatorList();
+  const out = [];
+  for (let i = 0; i < ops.fnArray.length; i++) {
+    if (ops.fnArray[i] === pdfjs.OPS.constructPath) {
+      const a = ops.argsArray[i];
+      if (Array.isArray(a[1]) && a[1].length === 4 && a[1][2] > 100 && a[1][3] <= 2) out.push(a[1][3]);
+    }
+  }
+  return out;
+}
 /* Rendered-geometry check (Mark's thermal-print findings): text alone
    can't see an overlap — the old checks passed while the footer was
    drawn through the last rows. From the glyph positions in the PDF:
@@ -180,6 +200,10 @@ try {
   ok(packTexts.every(t => t.includes("Cakery") && t.trim().length > 30), "pack sheet: craft title repeats on every page, none blank (a footer flowed to its own last page is allowed)");
   ok(packTexts.every(t => t.includes("Packed by")), "pack sheet: subtitle Packed by repeats on every page (it lives in the thead)");
   ok(!packTexts[0].includes("BOXES") && packTexts[packTexts.length - 1].includes("BOXES: Big Box, Small Box"), "pack sheet PDF: BOXES appears only on the last page, with the footer");
+  {
+    const hs = await page1TableLineHeights("/tmp/alooma-packsheet.pdf");
+    ok(hs.length >= 10 && hs.every(h => h === hs[0]), "pack sheet CAK-36: every page-1 table line is full height, none halved at the break (" + hs.join(",") + ")");
+  }
 
   /* CAK-12: all 19 lines still listed (2 pages now, by design).
      A4: the CAK-36 print completed and cleared the pick, so re-pick. */
