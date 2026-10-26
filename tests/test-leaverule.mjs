@@ -187,6 +187,14 @@ try {
 
   /* ---- 5. A modal edit sheet blocks tab taps (see below) ---- */
   await clickTab("pack");
+  /* Item 2 follow-up: section 2's saved queue survives by design, so
+     clear it here — section 5 needs a clean single pick, and the
+     single-actions row hides while a queue is saved (Queue mode). */
+  await page.click("#btn-queue-clear");
+  await sleep(300);
+  await page.click("#sheet-primary");
+  await sleep(300);
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 0, "queue cleared before the single hand-pack");
   await pickPack("Blooming Mirrors", 6);
   await page.click("#btn-pack-hand");
   await sleep(200);
