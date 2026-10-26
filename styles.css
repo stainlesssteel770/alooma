@@ -305,10 +305,13 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
      so a wrapped name never makes its row taller than the rest. */
   .craft-btn { min-height: 84px; }
   /* Polish item 1: the hand-pack checklist name stays on one line at
-     360–390 — tighter cell padding plus a nowrap name (the bin tag,
-     when bins are on, can drop to a second line inside the cell). */
+     360–390. Blanket nowrap was tried first and regressed the layout
+     audit: CAK's long names forced the table to 406px (horizontal
+     overflow at 360/390). Instead the bin tag goes on its own line
+     under the name, so the name column only needs the name's own
+     width — long names still wrap as before, short ones stay whole. */
   #pack-table td { padding: 10px 6px; }
-  #pack-table .row-name { white-space: nowrap; }
+  #pack-table td .row-bin { display: block; }
   .kits-block .chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
   /* Pack's chips toggle with the "+" manual box: hidden must win over the
      grid display above, or "+" never hides the chips at phone widths. */
