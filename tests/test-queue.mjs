@@ -388,10 +388,10 @@ try {
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Tambourines")).click());
   await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="12"]').click(); });
   await sleep(200);
-  /* After Done we are back in single mode, where Add lives in the
-     hidden queue row — run 3 threw clicking it there. Queue both
-     adds this pick as line 2 and re-enters queue mode. */
-  await page.click("#btn-pack-queue");
+  /* Polish item 5: the pick above entered Queue mode (a saved queue was
+     waiting), so Add — not the hidden single-actions Queue button —
+     adds this pick as line 2. */
+  await page.click("#btn-queue-add");
   await sleep(300);
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 2, "item1-walk: two lines queued");
   /* Item 4: Hand pack all lives in the saved state, not in Queue mode. */
@@ -479,9 +479,9 @@ try {
   await sleep(150);
   await page.evaluate(() => { const i = document.querySelector("#pack-kits"); i.focus(); i.value = "42"; i.dispatchEvent(new Event("input", { bubbles: true })); });
   await sleep(200);
-  /* Item 4: this section runs in the saved state, where Add is hidden —
-     the Queue tap appends the pick and re-enters Queue mode. */
-  await page.click("#btn-pack-queue");
+  /* Polish item 5: this section runs in the saved state, and the pick
+     above already entered Queue mode — so Add appends the pick. */
+  await page.click("#btn-queue-add");
   await sleep(250);
   const lines6 = await page.$$eval("#pack-queue .queue-line", els => els.map(e => ({
     sel: e.querySelector(".queue-kits") ? e.querySelector(".queue-kits").value : null,
@@ -503,6 +503,9 @@ try {
 
   /* Retest item 2: Add to queue scrolls to the TOP (craft + kit chips). */
   await page.setViewport({ width: 390, height: 664 });
+  /* Polish item 5: a pick with a saved queue enters Queue mode, so
+     queueFirst's Queue tap needs a fresh queue — drop item 6's lines. */
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
   await reloadApp();
   await queueFirst("Blooming Mirrors", 6);
   /* queueFirst's Queue tap clears the pick, so re-pick before Add —
@@ -529,6 +532,9 @@ try {
   /* Retest item 3: a manual-count Add closes the manual box and resets
      the picker to the default chips. */
   await page.setViewport({ width: 390, height: 664 });
+  /* Polish item 5: a pick with a saved queue enters Queue mode, so
+     queueFirst's Queue tap needs a fresh queue — drop item 2's lines. */
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
   await reloadApp();
   await queueFirst("Tambourines", 12);
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Blooming Mirrors")).click());
@@ -579,7 +585,10 @@ try {
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Miniature Interiors")).click());
   await page.evaluate(() => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="36"]`).click(); });
   await sleep(150);
-  await page.click("#btn-pack-queue");
+  /* Polish item 5: item 4's saved line is still queued, so this pick
+     already entered Queue mode — Add, not the hidden Queue button,
+     puts the second card in for the geometry loop. */
+  await page.click("#btn-queue-add");
   await sleep(300);
   for (const w of [360, 375, 390]) {
     await page.setViewport({ width: w, height: 664 });
