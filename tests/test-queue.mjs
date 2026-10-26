@@ -833,6 +833,30 @@ try {
     eq(toast3p.over, false, "polish3: Print toast SKU does not overflow at 360");
   }
 
+  /* Polish item 4: a queue card's SKU never breaks across lines —
+     "CAK-18" stays whole at 360/375/390, and the card itself stays
+     inside the viewport. */
+  for (const w of [360, 375, 390]) {
+    await page.setViewport({ width: w, height: 664 });
+    await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
+    await reloadApp();
+    await queueFirst("The Cakery", 18);
+    const sku4 = await page.evaluate(() => {
+      const el = [...document.querySelectorAll("#pack-queue .nowrap")].find(s => s.textContent === "CAK-18");
+      if (!el) return null;
+      const row = el.closest(".queue-line");
+      return { tops: [...new Set([...el.getClientRects()].map(r => Math.round(r.top)))].length,
+        over: el.scrollWidth > el.clientWidth,
+        rowR: row ? Math.round(row.getBoundingClientRect().right) : 0 };
+    });
+    eq(!!sku4, true, "polish4-" + w + ": queue card has a CAK-18 nowrap span");
+    if (sku4) {
+      eq(sku4.tops, 1, "polish4-" + w + ": queue card SKU is one line");
+      eq(sku4.over, false, "polish4-" + w + ": queue card SKU does not overflow");
+      eq(sku4.rowR <= w, true, "polish4-" + w + ": queue card stays inside the viewport (right=" + sku4.rowR + ")");
+    }
+  }
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();
