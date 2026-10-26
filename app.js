@@ -82,7 +82,9 @@
   }
   function showToast(html, actionLabel, actionFn, ms) {
     var t = $("toast");
-    t.innerHTML = html;
+    /* Retest item 6: the message sits in its own column so it can
+       ellipsize to one line instead of wrapping under the button. */
+    t.innerHTML = '<span class="toast-msg">' + html + "</span>";
     if (actionLabel) {
       var b = document.createElement("button");
       b.textContent = actionLabel;
