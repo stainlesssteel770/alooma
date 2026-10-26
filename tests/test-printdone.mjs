@@ -205,6 +205,16 @@ try {
   eq(await sheetOpen(), true, "hand-pack pick prompts on the way to History");
   await sheetCancel();
   await sleep(300);
+  /* Fix-round item 13: the hand entry offers NO Reprint (only printed
+     entries do), so print a fresh entry for the Reprint assertions. */
+  eq(await page.$$eval(".history-entry .btn-reprint", els => els.length), 0, "item13: hand entry has no Reprint button");
+  await page.click('[data-tab="pack"]');
+  await sleep(300);
+  await pickPack("Hafrashat Challah", 6);
+  await page.click("#btn-pack-print");
+  await sleep(400);
+  await page.click('[data-tab="history"]');
+  await sleep(300);
   /* Batch C A5: the printed (not undone) entry offers Reprint, which
      prints the same sheet again — original date, REPRINT line — with no
      stock change and no new History entry. */
@@ -221,6 +231,10 @@ try {
   eq(reprintText.includes(new Date(entryTs).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })), true, "reprint: original date on the sheet");
   eq(JSON.stringify(remote.history), histBeforeReprint, "reprint: History unchanged");
   eq(JSON.stringify(remote.inventory), invBeforeReprint, "reprint: stock unchanged");
+  /* Toast-UNDO the fresh print so History is back to the single hand
+     entry for the undo below (and section 7's count). */
+  await toastUndo();
+  eq(remote.history.length, 1, "reprint cleanup: fresh print undone out of History");
   await page.evaluate(() => document.querySelector(".history-entry .btn-undo").click());
   await sleep(300);
   await sheetPrimary(); /* Undo this entry? */

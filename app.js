@@ -916,9 +916,12 @@
         var by = storedBy(PACKBY_LS);
         var extra = { craftId: craft.id, kits: cur.kits };
         if (by) extra.packedBy = by;
+        /* Fix-round item 13: a hand pack is NOT a print — it records as
+           "hand-packed" ("Hand packed …"), which the Reprint gate
+           (type === "packed") never offers a Reprint for. */
         var entry = newEntry(
-          "packed",
-          "Packed " + craft.name + " — " + cur.kits + " kits (" + L.sku(craft.id, cur.kits) + ")",
+          "hand-packed",
+          "Hand packed " + craft.name + " — " + cur.kits + " kits (" + L.sku(craft.id, cur.kits) + ")",
           cur.pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
           extra
         );
@@ -1098,9 +1101,11 @@
         extra.queueLine = { craftId: ln.craftId, kits: ln.kits };
         extra.queueIndex = i;
         extra.recipe = snapshotPack(pack, ln.craftId);
+        /* Fix-round item 13: same as the single hand pack — a walked
+           queue line records as "hand-packed", never offered a Reprint. */
         var entry = newEntry(
-          "packed",
-          "Packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
+          "hand-packed",
+          "Hand packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
           pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
           extra
         );

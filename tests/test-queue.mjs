@@ -186,10 +186,18 @@ try {
   eq((await queueLines()).length, 0, "Hand pack all: last Complete returns to an empty Packing tab");
   eq(remoteData.history.length, 3, "Hand pack all: 3 entries (the print job was undone out of History)");
   eq(remoteData.history.slice(0, 3).map(h => h.title), [
-    "Packed Judaic Clay-Art — 6 kits (JCA-6)",
-    "Packed Tambourines — 12 kits (TAM-12)",
-    "Packed Blooming Mirrors — 6 kits (BM-6)"
+    "Hand packed Judaic Clay-Art — 6 kits (JCA-6)",
+    "Hand packed Tambourines — 12 kits (TAM-12)",
+    "Hand packed Blooming Mirrors — 6 kits (BM-6)"
   ], "Hand pack all: newest entries are the walked crafts, newest first");
+  /* Fix-round item 13: walked entries are type hand-packed and offer no
+     Reprint in History (the gate is type === "packed"). */
+  eq(remoteData.history.slice(0, 3).map(h => h.type), ["hand-packed", "hand-packed", "hand-packed"], "Hand pack all: walked entries are type hand-packed");
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
+  await sleep(300);
+  eq(await page.evaluate(() => [...document.querySelectorAll(".history-entry")].filter(el => el.textContent.includes("Hand packed")).every(el => !el.querySelector(".btn-reprint"))), true, "Hand pack all: hand entries offer no Reprint");
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(300);
   /* Undo one entry from History (via the confirm sheet): the BM-6 entry
      (third in newest-first order). Undo marks it undone and reverses its
      effects exactly — the entry stays in History, it is not deleted. */
@@ -657,7 +665,7 @@ try {
   eq(toast6.mh <= 24, true, "item6: Complete toast message is one line at 390 (mh=" + toast6.mh + ")");
   eq(toast6.h <= 68, true, "item6: Complete toast height consistent with one line at 390 (h=" + toast6.h + ")");
   eq(toast6.noTrunc, true, "item6: Complete toast shows the full title at 390 (sw=" + toast6.sw + " cw=" + toast6.cw + ")");
-  eq(toast6.text.includes("Packed Blooming Mirrors — 6 kits (BM-6)"), true, "item6: Complete toast title present");
+  eq(toast6.text.includes("Hand packed Blooming Mirrors — 6 kits (BM-6)"), true, "item6: Complete toast title present");
   await page.setViewport({ width: 360, height: 664 });
   resetRemote();
   await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
