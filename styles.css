@@ -204,7 +204,8 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 .error-banner { background: var(--red-bg); border: 1px solid #E3B6B1; color: #7C1D16; max-width: 1024px; margin: 10px auto 0; padding: 12px 16px; border-radius: 10px; font-weight: 600; font-size: 16px; }
 .toast[hidden] { display: none !important; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 76px; background: var(--ink); color: #fff; padding: 12px 18px; border-radius: var(--radius); font-weight: 600; font-size: 15.5px; box-shadow: 0 6px 22px rgba(0,0,0,.28); z-index: 60; max-width: min(92vw, 560px); display: flex; align-items: center; gap: 14px; pointer-events: none; }
-.toast button { background: none; border: none; color: #FFD94D; font-weight: 800; font-size: 15.5px; cursor: pointer; min-height: 44px; padding: 4px 6px; letter-spacing: .03em; pointer-events: auto; }
+.toast button { background: none; border: none; color: #FFD94D; font-weight: 800; font-size: 15.5px; cursor: pointer; min-height: 44px; padding: 4px 6px; letter-spacing: .03em; pointer-events: auto; flex: none; }
+.toast-msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* A SKU must never break mid-code ("BM-" / "6") — in toasts and buttons. */
 .nowrap { white-space: nowrap; }
 /* in-app confirm sheet (replaces window.confirm / window.prompt) */
@@ -330,7 +331,8 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   /* scroll-margin must clear bar + toast + nav (the bar sits directly
      below the new card in flow, so the card has to rise past all three) */
   #bulk-lines > *, #pack-queue > * { scroll-margin-bottom: 210px; }
-  .toast { bottom: 132px; left: 8px; right: 8px; transform: none; max-width: none; font-size: 14px; padding: 12px 14px; }
+  .toast { bottom: 132px; left: 8px; right: 8px; transform: none; max-width: none; font-size: 12.5px; padding: 10px 12px; gap: 10px; }
+  .toast button { font-size: 13px; }
   /* Brief item 14: the header status must never run off the right edge.
      Shrink the header spacing/type on phones so badge + status fit one
      row at 390px; the wrap below is only a fallback for wider renderings
