@@ -630,6 +630,12 @@ try {
   await sleep(300);
   await page.click("#btn-queue-hand");
   await sleep(300);
+  eq(await page.$eval("#pack-queue-progress", e => e.textContent), "Craft 1 of 1", "item6: walk opens on craft 1 of 1");
+  console.log("ITEM6-DIAG", JSON.stringify(await page.evaluate(() => {
+    const ca = document.querySelector("#btn-check-all");
+    const r = ca ? ca.getBoundingClientRect() : null;
+    return { orderHidden: document.querySelector("#pack-order").hidden, listHidden: document.querySelector("#pack-checklist").hidden, checkRect: r ? { w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top) } : null, progress: document.querySelector("#pack-queue-progress")?.textContent, activeTab: document.querySelector(".tab-panel.active")?.id };
+  })));
   await completeWalkToast();
   const toast6 = await page.evaluate(() => {
     const t = document.querySelector("#toast");
@@ -653,6 +659,37 @@ try {
     return t ? Math.round(t.getBoundingClientRect().height) : 0;
   });
   eq(toast6b <= 48, true, "item6: Complete toast is one line at 360 (h=" + toast6b + ")");
+
+  /* Retest item 7: the picked "Add MI-36" fits one line in the pinned
+     row, as do Print all / Hand pack all in the saved state. */
+  for (const w of [360, 375, 390]) {
+    await page.setViewport({ width: w, height: 664 });
+    await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
+    await reloadApp();
+    await queueFirst("Miniature Interiors", 36);
+    /* queueFirst's Queue tap clears the pick, so re-pick for the
+       picked-state Add label. */
+    await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Miniature Interiors")).click());
+    await page.evaluate(() => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="36"]`).click(); });
+    await sleep(200);
+    const addGeo = await page.evaluate(() => {
+      const b = document.querySelector("#btn-queue-add");
+      return b ? { h: Math.round(b.getBoundingClientRect().height), over: b.scrollWidth > b.clientWidth } : null;
+    });
+    eq(!!addGeo, true, "item7-" + w + ": picked Add button present");
+    eq(addGeo && addGeo.h <= 56, true, "item7-" + w + ": picked Add fits one line (h=" + (addGeo && addGeo.h) + ")");
+    eq(addGeo && !addGeo.over, true, "item7-" + w + ": picked Add does not overflow");
+    await page.click("#btn-queue-done");
+    await sleep(300);
+    const savedGeo = await page.evaluate(() => {
+      return ["btn-queue-print", "btn-queue-hand"].map(id => {
+        const b = document.querySelector("#" + id);
+        return b ? { h: Math.round(b.getBoundingClientRect().height), over: b.scrollWidth > b.clientWidth } : null;
+      });
+    });
+    eq(savedGeo.every(g => g && g.h <= 56), true, "item7-" + w + ": Print all / Hand pack all fit one line");
+    eq(savedGeo.every(g => g && !g.over), true, "item7-" + w + ": Print all / Hand pack all do not overflow");
+  }
 
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
