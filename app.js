@@ -1430,7 +1430,11 @@
         var raw = panel.querySelector(".inv-panel-input").value;
         var v = raw === "" ? null : parseInt(raw, 10);
         if (invPanelMode === "receive") {
-          if (!Number.isInteger(v) || v <= 0) { showError("Enter how many " + name + " were received (a whole number above 0)."); return; }
+          /* Fix-round item 6: parseInt("6.5") is 6, so decimals used to
+             sail through as truncated counts, and huge counts had no
+             cap. Strict digits + 1–999. (Set mode below is untouched:
+             0 stays a legitimate count there.) */
+          if (!/^\d+$/.test(raw.trim()) || v <= 0 || v > 999) { showError("Enter how many " + name + " were received (a whole number from 1 to 999)."); return; }
           clearError();
           commitChange(
             newEntry("received", "Received " + v + " × " + name, [{ item: itemId, delta: v }], { item: itemId, amount: v }),
@@ -1558,13 +1562,19 @@
     if (!requireEditor()) return;
     var inputs = $("delivery-entry-list").querySelectorAll("input[data-item]");
     var received = [];
+    /* Fix-round item 6: strict digits + 1–999, and skipped lines are
+       named instead of silently dropped (parseInt used to truncate
+       "6.5" to 6 and accept huge counts). */
+    var skipped = [];
     inputs.forEach(function (inp) {
       if (inp.value === "") return;
-      var v = parseInt(inp.value, 10);
-      if (!Number.isInteger(v) || v <= 0) return;
+      var rawD = inp.value.trim();
+      var v = /^\d+$/.test(rawD) ? parseInt(rawD, 10) : NaN;
+      if (!Number.isInteger(v) || v <= 0 || v > 999) { skipped.push(L.ITEMS[inp.getAttribute("data-item")] || inp.getAttribute("data-item")); return; }
       received.push({ item: inp.getAttribute("data-item"), amount: v });
     });
-    if (!received.length) { toast("Type how many of each item arrived first — nothing to save yet."); return; }
+    if (!received.length) { toast(skipped.length ? "Nothing saved — skipped (not a whole number from 1 to 999): " + skipped.join(", ") : "Type how many of each item arrived first — nothing to save yet."); return; }
+    if (skipped.length) toast("Skipped (not a whole number from 1 to 999): " + skipped.join(", "));
     /* v2 A3: confirm sheet first; an amount over 5× that item's last
        delivery is flagged amber in the list */
     var lines = received.map(function (r) {
@@ -2550,13 +2560,13 @@
       if (Array.isArray(ln.items)) {
         if (ln.items.length !== 2 || !ln.items[0] || !ln.items[1]) return "Each alternating pair needs two different items.";
         if (ln.items[0] === ln.items[1]) return "The two items in a pair must be different.";
-        if (!(Number.isInteger(ln.qty) && ln.qty > 0)) return "Pair quantities must be whole numbers above 0.";
+        if (!(Number.isInteger(ln.qty) && ln.qty > 0 && ln.qty <= 999)) return "Pair quantities must be whole numbers from 1 to 999.";
         if (seen[ln.items[0]] || seen[ln.items[1]]) return "An item can only appear once in a craft.";
         seen[ln.items[0]] = seen[ln.items[1]] = true;
       } else {
         if (!ln.item) return "Every line needs an item.";
-        if (!(Number.isInteger(ln.qty) && ln.qty > 0)) return "Quantities must be whole numbers above 0.";
-        if (!(Number.isInteger(ln.per) && ln.per > 0)) return "“Per” must be a whole number above 0.";
+        if (!(Number.isInteger(ln.qty) && ln.qty > 0 && ln.qty <= 999)) return "Quantities must be whole numbers from 1 to 999.";
+        if (!(Number.isInteger(ln.per) && ln.per > 0 && ln.per <= 999)) return "“Per” must be a whole number from 1 to 999.";
         if (seen[ln.item]) return "An item can only appear once in a craft.";
         seen[ln.item] = true;
       }
