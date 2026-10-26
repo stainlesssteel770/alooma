@@ -678,14 +678,16 @@ try {
     await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Miniature Interiors")).click());
     await page.evaluate(() => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="36"]`).click(); });
     await sleep(200);
-    /* Line count from the text's own boxes — button height alone can't
-       prove one line (padding + min-height dominate it). */
+    /* Line count from distinct text tops — button height alone can't
+       prove one line (padding + min-height dominate it), and raw rect
+       count splits at the nowrap span even on one line. */
     const addGeo = await page.evaluate(() => {
       const b = document.querySelector("#btn-queue-add");
       if (!b) return null;
       const r = document.createRange();
       r.selectNodeContents(b);
-      return { lines: r.getClientRects().length, over: b.scrollWidth > b.clientWidth };
+      const tops = [...r.getClientRects()].map(x => Math.round(x.top));
+      return { lines: [...new Set(tops)].length, over: b.scrollWidth > b.clientWidth };
     });
     eq(!!addGeo, true, "item7-" + w + ": picked Add button present");
     eq(addGeo && addGeo.lines, 1, "item7-" + w + ": picked Add is one line");
@@ -698,7 +700,8 @@ try {
         if (!b) return null;
         const r = document.createRange();
         r.selectNodeContents(b);
-        return { lines: r.getClientRects().length, over: b.scrollWidth > b.clientWidth };
+        const tops = [...r.getClientRects()].map(x => Math.round(x.top));
+        return { lines: [...new Set(tops)].length, over: b.scrollWidth > b.clientWidth };
       });
     });
     eq(savedGeo.every(g => g && g.lines === 1), true, "item7-" + w + ": Print all / Hand pack all are one line");
