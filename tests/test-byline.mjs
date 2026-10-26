@@ -166,6 +166,9 @@ try {
   await tab("pack");
   await queueFirst("The Cakery", 36);
   await queueAdd("Tambourines", 12);
+  /* Item 4: Print all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-print");
   await sleep(300);
   eq(((await printAreaText()).match(/Packed by: Sara/g) || []).length, 2, "print all: name on both sheets");
