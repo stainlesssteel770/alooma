@@ -2170,14 +2170,22 @@
     if (counted && counted.value !== storedBy(COUNTBY_LS)) return true;
     return false;
   }
+  /* Fix-round item 2: a SAVED queue is not unsaved work — its lines are
+     already in localStorage the moment they are added, so leaving with
+     only a saved queue never prompts. What prompts is a half-finished
+     pick (craft/kits chosen, not yet added), a walk in progress, a bulk
+     list, an open inventory/history edit, or a dirty setting. */
   function hasUnsaved() {
     return !!state.packCraft || $("pack-kits").value !== "" ||
-      packQueue.length > 0 || bulkLines.length > 0 ||
+      queueHandIdx >= 0 || bulkLines.length > 0 ||
       hasUnsavedInvHist() || settingsDirty();
   }
+  /* Fix-round item 2: Discard drops ONLY the half-finished work — the
+     pick, the walk position, the bulk list, open edits. It never touches
+     the saved queue lines (they survive Discard and reload). */
   function discardAllUnsaved() {
     state.packCraft = null; $("pack-kits").value = ""; packMode = null; packBoxOverride = null; packKitsTouched = false;
-    packQueue = []; endQueueWalk(); queueMode = false; persistPackQueue();
+    endQueueWalk(); queueMode = false;
     state.bulkCraft = null; $("bulk-kits").value = ""; bulkLines = [];
     discardInvHistChanges();
     renderAll(); /* re-renders Settings inputs from stored values, too */
