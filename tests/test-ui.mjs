@@ -761,6 +761,14 @@ async function tab(name) {
   await waitDom(() => !document.querySelector("#pack-boxes").hidden, "boxes line shows again");
   await page.click("#btn-boxes-change");
   await page.evaluate(() => [...document.querySelectorAll("#pack-boxes-chips .kits-chip")].find(x => x.textContent === "Box C").click());
+  /* DIAG (polish item 2 root-cause run): what would a real click on Done
+     actually hit, and where does Done sit? */
+  console.log("DIAG done-click", await page.evaluate(() => {
+    const b = document.querySelector("#btn-boxes-done");
+    const r = b.getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return JSON.stringify({ rect: [Math.round(r.top), Math.round(r.bottom), Math.round(r.left), Math.round(r.right)], top: top ? (top.id || top.className || top.tagName) : null, scrollY: Math.round(window.scrollY), innerH: window.innerHeight });
+  }));
   await page.click("#btn-boxes-done");
   eq((await page.$eval("#pack-boxes-text", e => e.textContent)).includes("Box C"), true, "C1: Change override adds Box C for this order");
   await page.click("#btn-pack-print");
@@ -784,8 +792,22 @@ async function tab(name) {
   await sleep(200);
   await page.click("#btn-check-all");
   await sleep(200);
+  /* DIAG (polish item 2 root-cause run): what would the Mark-all and
+     Complete clicks actually hit? */
+  console.log("DIAG markall-click", await page.evaluate(() => {
+    const b = document.querySelector("#sheet-primary");
+    const r = b.getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return JSON.stringify({ rect: [Math.round(r.top), Math.round(r.bottom)], top: top ? (top.id || top.className || top.tagName) : null, innerH: window.innerHeight });
+  }));
   await page.click("#sheet-primary"); /* v2 A5: confirm check-all */
   await sleep(150);
+  console.log("DIAG complete-click", await page.evaluate(() => {
+    const b = document.querySelector("#btn-complete-pack");
+    const r = b.getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return JSON.stringify({ rect: [Math.round(r.top), Math.round(r.bottom)], top: top ? (top.id || top.className || top.tagName) : null, disabled: b.disabled, checked: document.querySelectorAll("#pack-table tbody input[type=checkbox]:checked").length, total: document.querySelectorAll("#pack-table tbody input[type=checkbox]").length, innerH: window.innerHeight });
+  }));
   await page.click("#btn-complete-pack");
   await waitDom(() => !document.querySelector("#sheet-backdrop").hidden, "confirm sheet opens");
   eq((await page.$eval("#sheet-summary", e => e.textContent)).includes("Box C"), true, "C1: confirm sheet names the boxes");
