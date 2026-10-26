@@ -857,6 +857,45 @@ try {
     }
   }
 
+  /* Polish item 5: a saved queue plus a pick shows only the queue-mode
+     set (Add + Done) — never the single-actions row on top of the
+     saved row — and Done returns to just Print all + Hand pack all. */
+  await page.setViewport({ width: 390, height: 664 });
+  resetRemote();
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
+  await reloadApp();
+  await queueFirst("Blooming Mirrors", 6);
+  await addLine("Tambourines", 12);
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Miniature Interiors")).click());
+  await sleep(200);
+  await page.evaluate(() => document.querySelector('.kits-chip[data-for="pack"][data-kits="36"]').click());
+  await sleep(300);
+  const pick5 = await page.evaluate(() => {
+    const single = document.querySelector("#pack-single-actions");
+    const btns = [...document.querySelectorAll("#pack-queue-actions button")].filter(b => !b.hidden && b.getBoundingClientRect().height > 0);
+    return { singleHidden: single ? single.hidden : null, texts: btns.map(b => b.textContent.trim()) };
+  });
+  eq(pick5.singleHidden, true, "polish5: single-actions hidden with a saved queue + pick");
+  eq(pick5.texts.length, 2, "polish5: exactly 2 queue-row buttons with a saved queue + pick (" + pick5.texts.join("|") + ")");
+  eq(pick5.texts.includes("Done"), true, "polish5: Done among the queue-row buttons");
+  eq(pick5.texts.some(t => t.startsWith("Add")), true, "polish5: Add among the queue-row buttons");
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  const done5 = await page.evaluate(() => {
+    const single = document.querySelector("#pack-single-actions");
+    const btns = [...document.querySelectorAll("#pack-queue-actions button")].filter(b => !b.hidden && b.getBoundingClientRect().height > 0);
+    const checks = [...document.querySelectorAll("#pack-crafts .craft-check")].map(c => c.textContent);
+    return { singleHidden: single ? single.hidden : null, texts: btns.map(b => b.textContent.trim()),
+      anyChecked: checks.some(c => c !== "") };
+  });
+  eq(done5.singleHidden, true, "polish5: single-actions still hidden after Done (pick cleared)");
+  eq(done5.texts.length, 2, "polish5: exactly 2 queue-row buttons after Done (" + done5.texts.join("|") + ")");
+  eq(done5.texts.includes("Print all"), true, "polish5: Print all visible after Done");
+  eq(done5.texts.includes("Hand pack all"), true, "polish5: Hand pack all visible after Done");
+  eq(done5.anyChecked, false, "polish5: no craft stays picked after Done");
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();
