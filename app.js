@@ -724,7 +724,7 @@
     var cur = currentPack();
     $("btn-queue-add").disabled = !cur;
     var qa = $("btn-queue-add");
-    if (cur) qa.innerHTML = "Add <span class=\"nowrap\">" + esc(L.sku(cur.craft.id, cur.kits)) + "</span> to queue";
+    if (cur) qa.innerHTML = "Add <span class=\"nowrap\">" + esc(L.sku(cur.craft.id, cur.kits)) + "</span>";
     else qa.textContent = "Add to queue";
     $("btn-queue-print").disabled = !packQueue.length;
     $("btn-queue-hand").disabled = !packQueue.length;
