@@ -73,6 +73,9 @@ jobs:
       - name: Offline queue tests (v3 E4 — offline actions re-applied on reconnect)
         run: node tests/test-offline-queue.mjs
 
+      - name: Service worker freshness (network-first app files, old caches deleted, offline fallback)
+        run: node tests/test-sw.mjs
+
       - name: Accessibility scan (axe)
         run: node tests/test-a11y.mjs
 
