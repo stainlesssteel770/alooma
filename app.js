@@ -2625,6 +2625,14 @@
   function syncCatalog() {
     var s = settings();
     L.setCatalog(s.recipes, s.customItems);
+    /* Fix-round item 4: a brand-new catalog item has no inventory row
+       yet. The load path creates one, but a live editor save did not —
+       so renderInventory threw on rec.qty, renderAll aborted, and
+       History never refreshed. Create the row here, same shape as the
+       load path, so the item appears immediately, no reload needed. */
+    Object.keys(L.ITEMS).forEach(function (id) {
+      if (!state.data.inventory[id]) state.data.inventory[id] = { qty: 0, threshold: null };
+    });
   }
   function commitRecipe(recipeId, mutate, msg) {
     var recipes = settings().recipes || [];
