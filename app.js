@@ -579,7 +579,7 @@
       var b = document.createElement("button");
       b.className = "craft-btn" + (c.id === selectedId ? " selected" : "");
       b.innerHTML = (c.id === selectedId ? '<span class="craft-check" aria-hidden="true">✓</span>' : "") +
-        esc(c.name) + "<small>" + esc(c.code) + " · " + craftEntryCount(c) + " items</small>";
+        '<span class="craft-text">' + esc(c.name) + "<small>" + esc(c.code) + " · " + craftEntryCount(c) + " items</small></span>";
       b.addEventListener("click", function () { onPick(c.id); });
       box.appendChild(b);
     });
@@ -699,7 +699,7 @@
       if (kitOpts.indexOf(ln.kits) < 0) { kitOpts.push(ln.kits); kitOpts.sort(function (a, b) { return a - b; }); }
       var sel = '<select class="queue-kits" data-qidx="' + i + '" aria-label="Kits for ' + esc(L.sku(ln.craftId, ln.kits)) + '">' +
         kitOpts.map(function (k) { return '<option value="' + k + '"' + (k === ln.kits ? " selected" : "") + ">" + k + "</option>"; }).join("") + "</select>";
-      row.innerHTML = "<span>" + esc(craft.name) + " · </span>" + sel + "<span> kits · " + esc(L.sku(ln.craftId, ln.kits)) + "</span>" +
+      row.innerHTML = '<span class="queue-main"><span>' + esc(craft.name) + " · </span>" + sel + "<span> kits · " + esc(L.sku(ln.craftId, ln.kits)) + "</span></span>" +
         '<button type="button" class="btn btn-quiet queue-remove" data-qidx="' + i + '" aria-label="Remove ' + esc(L.sku(ln.craftId, ln.kits)) + '">✕</button>';
       wrap.appendChild(row);
     });
@@ -732,8 +732,12 @@
        they stay visible while the queue has lines, so a saved queue
        never loses Print all. During a walk only Done shows. */
     var walking = queueHandIdx >= 0;
-    var saved = !queueMode && packQueue.length > 0;
-    $("pack-queue-actions").hidden = !queueMode && !saved;
+    /* A walk is neither Queue mode nor the saved state: Done must stay
+       visible mid-walk even when the walk started from the saved state
+       (startHandPackAll never sets queueMode), and the row must stay
+       visible for its progress text. */
+    var saved = !queueMode && !walking && packQueue.length > 0;
+    $("pack-queue-actions").hidden = !queueMode && !saved && !walking;
     $("btn-queue-add").hidden = walking || saved;
     $("btn-queue-done").hidden = saved;
     $("btn-queue-print").hidden = walking || queueMode;
