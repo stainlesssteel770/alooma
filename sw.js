@@ -5,10 +5,11 @@
    refreshes the cache); only when the network fails does the cached
    copy answer. Stock data always comes from the GitHub API (never
    cached here); a snapshot in localStorage covers offline data, and
-   edits made offline queue as actions on the device. The cache name is
-   deliberately NOT bumped per deploy — network-first is what guarantees
-   freshness, and activate still deletes any cache that isn't current. */
-var CACHE = "alooma-shell-v1";
+   edits made offline queue as actions on the device. The cache name IS
+   bumped for this fix round (v2): network-first guarantees freshness
+   and the version bump makes the live check decisive — activate still
+   deletes any cache that isn't current. */
+var CACHE = "alooma-shell-v2";
 var SHELL = ["./", "index.html", "app.js", "logic.js", "styles.css"];
 self.addEventListener("install", function (e) {
   e.waitUntil(
