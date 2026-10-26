@@ -43,6 +43,17 @@ jobs:
       - name: Print checks (4x6 PDFs, no blank labels)
         run: node tests/check-print.mjs
 
+      # TEMPORARY DEBUG (batch (b) repeat investigation): upload the
+      # CAK-36 PDF so the missing page-2 thead can be inspected
+      # directly. Remove once the repeat failure is diagnosed.
+      - name: Debug upload CAK-36 packsheet PDF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-cak36-packsheet
+          path: /tmp/alooma-packsheet.pdf
+          retention-days: 3
+
       # Fix-round item 1 leak probe: count chrome processes and free
       # memory right before print-done. The pre-print-done suites all
       # close their browsers in finally, so a nonzero count here proves
