@@ -154,14 +154,14 @@ try {
     };
   });
   ok(pack.rows === 19 && pack.ticks === 19, "pack sheet CAK-36: 19 rows, 19 tick boxes");
-  ok(pack.text.includes("Total kits: 36") && pack.text.includes("Order ID:"), "pack sheet: subtitle is 'Total kits: 36 · Order ID: ___ · Packed by: ___'");
+  ok(pack.text.includes("Total kits: 36") && pack.text.includes("Order ID:"), "pack sheet: subtitle is 'Total kits: 36 · Order ID: ___ Packed by: ___ · Date: ___'");
   ok(pack.subText.includes("Packed by: ____________"), "pack sheet: Packed by moved to header line 2 (blank when no name set)");
   ok(pack.text.includes("Per 6") && pack.text.includes("Total"), "pack sheet: Per 6 + Total columns");
   ok(!pack.text.includes("SKU"), "pack sheet: no SKU line (mockup)");
   ok(pack.text.includes("BOXES: Big Box, Small Box"), "pack sheet: the order's boxes are printed (comma-separated)");
   ok(!pack.titleText.includes("BOXES"), "pack sheet: top stays title + subtitle only (no BOXES under the title)");
   ok(pack.footText.includes("BOXES: Big Box, Small Box") && !pack.footText.includes("Packed by"), "pack sheet: footer is BOXES-only (Packed by lives in the subtitle now)");
-  ok(!pack.footText.includes("Date:"), "pack sheet: Date left the footer (it lives on header line 1 now)");
+  ok(!pack.footText.includes("Date:"), "pack sheet: Date left the footer (it lives in the subtitle now)");
   /* The 8pt + top-alignment proof lives on a throwaway page after the
      matrix (never emulateMediaType on a page that later calls page.pdf:
      restoring to "screen" makes every later PDF render in screen media
@@ -326,12 +326,15 @@ try {
   const longest = onePage.find(r => r.withBoxes) || onePage[0];
   if (longest) console.log("MATRIX longest 1-label craft: " + longest.name + " (" + rowCount(longest.name) + " rows) -> " + longest.file);
 
-  /* Header Date proof, on a throwaway page that never calls page.pdf:
-     8pt computed size + top-alignment with the title's first line +
-     right-alignment with the title row. This page is closed right
-     after, so no emulated media can poison a later PDF. */
+  /* Fix-round items 8 + 10 proof, on a throwaway page that never calls
+     page.pdf (this page is closed right after, so no emulated media
+     can poison a later PDF). With boxes on, the TAM-36 sheet has a
+     footer, so one page proves both: Date lives in-flow in the
+     subtitle (no absolute element left to overlap the title), and the
+     footer draws no border of its own (the table border is the single
+     line above BOXES). */
   {
-    const pg = await openMatrixPage(false);
+    const pg = await openMatrixPage(true);
     await pg.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Tambourines")).click());
     await pg.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="36"]').click(); });
     await sleep(300);
@@ -339,18 +342,28 @@ try {
     await sleep(300);
     await pg.emulateMediaType("print");
     const hdr = await pg.evaluate(() => {
-      const row = document.querySelector("#print-area .label-title-row");
+      const sub = document.querySelector("#print-area .label-sub");
       const t = document.querySelector("#print-area .label-title");
-      const d = document.querySelector("#print-area .label-date");
-      if (!row || !t || !d) return null;
-      const rr = row.getBoundingClientRect(), tr = t.getBoundingClientRect(), dr = d.getBoundingClientRect();
-      return { datePx: parseFloat(getComputedStyle(d).fontSize), topDy: dr.top - tr.top, rightDy: rr.right - dr.right };
+      const foot = document.querySelector("#print-area .print-foot");
+      if (!sub || !t) return null;
+      const tr = t.getBoundingClientRect(), sr = sub.getBoundingClientRect();
+      return {
+        hasAbsDate: !!document.querySelector("#print-area .label-date"),
+        subText: sub.textContent.replace(/\s+/g, " ").trim(),
+        titleRowKids: document.querySelector("#print-area .label-title-row").children.length,
+        overlap: sr.top < tr.bottom - 1,
+        footBorder: foot ? getComputedStyle(foot).borderTopWidth : null,
+        footText: foot ? foot.textContent : ""
+      };
     });
-    ok(!!hdr, "header Date proof: title row + title + date all rendered");
+    ok(!!hdr, "header proof: title + subtitle rendered");
     if (hdr) {
-      ok(Math.abs(hdr.datePx - 8 * 96 / 72) < 0.5, "pack sheet: header Date is 8pt (computed " + hdr.datePx + "px)");
-      ok(Math.abs(hdr.topDy) < 2, "pack sheet: header Date top-aligns with the title's first line (dy=" + hdr.topDy.toFixed(2) + "px)");
-      ok(Math.abs(hdr.rightDy) < 2, "pack sheet: header Date sits at the title row's right edge (dy=" + hdr.rightDy.toFixed(2) + "px)");
+      ok(!hdr.hasAbsDate, "pack sheet: no absolute Date element left (Date lives in the subtitle now)");
+      ok(hdr.subText.includes("Date: ____________"), "pack sheet: subtitle carries the blank Date on line 2 (" + hdr.subText + ")");
+      eq(hdr.titleRowKids, 1, "pack sheet: title row holds only the title");
+      ok(!hdr.overlap, "pack sheet: subtitle sits below the title, never overlapping it");
+      ok(hdr.footText.includes("BOXES:"), "pack sheet: boxes footer rendered for the border check");
+      eq(hdr.footBorder, "0px", "pack sheet: footer draws no border-top (table border is the single line above BOXES)");
     }
     await pg.close();
   }
