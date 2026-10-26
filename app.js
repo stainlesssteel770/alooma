@@ -798,7 +798,13 @@
     renderQueue();
     craftButtons("pack-crafts", state.packCraft, function (id) {
       if (queueHandIdx >= 0) endQueueWalk(); /* picking a different craft mid-walk ends the walk; queued lines stay */
-      state.packCraft = id; renderPack();
+      state.packCraft = id;
+      /* Polish item 5: a pick with a saved queue enters Queue mode, so
+         the row shows exactly Add + Done — never the single-actions
+         row on top of the saved row (five buttons at once). Also
+         covers mid-walk picks, since the walk just ended above. */
+      if (packQueue.length > 0 && queueHandIdx < 0) queueMode = true;
+      renderPack();
     });
     var rawKits = $("pack-kits").value;
     var kits = strictKits(rawKits);
@@ -3044,12 +3050,16 @@
     $("btn-queue-hand").addEventListener("click", function () { startQueue(startHandPackAll); });
     $("btn-queue-clear").addEventListener("click", clearQueue);
     $("btn-queue-done").addEventListener("click", function () {
-      /* Done keeps the saved queue — it only leaves Queue mode. Mid-walk,
-         Done ends the walk and clears the loaded line's table. */
-      if (queueHandIdx >= 0) {
-        endQueueWalk();
-        state.packCraft = null; $("pack-kits").value = ""; packMode = null;
-      }
+      /* Done keeps the saved queue — it only leaves Queue mode. It also
+         clears the pick, walk or not: otherwise leaving Queue mode
+         with a pick selected shows the single-actions row on top of
+         the saved row — five buttons at once (Polish item 5). Mid-walk,
+         Done ends the walk and clears the loaded line's table. The
+         touched/manual flags reset with the pick, mirroring the
+         queue-add clear, so no stale kits error survives Done. */
+      if (queueHandIdx >= 0) endQueueWalk();
+      state.packCraft = null; $("pack-kits").value = ""; packMode = null;
+      packKitsTouched = false; packKitsManual = false;
       queueMode = false;
       renderPack();
     });
