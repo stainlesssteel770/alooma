@@ -640,14 +640,14 @@ try {
   const toast6 = await page.evaluate(() => {
     const t = document.querySelector("#toast");
     const m = document.querySelector("#toast .toast-msg");
-    return { h: t ? Math.round(t.getBoundingClientRect().height) : 0, mh: m ? Math.round(m.getBoundingClientRect().height) : 0, noTrunc: m ? m.scrollWidth <= m.clientWidth : false, text: t ? t.textContent : "" };
+    return { h: t ? Math.round(t.getBoundingClientRect().height) : 0, mh: m ? Math.round(m.getBoundingClientRect().height) : 0, noTrunc: m ? m.scrollWidth <= m.clientWidth : false, sw: m ? m.scrollWidth : 0, cw: m ? m.clientWidth : 0, text: t ? t.textContent : "" };
   });
   /* One line of message (≈19px at 12.5px) + the 44px UNDO button +
      20px padding = 64px total; the button alone guarantees 64, so the
      message height (not the toast height) is the one-line proof. */
   eq(toast6.mh <= 24, true, "item6: Complete toast message is one line at 390 (mh=" + toast6.mh + ")");
   eq(toast6.h <= 68, true, "item6: Complete toast height consistent with one line at 390 (h=" + toast6.h + ")");
-  eq(toast6.noTrunc, true, "item6: Complete toast shows the full title at 390");
+  eq(toast6.noTrunc, true, "item6: Complete toast shows the full title at 390 (sw=" + toast6.sw + " cw=" + toast6.cw + ")");
   eq(toast6.text.includes("Packed Blooming Mirrors — 6 kits (BM-6)"), true, "item6: Complete toast title present");
   await page.setViewport({ width: 360, height: 664 });
   resetRemote();
