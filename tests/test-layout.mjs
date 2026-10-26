@@ -418,17 +418,17 @@ try {
   await pickCraft("#pack-crafts", "Empty Craft");
   await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
   await sleep(250);
-  eq(await page.evaluate(() => document.querySelector("#pack-single-actions").hidden), true, "item12: Queue/Print/Hand hidden for a 0-item craft");
-  eq(await page.evaluate(() => { const h = document.querySelector("#pack-help"); return !h.hidden && h.textContent.includes("no items yet"); }), true, "item12: 'no items yet' note shown");
+  ok((await page.evaluate(() => document.querySelector("#pack-single-actions").hidden)) === true, "item12: Queue/Print/Hand hidden for a 0-item craft");
+  ok((await page.evaluate(() => { const h = document.querySelector("#pack-help"); return !h.hidden && h.textContent.includes("no items yet"); })) === true, "item12: 'no items yet' note shown");
   await page.evaluate(() => { document.querySelector("#btn-pack-queue").click(); });
   await sleep(250);
-  eq(await page.evaluate(() => document.querySelector("#pack-queue-count").textContent), "0", "item12: Queue refuses a 0-item craft");
+  ok((await page.evaluate(() => document.querySelector("#pack-queue-count").textContent)) === "0", "item12: Queue refuses a 0-item craft");
   await tab("bulk");
   await pickCraft("#bulk-crafts", "Empty Craft");
   await page.evaluate(() => { const el = document.querySelector("#bulk-kits"); el.value = "6"; el.dispatchEvent(new Event("input", { bubbles: true })); });
   await sleep(250);
-  eq(await page.evaluate(() => document.querySelector("#btn-bulk-add").disabled), true, "item12: Bulk Add disabled for a 0-item craft");
-  eq(await page.evaluate(() => document.querySelector("#btn-bulk-add").textContent), "No items yet", "item12: Bulk Add says why");
+  ok((await page.evaluate(() => document.querySelector("#btn-bulk-add").disabled)) === true, "item12: Bulk Add disabled for a 0-item craft");
+  ok((await page.evaluate(() => document.querySelector("#btn-bulk-add").textContent)) === "No items yet", "item12: Bulk Add says why");
 
   console.log(pass + " passed, " + fail + " failed");
 } finally {
