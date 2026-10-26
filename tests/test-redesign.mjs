@@ -181,8 +181,8 @@ try {
   await page.click("#btn-queue-add");
   await sleep(250);
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 2, "5d: Add builds the list underneath");
-  eq(await vis("#btn-queue-print"), true, "5d: Print all offered at the bottom");
-  eq(await vis("#btn-queue-hand"), true, "5d: Hand pack all offered at the bottom");
+  eq(await vis("#btn-queue-print"), false, "item4: Print all hidden in Queue mode");
+  eq(await vis("#btn-queue-hand"), false, "item4: Hand pack all hidden in Queue mode");
   eq(await vis("#btn-queue-done"), true, "5d: Done leaves Queue mode");
   /* No duplicate prompt while adding (Batch C moves it to Print/Hand pack all) */
   await packCraft("Blooming Mirrors");
@@ -196,6 +196,8 @@ try {
   eq(await vis("#pack-single-actions"), false, "5d: Done returns to single view (no pick, no buttons)");
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 3, "5d: Done keeps the saved queue");
   eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]").length), 3, "5d: saved queue persists");
+  eq(await vis("#btn-queue-print"), true, "item4: Print all appears after Done");
+  eq(await vis("#btn-queue-hand"), true, "item4: Hand pack all appears after Done");
 
   /* ---- 4: Clear all lives in the list header row, visible without scrolling ---- */
   const qHead = await page.evaluate(() => {
@@ -259,6 +261,9 @@ try {
   /* Center the Hand button before the real click: a minimal scroll can park
      it under the fixed bottom nav, and the click would then hit a tab
      button and open the A3 leave prompt instead of starting the walk. */
+  /* Item 4: Hand pack all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.evaluate(() => document.querySelector("#btn-queue-hand").scrollIntoView({ block: "center" }));
   await sleep(200);
   await page.click("#btn-queue-hand");
