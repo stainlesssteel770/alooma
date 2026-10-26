@@ -2391,7 +2391,16 @@
       .catch(function (e) { $("connect-error").textContent = e.message; });
   }
   function exportBackup() {
-    var blob = new Blob([JSON.stringify(state.data, null, 2) + "\n"], { type: "application/json" });
+    /* Fix-round item 14: the backup is a wrapper now — data plus the
+       saved queue and the device names, so a restore brings those back
+       too. Old bare-data files still import (see importBackup). */
+    var wrapper = {
+      app: "alooma", version: 1,
+      data: state.data,
+      packQueue: packQueue.slice(),
+      names: { packedBy: storedBy(PACKBY_LS), countedBy: storedBy(COUNTBY_LS) }
+    };
+    var blob = new Blob([JSON.stringify(wrapper, null, 2) + "\n"], { type: "application/json" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "alooma-backup-" + new Date().toISOString().slice(0, 10) + ".json";
@@ -2419,16 +2428,54 @@
     reader.onload = function () {
       var parsed;
       try { parsed = JSON.parse(reader.result); } catch (e) { showError("That file is not valid JSON — import cancelled."); return; }
-      if (!parsed || typeof parsed.inventory !== "object" || !Array.isArray(parsed.history)) {
+      /* Fix-round item 14: accept the new wrapper AND old bare-data
+         files. A wrapper carries data + queue + names; a bare file
+         carries data only and leaves queue/names untouched. */
+      var isWrapper = !!(parsed && typeof parsed === "object" && parsed.data && typeof parsed.data === "object");
+      var data = isWrapper ? parsed.data : parsed;
+      if (!data || typeof data.inventory !== "object" || !Array.isArray(data.history)) {
         showError("That file doesn't look like an Alooma backup (needs inventory + history) — import cancelled."); return;
+      }
+      /* A malformed recipes block rejects the whole file — no partial
+         import, nothing changed. */
+      if (data.settings && data.settings.recipes !== undefined) {
+        var recs = data.settings.recipes;
+        var bad = !Array.isArray(recs) || recs.some(function (r) { return !r || typeof r.id !== "string" || typeof r.name !== "string" || !Array.isArray(r.lines); });
+        if (bad) { showError("That backup's recipes are malformed — import cancelled, nothing changed."); return; }
+      }
+      /* Never silently drop lines: warn when the backup's recipes
+         differ from current (or when an old file carries none, which
+         resets recipes to the built-ins). Comparison is on normalized
+         recipes, so an equivalent file doesn't warn. */
+      var recipeWarn = "";
+      var curEff = JSON.stringify(L.normalizeRecipes(state.data.settings ? state.data.settings.recipes : undefined));
+      if (!data.settings || data.settings.recipes === undefined) {
+        recipeWarn = " This backup has no saved recipes (old format) — importing will reset recipes to the built-ins, dropping your current custom recipes and lines.";
+      } else if (JSON.stringify(L.normalizeRecipes(data.settings.recipes)) !== curEff) {
+        recipeWarn = " This backup's recipes differ from your current ones — importing will replace them (lines are replaced, not merged).";
       }
       openSheet({
         title: "Replace all data with this backup?",
-        summary: "Current inventory and history will be overwritten. This is logged in History.",
+        summary: "Current inventory and history will be overwritten. This is logged in History." + recipeWarn,
         primary: "Replace all data",
         onConfirm: function () {
-          state.data = parsed;
+          state.data = data;
           normalizeData();
+          /* Wrapper-only restores: a validated queue (known crafts,
+             valid kits) and the device names. Old files skip this, so
+             the current queue and names survive an old restore. */
+          if (isWrapper) {
+            if (Array.isArray(parsed.packQueue)) {
+              packQueue = parsed.packQueue.filter(function (ln) { return ln && typeof ln.craftId === "string" && L.craftById(ln.craftId) && L.validKits(ln.kits); });
+              persistPackQueue();
+            }
+            if (parsed.names && typeof parsed.names === "object") {
+              try {
+                if (typeof parsed.names.packedBy === "string") localStorage.setItem(PACKBY_LS, parsed.names.packedBy);
+                if (typeof parsed.names.countedBy === "string") localStorage.setItem(COUNTBY_LS, parsed.names.countedBy);
+              } catch (e) {}
+            }
+          }
           var marker = newEntry("import", "Imported a backup file", [], {});
           state.data.history.unshift(marker);
           renderAll();

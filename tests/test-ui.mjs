@@ -969,6 +969,70 @@ async function tab(name) {
   await sleep(250);
   eq(await page.$eval("#backup-stale", e => e.hidden), false, "v3 E3: over a week old shows the nudge");
 
+  /* Fix-round item 14: backup includes the saved queue + names; import
+     accepts the new wrapper AND old bare-data files, warns before
+     replacing differing/absent recipes, and rejects malformed recipes. */
+  await page.evaluate(() => {
+    localStorage.setItem("alooma.packqueue.v1", JSON.stringify([{ craftId: "bm", kits: 6 }]));
+    localStorage.setItem("alooma.packedby.v1", "Sara");
+    localStorage.setItem("alooma.countedby.v1", "Dina");
+  });
+  await page.reload({ waitUntil: "networkidle0" });
+  await sleep(400);
+  eq(await page.evaluate(() => document.querySelector("#pack-queue-count").textContent), "1", "item14: seeded queue restored on load");
+  await tab("settings");
+  await page.evaluate(() => { window.__blobs = []; const orig = URL.createObjectURL; URL.createObjectURL = b => { window.__blobs.push(b); return orig.call(URL, b); }; });
+  await page.click("#btn-export");
+  await sleep(300);
+  const exported = JSON.parse(await page.evaluate(async () => window.__blobs[0].text()));
+  eq(exported.packQueue, [{ craftId: "bm", kits: 6 }], "item14: export includes the saved queue");
+  eq(exported.names, { packedBy: "Sara", countedBy: "Dina" }, "item14: export includes the device names");
+  ok(exported.data && typeof exported.data.inventory === "object" && Array.isArray(exported.data.history), "item14: export still carries inventory + history");
+  const feedFile = async json => {
+    await page.evaluate(async j => {
+      const dt = new DataTransfer();
+      dt.items.add(new File([j], "backup.json", { type: "application/json" }));
+      const inp = document.querySelector("#import-file");
+      inp.files = dt.files;
+      inp.dispatchEvent(new Event("change", { bubbles: true }));
+    }, json);
+    await sleep(500);
+  };
+  const sheetSummary = () => page.$eval("#sheet-summary", e => e.textContent);
+  /* Wrapper import with DIFFERENT recipes: warns, then replaces
+     recipes, queue, and names on confirm. */
+  const wrapData = JSON.parse(JSON.stringify(remoteData));
+  wrapData.settings = wrapData.settings || {};
+  wrapData.settings.recipes = [{ id: "bm", code: "BM", name: "Blooming Mirrors", lines: [{ item: "scissors", qty: 1, per: 6 }] }];
+  await feedFile(JSON.stringify({ app: "alooma", version: 1, data: wrapData, packQueue: [{ craftId: "tam", kits: 12 }], names: { packedBy: "Ruth", countedBy: "Noa" } }));
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Replace all data with this backup?", "item14: wrapper import asks first");
+  ok((await sheetSummary()).includes("differ"), "item14: wrapper import warns that recipes differ");
+  await page.click("#sheet-primary");
+  await sleep(500);
+  eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), [{ craftId: "tam", kits: 12 }], "item14: wrapper import restores the queue");
+  eq(await page.evaluate(() => localStorage.getItem("alooma.packedby.v1")), "Ruth", "item14: wrapper import restores Packed by");
+  eq(await page.evaluate(() => localStorage.getItem("alooma.countedby.v1")), "Noa", "item14: wrapper import restores Counted by");
+  eq(remoteData.history[0].title, "Imported a backup file", "item14: wrapper import logged in History");
+  eq(remoteData.settings.recipes.find(r => r.id === "bm").lines.length, 1, "item14: wrapper import replaced recipes (BM down to 1 line)");
+  /* Old bare-data file (no recipes key): warns about the reset, then
+     restores built-ins WITHOUT touching queue or names. */
+  const oldData = { inventory: JSON.parse(JSON.stringify(remoteData.inventory)), history: JSON.parse(JSON.stringify(remoteData.history)), settings: { features: { boxes: false, bins: false } } };
+  await feedFile(JSON.stringify(oldData));
+  ok((await sheetSummary()).includes("no saved recipes"), "item14: old-file import warns recipes will reset to built-ins");
+  await page.click("#sheet-primary");
+  await sleep(500);
+  eq(remoteData.settings.recipes.find(r => r.id === "bm").lines.length, 12, "item14: old-file import restored built-in BM (12 lines)");
+  eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), [{ craftId: "tam", kits: 12 }], "item14: old-file import leaves the queue alone");
+  eq(await page.evaluate(() => localStorage.getItem("alooma.packedby.v1")), "Ruth", "item14: old-file import leaves names alone");
+  /* Malformed recipes: rejected outright, nothing changed, no sheet. */
+  const histLenBeforeBad = remoteData.history.length;
+  const badData = JSON.parse(JSON.stringify(remoteData));
+  badData.settings.recipes = "not-an-array";
+  await feedFile(JSON.stringify(badData));
+  eq(await page.$eval("#error-banner", e => !e.hidden && e.textContent.includes("malformed")), true, "item14: malformed recipes rejected with an error");
+  eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "item14: malformed recipes open no sheet");
+  eq(remoteData.history.length, histLenBeforeBad, "item14: malformed recipes changed nothing");
+
   /* Disconnect: back to view-only, token gone from this device */
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
   await sleep(150);
