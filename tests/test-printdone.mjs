@@ -140,6 +140,9 @@ try {
   await queueFirst("Blooming Mirrors", 6);
   await queueAdd("Tambourines", 12);
   await queueAdd("Hafrashat Challah", 18);
+  /* Item 4: Print all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-print");
   await sleep(400);
   eq((await page.$$eval("#print-area .print-page", els => els.length)), 3, "print all: three sheets");
@@ -161,6 +164,9 @@ try {
   await reloadApp();
   await queueFirst("The Cakery", 36);
   await queueAdd("Tambourines", 12);
+  /* Item 4: Print all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-print");
   await sleep(300);
   eq(await sheetOpen(), true, "print all shortage: guard sheet opens");
@@ -229,6 +235,9 @@ try {
   await sleep(300);
   await queueFirst("Blooming Mirrors", 6);
   await queueAdd("Tambourines", 12);
+  /* Item 4: Print all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-print");
   await sleep(400);
   /* Two NEW entries, plus section 6's kept undone entry = 3 total. */
