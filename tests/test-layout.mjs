@@ -389,8 +389,15 @@ try {
       await page.goto("http://127.0.0.1:8911/index.html", { waitUntil: "networkidle0", timeout: 30000 });
       await sleep(400);
       await tab("pack");
-      for (const craft of L.CRAFTS) {
-        await pickCraft("#pack-crafts", craft.name);
+      /* The page's own buttons are the craft list — test-layout never
+         imports L, so the old Node-side L.CRAFTS loop crashed here.
+         Buttons are exactly what a packer can pick; the seed has no
+         hidden crafts, so coverage is identical. Guard the count so
+         an empty list can never pass vacuously. */
+      const craftNames = await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn .craft-text")].map(e => e.childNodes[0].textContent.trim()));
+      ok(craftNames.length === 6, "item11 " + w + " bins-" + (binsOn ? "on" : "off") + ": six craft buttons on the pack picker", craftNames.join(", "));
+      for (const craftName of craftNames) {
+        await pickCraft("#pack-crafts", craftName);
         await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
         await sleep(250);
         const bad = await page.evaluate(() => [...document.querySelectorAll("#pack-table tbody .row-name")].map(el => {
@@ -398,7 +405,7 @@ try {
           const lines = [...new Set([...r.getClientRects()].map(x => Math.round(x.top)))].length;
           return lines === 1 ? null : el.textContent.trim();
         }).filter(Boolean));
-        ok(bad.length === 0, "item11 " + w + " bins-" + (binsOn ? "on" : "off") + " " + craft.name + ": every checklist name on one line", bad.join(", "));
+        ok(bad.length === 0, "item11 " + w + " bins-" + (binsOn ? "on" : "off") + " " + craftName + ": every checklist name on one line", bad.join(", "));
       }
     }
   }
