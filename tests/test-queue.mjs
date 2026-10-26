@@ -473,11 +473,19 @@ try {
   await page.setViewport({ width: 390, height: 664 });
   await reloadApp();
   await queueFirst("Blooming Mirrors", 6);
+  /* queueFirst's Queue tap clears the pick, so re-pick before Add —
+     without a pick the Add button is disabled and the click is a
+     no-op (run 1 failed here on exactly that). */
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Tambourines")).click());
+  await page.evaluate(() => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="12"]`).click(); });
+  await sleep(150);
+  const beforeAdd = (await queueLines()).length;
   /* Scroll to the bottom first, so a scroll-to-top is observable. */
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await sleep(200);
   await page.click("#btn-queue-add");
   await sleep(300);
+  eq((await queueLines()).length, beforeAdd + 1, "item2: Add queued the line (not a no-op click)");
   const topGeo = await page.evaluate(() => {
     const cr = document.querySelector("#pack-crafts").getBoundingClientRect();
     const ch = document.querySelector("#pack-chips").getBoundingClientRect();
