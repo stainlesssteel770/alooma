@@ -1,7 +1,13 @@
-/* Alooma service worker (v3 E4): cache the app shell so the app opens
-   with no signal. Stock data always comes from the GitHub API (never
+/* Alooma service worker (fix-round item 1): the app shell is cached so
+   the app opens with no signal, but app files are served NETWORK-FIRST:
+   the old cache-first read served "alooma-shell-v1" forever, so updates
+   never reached phones. Online, every load fetches fresh bytes (and
+   refreshes the cache); only when the network fails does the cached
+   copy answer. Stock data always comes from the GitHub API (never
    cached here); a snapshot in localStorage covers offline data, and
-   edits made offline queue as actions on the device. */
+   edits made offline queue as actions on the device. The cache name is
+   deliberately NOT bumped per deploy — network-first is what guarantees
+   freshness, and activate still deletes any cache that isn't current. */
 var CACHE = "alooma-shell-v1";
 var SHELL = ["./", "index.html", "app.js", "logic.js", "styles.css"];
 self.addEventListener("install", function (e) {
@@ -23,12 +29,14 @@ self.addEventListener("fetch", function (e) {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.endsWith("data.json") || url.pathname.endsWith("sw.js")) return;
   e.respondWith(
-    caches.match(e.request, { ignoreSearch: true }).then(function (hit) {
-      return hit || fetch(e.request).then(function (resp) {
+    fetch(e.request).then(function (resp) {
+      if (resp.ok) {
         var copy = resp.clone();
         caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
-        return resp;
-      });
+      }
+      return resp;
+    }).catch(function () {
+      return caches.match(e.request, { ignoreSearch: true });
     })
   );
 });
