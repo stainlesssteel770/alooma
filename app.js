@@ -727,7 +727,10 @@
       if (kitOpts.indexOf(ln.kits) < 0) { kitOpts.push(ln.kits); kitOpts.sort(function (a, b) { return a - b; }); }
       var sel = '<select class="queue-kits" data-qidx="' + i + '" aria-label="Kits for ' + esc(L.sku(ln.craftId, ln.kits)) + '">' +
         kitOpts.map(function (k) { return '<option value="' + k + '"' + (k === ln.kits ? " selected" : "") + ">" + k + "</option>"; }).join("") + "</select>";
-      row.innerHTML = '<span class="queue-main"><span>' + esc(craft.name) + " · </span>" + sel + "<span> kits · " + esc(L.sku(ln.craftId, ln.kits)) + "</span></span>" +
+      /* Polish item 4: the SKU rides in its own nowrap span, so a queue
+         card can never break it as "CAK-" / "18" — the hyphen is a
+         break opportunity the browser will otherwise take. */
+      row.innerHTML = '<span class="queue-main"><span>' + esc(craft.name) + " · </span>" + sel + "<span> kits · <span class=\"nowrap\">" + esc(L.sku(ln.craftId, ln.kits)) + "</span></span></span>" +
         '<button type="button" class="btn btn-quiet queue-remove" data-qidx="' + i + '" aria-label="Remove ' + esc(L.sku(ln.craftId, ln.kits)) + '">✕</button>';
       wrap.appendChild(row);
     });
