@@ -435,6 +435,14 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   #print-area section.pack-sheet .print-foot { margin-top: 2pt; padding-top: 2pt; }
   #print-area section.pack-sheet tr.p-title th { padding-bottom: 2pt; }
   #print-area section.pack-sheet .label-sub { margin-top: 0; }
+  /* New pack-sheet layout: header line 1 is a flex row — craft name
+     left, small 8pt Date top-right on the same (first) baseline. The
+     name takes the free space, so a long name wraps under itself while
+     the date stays top-right; the 12pt gap keeps the two text runs
+     from ever overlapping. Title/subtitle sizes untouched. */
+  #print-area section.pack-sheet .label-title-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12pt; }
+  #print-area section.pack-sheet .label-title-row .label-title { flex: 1 1 auto; }
+  #print-area section.pack-sheet .label-date { font-size: 8pt; font-weight: 700; white-space: nowrap; }
 }
 
 /* Merged pack flow (2026-10-23): Print / Hand pack choice + batch hand-pack list */
