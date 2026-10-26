@@ -759,12 +759,27 @@ try {
       const el = [...document.querySelectorAll("#pack-table .row-name")].find(s => s.textContent === "Clay Tray + 6 Picks");
       if (!el) return null;
       const tops = [...new Set([...el.getClientRects()].map(r => Math.round(r.top)))];
-      return { tops: tops.length, over: el.scrollWidth > el.clientWidth, text: el.textContent };
+      /* Full unwrapped width of the name, measured on a hidden nowrap
+         clone inside the same cell (so it inherits the cell's font).
+         Reported in the assertion label: on failure the numbers ride
+         along, so the next fix is data-driven, not another guess. */
+      const clone = el.cloneNode(true);
+      clone.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap;";
+      el.parentElement.appendChild(clone);
+      const full = Math.round(clone.getBoundingClientRect().width);
+      clone.remove();
+      const td = el.closest("td");
+      const cs = getComputedStyle(td);
+      const table = document.querySelector("#pack-table");
+      return { tops: tops.length, over: el.scrollWidth > el.clientWidth, text: el.textContent,
+        full: full, cell: Math.round(td.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)),
+        table: table ? Math.round(table.getBoundingClientRect().width) : 0,
+        doc: document.documentElement.clientWidth };
     });
     eq(!!clay, true, "polish1-" + w + ": Clay row present on the BM-6 checklist");
     if (clay) {
       eq(clay.text, "Clay Tray + 6 Picks", "polish1-" + w + ": Clay name text");
-      eq(clay.tops, 1, "polish1-" + w + ": Clay name is one line");
+      eq(clay.tops, 1, "polish1-" + w + ": Clay name is one line (full " + clay.full + " cell-content " + clay.cell + " table " + clay.table + " doc " + clay.doc + ")");
       eq(clay.over, false, "polish1-" + w + ": Clay name does not overflow");
     }
   }
