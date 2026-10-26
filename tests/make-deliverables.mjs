@@ -156,6 +156,9 @@ try {
   await queueAdd("Hafrashat Challah", 18);
   await page.screenshot({ path: path.join(ROOT, "screenshots/queue-3craft.png"), fullPage: true });
   ok(await page.$$eval("#pack-queue .queue-line", els => els.length) === 3, "deliverable: queue holds 3 crafts for the screenshot");
+  /* Item 4: Print all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-print");
   await sleep(300);
   await page.pdf({ path: "/tmp/alooma-printall-3craft.pdf", preferCSSPageSize: true, printBackground: true });
@@ -171,6 +174,9 @@ try {
   await queueFirst("The Cakery", 36);
   await queueAdd("Tambourines", 12);
   await queueAdd("Hafrashat Challah", 18);
+  /* Item 4: Hand pack all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-hand");
   await sleep(300);
   await page.click("#btn-check-all");
