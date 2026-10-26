@@ -195,6 +195,8 @@ try {
      "pack sheet: every row's Per 6 and Total match the recipe (Scissors 2/12, Printed Posters 1/6, boxes 6/36)");
   await page.pdf({ path: "/tmp/alooma-packsheet.pdf", preferCSSPageSize: true, printBackground: true });
   const packTexts = await pageTexts("/tmp/alooma-packsheet.pdf");
+  /* Diagnostic for the batch (b) repeat failures: which page lacks what. */
+  console.log("CAK-36 page flags: " + packTexts.map((t, i) => "p" + (i + 1) + " len=" + t.trim().length + " cakery=" + t.includes("Cakery") + " packedby=" + t.includes("Packed by")).join(" | "));
   await checkGeometry("/tmp/alooma-packsheet.pdf", "pack sheet CAK-36");
   ok(packTexts.length >= 2, "pack sheet CAK-36: big rows spill to a 2nd page rather than shrinking (" + packTexts.length + " pages)");
   ok(packTexts.every(t => t.includes("Cakery") && t.trim().length > 30), "pack sheet: craft title repeats on every page, none blank (a footer flowed to its own last page is allowed)");
@@ -232,11 +234,11 @@ try {
   await page.pdf({ path: "/tmp/alooma-packsheet-hcb.pdf", preferCSSPageSize: true, printBackground: true });
   await checkGeometry("/tmp/alooma-packsheet-hcb.pdf", "pack sheet HCB-12");
 
-  /* New pack-sheet layout geometry (no-boxes probes): header line 1 has
-     the craft name + Date on the title line (Date pinned top-right,
-     so its baseline sits ~18pt above the 30pt name's — the exact
-     top-alignment is proved on the throwaway page below), and the
-     subtitle carries Packed by and no footer renders without boxes. Page counts are owned by the
+  /* New pack-sheet layout geometry (no-boxes probes): header line 1 is
+     the craft name alone; the subtitle carries Total kits / Order ID /
+     Packed by / Date on three lines (fix-round item 8: Date on its own
+     line, in-flow, never overlapping the title), and no footer renders
+     without boxes. Page counts are owned by the
      matrix below — these probes only log theirs. */
   async function singlePack(name, kits, file) {
     await page.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);
@@ -251,7 +253,7 @@ try {
     const nm = runs1.find(r => r.s.includes(name.split(" ")[0]));
     const dt = runs1.find(r => r.s.includes("Date:"));
     const sb = runs1.find(r => r.s.includes("Total kits:"));
-    ok(!!nm && !!dt && !!sb && dt.y > sb.y, name + "-" + kits + ": header Date sits on the title line, above the subtitle");
+    ok(!!nm && !!dt && !!sb && dt.y < sb.y, name + "-" + kits + ": Date sits below subtitle line 1, on its own line (never on the title line)");
     const subFoot = await page.evaluate(() => ({ sub: (document.querySelector("#print-area .label-sub") || {}).textContent || "", hasFoot: !!document.querySelector("#print-area .print-foot") }));
     ok(subFoot.sub.includes("Packed by") && !subFoot.hasFoot, name + "-" + kits + ": subtitle carries Packed by, no footer without boxes");
     await checkGeometry(file, name + "-" + kits + " new-layout geometry");
@@ -383,11 +385,11 @@ try {
     ok(!!hdr, "header proof: title + subtitle rendered");
     if (hdr) {
       ok(!hdr.hasAbsDate, "pack sheet: no absolute Date element left (Date lives in the subtitle now)");
-      ok(hdr.subText.includes("Date: ____________"), "pack sheet: subtitle carries the blank Date on line 2 (" + hdr.subText + ")");
-      eq(hdr.titleRowKids, 1, "pack sheet: title row holds only the title");
+      ok(hdr.subText.includes("Date: ____________"), "pack sheet: subtitle carries the blank Date on its own line (" + hdr.subText + ")");
+      ok(hdr.titleRowKids === 1, "pack sheet: title row holds only the title");
       ok(!hdr.overlap, "pack sheet: subtitle sits below the title, never overlapping it");
       ok(hdr.footText.includes("BOXES:"), "pack sheet: boxes footer rendered for the border check");
-      eq(hdr.footBorder, "0px", "pack sheet: footer draws no border-top (table border is the single line above BOXES)");
+      ok(hdr.footBorder === "0px", "pack sheet: footer draws no border-top (table border is the single line above BOXES)");
     }
     await pg.close();
   }
