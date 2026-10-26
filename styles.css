@@ -333,6 +333,12 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   /* scroll-margin must clear bar + toast + nav (the bar sits directly
      below the new card in flow, so the card has to rise past all three) */
   #bulk-lines > *, #pack-queue > * { scroll-margin-bottom: 210px; }
+  /* Polish item 2 fallout: the taller picker pushed the order section's
+     in-flow buttons down, so a minimal scroll parks Done / Check-all
+     under the sticky action bar or the fixed tab bar — the click then
+     hits the bar (Done) or a tab button (Check-all → leave-rule sheet).
+     Same 210px clearance for those buttons. */
+  #pack-boxes button, #pack-boxes-edit button, #pack-checklist .list-tools button { scroll-margin-bottom: 210px; }
   .toast { bottom: 132px; left: 8px; right: 8px; transform: none; max-width: none; font-size: 12.5px; padding: 10px 12px; gap: 10px; }
   .toast button { font-size: 13px; }
   /* Brief item 14: the header status must never run off the right edge.
