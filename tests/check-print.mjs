@@ -29,7 +29,8 @@ let fail = 0;
 function ok(cond, label) { if (cond) console.log("ok   " + label); else { fail++; console.log("FAIL " + label); } }
 
 /* Sample data through a mocked repo: every item at 100; the first BM
-   group gets the brief's three LOW cases on its first three items */
+   group gets the brief's LOW cases on its first four items, including
+   the fix-round item 3 at-threshold case (qty == level is LOW) */
 const L = require(path.join(ROOT, "logic.js"));
 const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
 remote.history = [];
@@ -39,6 +40,7 @@ const G0 = groups[0];
 remote.inventory[G0.items[0]].threshold = 50; remote.inventory[G0.items[0]].qty = 17;  /* LOW */
 remote.inventory[G0.items[1]].threshold = 50; remote.inventory[G0.items[1]].qty = 63;  /* not low */
 remote.inventory[G0.items[2]].threshold = null; remote.inventory[G0.items[2]].qty = 5; /* no level: never low */
+remote.inventory[G0.items[3]].threshold = 50; remote.inventory[G0.items[3]].qty = 50;  /* at threshold: LOW (at or under) */
 remote.settings.features.boxes = true; /* currentBoxes() is null unless the feature is on */
 remote.settings.boxes = ["Big Box", "Small Box"]; /* the settings sanitizer keeps only rule boxes that exist here */
 remote.settings.boxRules = [{ craftId: "cak", kits: 36, boxes: ["Big Box", "Small Box"] }]; /* CAK-36 order carries boxes */
@@ -107,7 +109,7 @@ const server = http.createServer((req, res) => {
   });
 });
 await new Promise(r => server.listen(PORT, "127.0.0.1", r));
-const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"], timeout: 90000 });
 try {
   const page = await browser.newPage();
   page.on("pageerror", e => console.log("PAGEERROR " + e.message));
@@ -396,6 +398,8 @@ try {
   ok(lowRow && lowRow.low && lowRow.text.includes("LOW"), "LOW flag: level 50, on hand 17 -> flagged (bold row + LOW tag)");
   ok(midRow && !midRow.low, "LOW flag: level 50, on hand 63 -> not flagged");
   ok(noLvlRow && !noLvlRow.low, "LOW flag: no level set -> never flagged");
+  const atRow = inv.rows.find(r => r.text.includes(L.ITEMS[G0.items[3]]));
+  ok(atRow && atRow.low && atRow.text.includes("LOW"), "LOW flag: level 50, on hand 50 (at threshold) -> flagged, matching screen + README");
   await page.pdf({ path: "/tmp/alooma-invreport.pdf", preferCSSPageSize: true, printBackground: true });
   checkPagination(await pageTexts("/tmp/alooma-invreport.pdf"), "inventory report");
   await checkGeometry("/tmp/alooma-invreport.pdf", "inventory report");
@@ -430,6 +434,8 @@ try {
   ok(!cnt.text.includes("Warn at"), "count sheet: no Warn-at column or text");
   const cLow = cnt.rows.find(r => r.text.includes(L.ITEMS[G0.items[0]]));
   ok(cLow && cLow.low && cLow.text.includes("LOW"), "count sheet: LOW flag applies too");
+  const cAt = cnt.rows.find(r => r.text.includes(L.ITEMS[G0.items[3]]));
+  ok(cAt && cAt.low && cAt.text.includes("LOW"), "count sheet: at-threshold item flagged LOW (fix-round item 3)");
   await page.pdf({ path: "/tmp/alooma-countsheet.pdf", preferCSSPageSize: true, printBackground: true });
   const cntTexts = await pageTexts("/tmp/alooma-countsheet.pdf");
   checkPagination(cntTexts, "count sheet", "Counted by");
