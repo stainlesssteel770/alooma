@@ -600,6 +600,27 @@ try {
   await sleep(500);
   eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors X"))), true, "(b) rename shows in the picker");
 
+  /* Fix-round batch (a) item 5: duplicate names blocked. */
+  const puts4 = putCount;
+  await page.evaluate(() => { document.querySelector("#recipe-add-name").value = "blooming mirrors x"; document.querySelector("#recipe-add-code").value = "ZZ"; document.querySelector("#recipe-add-btn").click(); });
+  await sleep(400);
+  eq(await page.evaluate(() => document.querySelector("#recipe-add-error").textContent.includes("already exists")), true, "(b) duplicate craft name (case-insensitive) blocked");
+  eq(putCount, puts4, "(b) blocked craft add saves nothing");
+  await page.evaluate(() => { const inp = document.querySelector('[data-recipe-row="bm"] [data-recipe-name]'); inp.value = "Tambourines"; inp.dispatchEvent(new Event("change", { bubbles: true })); });
+  await sleep(500);
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent.includes("already exists")), true, "(b) rename onto another craft's name blocked");
+  eq(putCount, puts4, "(b) blocked rename saves nothing");
+  await page.evaluate(() => { const inp = document.querySelector('[data-recipe-row="bm"] [data-recipe-name]'); inp.value = "Blooming Mirrors X"; inp.dispatchEvent(new Event("change", { bubbles: true })); });
+  await sleep(500);
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent), "", "(b) restoring the name clears the error");
+  await page.select('[data-recipe-row="bm"] [data-line-item]', '__new__');
+  await sleep(300);
+  await page.evaluate(() => { document.querySelector('[data-new-item-name]').value = "AY - Special Request"; document.querySelector('[data-new-item-unit]').value = ""; });
+  await page.evaluate(() => document.querySelector('[data-new-item-create]').click());
+  await sleep(500);
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent.includes("already exists")), true, "(b) duplicate item name blocked even when its slug differs (AY - Special Request)");
+  eq(putCount, puts4 + 1, "(b) only the name restore saved, not the blocked item");
+
   /* (b6) Rename keeps old history titles. */
   await resetSeed();
   rows = await (async () => { await pick("Blooming Mirrors", 6); await page.evaluate(() => document.querySelector("#btn-pack-hand").click()); await sleep(300); return null; })();
