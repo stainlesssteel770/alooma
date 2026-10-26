@@ -708,6 +708,34 @@ try {
     eq(savedGeo.every(g => g && !g.over), true, "item7-" + w + ": Print all / Hand pack all do not overflow");
   }
 
+  /* Polish item 2: picker rows equal height at 360/375/390, selected
+     or not. The old layout failed this live: Miniature Interiors
+     wrapped at 375 (80 vs 64px), and selecting it grew the card to
+     82px as the tick stole width from the name. */
+  for (const w of [360, 375, 390]) {
+    await page.setViewport({ width: w, height: 664 });
+    await page.evaluate(() => localStorage.removeItem("alooma.packqueue.v1"));
+    await reloadApp();
+    await page.waitForSelector("#pack-crafts .craft-btn");
+    await sleep(300);
+    const plain = await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].map(b => Math.round(b.getBoundingClientRect().height)));
+    eq(plain.length, 6, "polish2-" + w + ": six craft buttons");
+    eq(Math.max(...plain) - Math.min(...plain) <= 1, true, "polish2-" + w + ": all picker rows equal height unselected (" + plain.join(",") + ")");
+    const miPlain = await page.evaluate(() => {
+      const b = [...document.querySelectorAll("#pack-crafts .craft-btn")].find(x => x.textContent.includes("Miniature Interiors"));
+      return b ? Math.round(b.getBoundingClientRect().height) : 0;
+    });
+    await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Miniature Interiors")).click());
+    await sleep(300);
+    const sel = await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].map(b => Math.round(b.getBoundingClientRect().height)));
+    eq(Math.max(...sel) - Math.min(...sel) <= 1, true, "polish2-" + w + ": all picker rows equal height selected (" + sel.join(",") + ")");
+    const miSel = await page.evaluate(() => {
+      const b = [...document.querySelectorAll("#pack-crafts .craft-btn")].find(x => x.textContent.includes("Miniature Interiors"));
+      return b ? Math.round(b.getBoundingClientRect().height) : 0;
+    });
+    eq(Math.abs(miSel - miPlain) <= 1, true, "polish2-" + w + ": selecting Miniature Interiors does not change its height (" + miPlain + " -> " + miSel + ")");
+  }
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();
