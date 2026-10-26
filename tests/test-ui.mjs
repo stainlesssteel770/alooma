@@ -761,6 +761,11 @@ async function tab(name) {
   await waitDom(() => !document.querySelector("#pack-boxes").hidden, "boxes line shows again");
   await page.click("#btn-boxes-change");
   await page.evaluate(() => [...document.querySelectorAll("#pack-boxes-chips .kits-chip")].find(x => x.textContent === "Box C").click());
+  /* Polish item 2 fallout: page.click's minimal scroll parks an already-visible
+     button under the fixed bottom band (scroll-margin/scroll-padding are inert
+     when no scroll happens). Center it first, as a real user would scroll it
+     fully into view before tapping. */
+  await page.evaluate(() => document.querySelector("#btn-boxes-done").scrollIntoView({block: "center"}));
   await page.click("#btn-boxes-done");
   eq((await page.$eval("#pack-boxes-text", e => e.textContent)).includes("Box C"), true, "C1: Change override adds Box C for this order");
   await page.click("#btn-pack-print");
@@ -780,6 +785,7 @@ async function tab(name) {
   await waitDom(() => !document.querySelector("#pack-boxes").hidden, "boxes line shows after re-pick");
   await page.click("#btn-boxes-change");
   await page.evaluate(() => [...document.querySelectorAll("#pack-boxes-chips .kits-chip")].find(x => x.textContent === "Box C").click());
+  await page.evaluate(() => document.querySelector("#btn-boxes-done").scrollIntoView({block: "center"}));
   await page.click("#btn-boxes-done");
   await sleep(200);
   await page.click("#btn-check-all");
