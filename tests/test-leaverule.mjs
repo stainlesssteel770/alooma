@@ -199,7 +199,16 @@ try {
   await page.click("#btn-pack-hand");
   await sleep(200);
   await page.click("#btn-check-all");
-  await sleep(200);
+  await sleep(400);
+  /* Run 4 failed on the next click with "not clickable", i.e. the
+     Mark-all sheet was never open — diagnose instead of guessing: if
+     the sheet didn't open, report whether every box was already
+     checked (the handler's no-sheet branch) or the click never ran. */
+  const chkDiag = await page.evaluate(() => {
+    const boxes = [...document.querySelectorAll("#pack-table tbody input[type=checkbox]")];
+    return JSON.stringify({ sheetOpen: !document.querySelector("#sheet-backdrop").hidden, sheetTitle: document.querySelector("#sheet-title").textContent, boxes: boxes.length, allChecked: boxes.length > 0 && boxes.every(cb => cb.checked) });
+  });
+  eq(chkDiag.includes('"sheetOpen":true'), true, "check-all opens the Mark-all sheet (diag: " + chkDiag + ")");
   await page.click("#sheet-primary"); /* Mark all */
   await sleep(200);
   await page.click("#btn-complete-pack");
