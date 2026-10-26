@@ -443,18 +443,18 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
      padding stays 6pt so Item keeps its width. Count/inventory sheets
      are untouched (their pagination is accepted as-is). */
   #print-area section.pack-sheet th, #print-area section.pack-sheet td { padding-top: 2.5pt; padding-bottom: 2.5pt; }
-  /* New pack-sheet layout: header line 1 is the craft name full-width
-     with the small 8pt Date pinned top-right over it (out of flow, as
-     in Tab's mockups). A flex row was tried first and REGRESSED MI:
-     the date + gap stole ~79pt from the name, wrapping "Miniature
-     Interiors" (262pt, fits the 268pt full width) to a second title
-     line and spilling its last row to page 2. Absolute positioning
-     keeps the name's full width, so the title block is exactly the
-     old height; the geometry gate in check-print fails loudly if a
-     name's first line ever runs under the date. Title/subtitle sizes
-     untouched. */
+  /* New pack-sheet layout: header line 1 is the craft name full-width.
+     History: a flex row was tried first and REGRESSED MI (the date +
+     gap stole ~79pt from the name, wrapping "Miniature Interiors" to a
+     second title line and spilling its last row to page 2), and the
+     8pt absolute top-right Date that replaced it printed ON TOP of
+     long titles (Hafrashat Challah unreadable). Fix-round item 8:
+     Date now lives in-flow on subtitle line 2 at full subtitle size,
+     so it can never overlap the title and costs 0pt of height; the
+     absolute .label-date element and its rule are gone. The geometry
+     gate in check-print still guards title/subtitle overlap.
+     Title/subtitle sizes untouched. */
   #print-area section.pack-sheet .label-title-row { position: relative; }
-  #print-area section.pack-sheet .label-date { position: absolute; top: 0; right: 0; font-size: 8pt; font-weight: 700; white-space: nowrap; }
 }
 
 /* Merged pack flow (2026-10-23): Print / Hand pack choice + batch hand-pack list */
