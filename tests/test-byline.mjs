@@ -150,10 +150,10 @@ try {
   await page.click("#btn-pack-print");
   await sleep(300);
   /* Pack footer: the blank shortened 20 -> 12 underscores (Batch B);
-     Date has since left the footer for header line 1, and Packed by
-     has since moved to header line 2 (footer is BOXES-only) — the
-     blank line itself stays, and these printAreaText assertions still
-     hold wherever on the sheet it sits. */
+     Date has since left the footer for the subtitle (fix-round item 8),
+     and Packed by has since moved to header line 2 (footer is
+     BOXES-only) — the blank line itself stays, and these
+     printAreaText assertions still hold wherever on the sheet it sits. */
   eq((await printAreaText()).includes("Packed by: ____________"), true, "single print empty: blank line kept");
   eq(remoteData.history[0].packedBy, undefined, "single print empty: no packedBy stored");
 
