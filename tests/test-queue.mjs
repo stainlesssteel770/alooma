@@ -128,6 +128,9 @@ try {
   const q1 = await queueLines();
   eq(q1.length, 3, "queue: 3 lines present");
   eq(q1.every(l => l.text.includes("kits")), true, "queue: lines show craft + kits");
+  /* Item 4: Print all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-print");
   await sleep(300);
   const sections = await page.$$eval("#print-area .print-page", els => els.map(e => e.querySelector(".label-title").textContent));
@@ -155,6 +158,9 @@ try {
   await queueFirst("Blooming Mirrors", 6);
   await addLine("Tambourines", 12);
   await addLine("Judaic Clay-Art", 6);
+  /* Item 4: Hand pack all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-hand");
   await sleep(300);
   eq(await page.$eval("#pack-queue-progress", e => e.textContent), "Craft 1 of 3", "Hand pack all: first craft opens with its position");
@@ -218,6 +224,9 @@ try {
   eq((await queueLines()).length, 0, "shortage: restored walk line removed before starting");
   await queueFirst("The Cakery", 36);
   await addLine("Tambourines", 12);
+  /* Item 4: Print all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-print");
   await sleep(300);
   eq(await sheetVisible(), true, "shortage: Print all stops at a confirm sheet");
@@ -243,6 +252,9 @@ try {
   await queueFirst("The Cakery", 12);
   await addLine("The Cakery", 18);
   eq(await sheetVisible(), false, "duplicates: no warning while adding the second Cakery line");
+  /* Item 4: Print all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-print");
   await sleep(300);
   eq(await sheetVisible(), true, "duplicates: Print all shows the pop-up");
@@ -328,7 +340,11 @@ try {
   eq(doneDiag.doneBottom <= doneDiag.tabsTop, true, "item1: Done sits above the tab bar on first paint");
   await page.click("#btn-queue-done");
   await sleep(300);
-  eq(await rowVisible("pack-queue-actions"), false, "item1: Done hides the queue row again");
+  eq(await rowVisible("pack-queue-actions"), true, "item4: Done leaves the saved-queue row visible");
+  eq(await rowVisible("btn-queue-add"), false, "item4: Add hides after Done");
+  eq(await rowVisible("btn-queue-done"), false, "item4: Done hides after Done");
+  eq(await rowVisible("btn-queue-print"), true, "item4: Print all appears after Done");
+  eq(await rowVisible("btn-queue-hand"), true, "item4: Hand pack all appears after Done");
   eq(await page.$eval("#pack-queue-count", e => e.textContent), "1", "item1: Done keeps the saved queue");
   await page.screenshot({ path: path.join(SHOT, "queue-row-done.jpg"), type: "jpeg", quality: 74 });
 
@@ -358,7 +374,11 @@ try {
   await page.screenshot({ path: path.join(SHOT, "queue-row-queuemode-844.jpg"), type: "jpeg", quality: 74 });
   await page.click("#btn-queue-done");
   await sleep(300);
-  eq(await rowVisible("pack-queue-actions"), false, "item1-844: Done hides the queue row again");
+  eq(await rowVisible("pack-queue-actions"), true, "item4-844: Done leaves the saved-queue row visible");
+  eq(await rowVisible("btn-queue-add"), false, "item4-844: Add hides after Done");
+  eq(await rowVisible("btn-queue-done"), false, "item4-844: Done hides after Done");
+  eq(await rowVisible("btn-queue-print"), true, "item4-844: Print all appears after Done");
+  eq(await rowVisible("btn-queue-hand"), true, "item4-844: Hand pack all appears after Done");
   eq(await page.$eval("#pack-queue-count", e => e.textContent), "1", "item1-844: Done keeps the saved queue");
   await page.screenshot({ path: path.join(SHOT, "queue-row-done-844.jpg"), type: "jpeg", quality: 74 });
 
@@ -373,6 +393,9 @@ try {
   await page.click("#btn-pack-queue");
   await sleep(300);
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 2, "item1-walk: two lines queued");
+  /* Item 4: Hand pack all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-hand");
   await sleep(500);
   const walkPos = await page.evaluate(() => {
@@ -388,7 +411,9 @@ try {
   await sleep(150);
   await page.click("#btn-queue-done");
   await sleep(300);
-  eq(await rowVisible("pack-queue-actions"), false, "item1-walk: Done ends the walk and hides the row");
+  eq(await rowVisible("pack-queue-actions"), true, "item4-walk: Done ends the walk but the saved row stays");
+  eq(await rowVisible("btn-queue-print"), true, "item4-walk: Print all stays after ending the walk");
+  eq(await rowVisible("btn-queue-hand"), true, "item4-walk: Hand pack all stays after ending the walk");
 
   /* ---- Item 2: sheets cap at viewport height, content scrolls,
      buttons stay pinned. Forced overflow: every item at 0, three
@@ -413,6 +438,9 @@ try {
   await queueFirst("Tambourines", 36);
   await addLine("The Cakery", 36);
   await addLine("Blooming Mirrors", 36);
+  /* Item 4: Print all lives in the saved state, not in Queue mode. */
+  await page.click("#btn-queue-done");
+  await sleep(300);
   await page.click("#btn-queue-print");
   await sleep(400);
   eq(await sheetVisible(), true, "item2: Print all stops at the shortage sheet");
@@ -515,6 +543,30 @@ try {
   eq(manualGeo.chipsHidden, false, "item3: chips return after a manual-count Add");
   eq(manualGeo.fieldVal, "", "item3: kits field clears after Add");
   eq((await queueLines()).some(l => l.text.includes("BM-42")), true, "item3: the manual-count line queued as BM-42");
+
+  /* Retest item 4: Queue mode shows only Add + Done; after Done, the
+     saved queue shows only Print all + Hand pack all, and they survive
+     a reload while the queue has lines. */
+  await page.setViewport({ width: 390, height: 664 });
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
+  await reloadApp();
+  await queueFirst("Blooming Mirrors", 6);
+  eq(await rowVisible("btn-queue-add"), true, "item4: Add shows in Queue mode");
+  eq(await rowVisible("btn-queue-done"), true, "item4: Done shows in Queue mode");
+  eq(await rowVisible("btn-queue-print"), false, "item4: Print all hidden in Queue mode");
+  eq(await rowVisible("btn-queue-hand"), false, "item4: Hand pack all hidden in Queue mode");
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  eq(await rowVisible("pack-queue-actions"), true, "item4: saved-queue row visible after Done");
+  eq(await rowVisible("btn-queue-add"), false, "item4: Add hidden after Done");
+  eq(await rowVisible("btn-queue-done"), false, "item4: Done hidden after Done");
+  eq(await rowVisible("btn-queue-print"), true, "item4: Print all visible after Done");
+  eq(await rowVisible("btn-queue-hand"), true, "item4: Hand pack all visible after Done");
+  await reloadApp();
+  eq((await queueLines()).length, 1, "item4: saved queue survives reload");
+  eq(await rowVisible("pack-queue-actions"), true, "item4: saved-queue row visible after reload");
+  eq(await rowVisible("btn-queue-print"), true, "item4: Print all still there after reload");
+  eq(await rowVisible("btn-queue-hand"), true, "item4: Hand pack all still there after reload");
 
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
