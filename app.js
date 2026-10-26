@@ -1837,34 +1837,40 @@
         '<td class="qty regular">' + per6[r.item] + '</td><td class="qty">' + r.qty + "</td></tr>";
     }).join("");
     /* New pack-sheet layout (general, no per-craft rules): header line 1
-       is the craft name left + a small 8pt Date top-right on the same
-       line (a reprint still shows its ORIGINAL date here); header line 2
-       is the kits/Order ID/Packed by subtitle; the footer is BOXES only
+       is the craft name alone; header line 2 is the kits/Order ID/
+       Packed by/Date subtitle. Fix-round item 8: Date used to be an 8pt
+       absolutely-positioned element on line 1, where it printed ON TOP
+       of long titles (Hafrashat Challah unreadable, worse on a filled
+       reprint date). It now lives in-flow on line 2, at full subtitle
+       size — in-flow text can never overlap the title, and it costs 0pt
+       of height (a separate date line would cost ~10.4pt). A reprint
+       still shows its ORIGINAL date here. Fix-round item 7: the stray
+       " · " after the Order ID blank is gone. The footer is BOXES only
        and is omitted entirely when there are no boxes and it isn't a
        reprint, so a no-boxes sheet has no footer block at all. REPRINT
        stays as its own div last in the footer when present. BOXES uses
        commas on the sheet (the on-screen " + " separator elsewhere is
        untouched). The <br> after the Order ID blank is load-bearing,
-       not cosmetic: without it the subtitle's UNWRAPPED width (403pt)
-       exceeds the table width, and Chrome's auto layout answers by
-       narrowing the Item column ~17pt — which wrapped MI's long names
-       (Tools & supplies tray #2, Scrapbook paper pack) to 2 lines each
-       and spilled the MI-boxes footer. With the forced break the
-       title cell's max is the 262pt craft name, the columns keep their
-       natural widths, and the visual result is identical (the subtitle
-       wrapped at exactly this point anyway). The space before the <br>
-       is also load-bearing: textContent gives a bare <br> no separator
-       at all, so without it the subtitle reads "·Packed by" to the
-       queue tests' normalized-text assertions. */
+       not cosmetic: without it the subtitle's UNWRAPPED width (403pt
+       before Date joined line 2, longer now) exceeds the table width,
+       and Chrome's auto layout answers by narrowing the Item column
+       ~17pt — which wrapped MI's long names (Tools & supplies tray #2,
+       Scrapbook paper pack) to 2 lines each and spilled the MI-boxes
+       footer. With the forced break the title cell's max is the 262pt
+       craft name, the columns keep their natural widths, and the
+       visual result is identical (the subtitle wrapped at exactly this
+       point anyway). The space before the <br> is also load-bearing:
+       textContent gives a bare <br> no separator at all, so without it
+       the subtitle reads "____________Packed by" to the queue tests'
+       normalized-text assertions. */
     var foot = "";
     if ((boxes && boxes.length) || opts.reprint) {
       foot = '<div class="print-foot">' + (boxes && boxes.length ? '<span class="foot-boxes">BOXES: ' + esc(boxes.join(", ")) + "</span>" : "") +
         (opts.reprint ? "<div>REPRINT</div>" : "") + "</div>";
     }
     return '<section class="print-page pack-sheet"><table><thead>' +
-      '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title-row"><div class="label-title">' + esc(craft.name) + "</div>" +
-      '<div class="label-date">Date: ' + (opts.date ? esc(opts.date) : "__________") + "</div></div>" +
-      '<div class="label-sub">Total kits: ' + kits + " · Order ID: ____________ <br>Packed by: " + (by ? esc(by) : "____________") + "</div>" +
+      '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title-row"><div class="label-title">' + esc(craft.name) + "</div></div>" +
+      '<div class="label-sub">Total kits: ' + kits + " · Order ID: ____________ <br>Packed by: " + (by ? esc(by) : "____________") + " · Date: " + (opts.date ? esc(opts.date) : "__________") + "</div>" +
       "</th></tr>" +
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>" + foot + "</section>";
