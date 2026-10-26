@@ -209,6 +209,9 @@ try {
   });
   eq(qHead !== "hidden" && qHead.inHead && qHead.headText.includes("Queue (3)") && qHead.inView, true, "4: Queue Clear all sits in the 'Queue (3)' header row, on screen (" + JSON.stringify(qHead) + ")");
   await tab("bulk");
+  /* Fix-round item 2: a saved queue alone no longer prompts, so this
+     switch must NOT wipe it the way old A3 Discard did. */
+  eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]").length), 3, "item2: saved queue survives the tab switch (no Discard wipe)");
   await page.evaluate(n => [...document.querySelectorAll("#bulk-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), "Blooming Mirrors");
   await page.evaluate(() => { document.querySelector('.kits-chip[data-for="bulk"][data-kits="6"]').click(); });
   await sleep(150);
@@ -231,6 +234,15 @@ try {
 
   /* ---- 5e (print): the saved name prints on the sheet ---- */
   await tab("pack");
+  /* Fix-round item 2: Discard no longer wipes the saved queue, so 5e
+     clears it explicitly via Clear-all first — a pick with a saved
+     queue enters Queue mode (Polish item 5) and single Print stays
+     hidden, which is what broke this section under the new behavior. */
+  await page.click("#btn-queue-clear");
+  await sleep(300);
+  await page.click("#sheet-primary");
+  await sleep(300);
+  eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]").length), 0, "item2: Clear-all empties the queue for the single-print check");
   await packCraft("Blooming Mirrors");
   await packChip(6);
   await page.click("#btn-pack-print");
@@ -238,8 +250,9 @@ try {
   eq(await page.evaluate(() => document.querySelector("#print-area").textContent.includes("Packed by: Dina")), true, "5e: printed sheet carries the saved Packed-by name");
 
   /* ---- 11: during a walk, single buttons hide and the table clears the bar ---- */
-  /* Section 4's Bulk detour Discarded the saved queue under A3, so rebuild
-     the 5d shape first; the BM-6 below then makes 4 lines with BM-6 x3. */
+  /* 5e cleared the queue via Clear-all (Discard no longer wipes it under
+     item 2), so rebuild the 5d shape first; the BM-6 below then makes
+     4 lines with BM-6 x3. */
   await packCraft("Blooming Mirrors");
   await packChip(6);
   await page.click("#btn-pack-queue");
