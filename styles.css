@@ -432,7 +432,11 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   /* Pack spill fix (MI/TAM): pack sheets only. Footer margin/padding +
      title/subtitle spacing trims (~14pt) plus the single-line footer
      (~16pt) recover ~30pt. Text size and row height untouched. */
-  #print-area section.pack-sheet .print-foot { margin-top: 2pt; padding-top: 2pt; }
+  /* Fix-round item 10: the double line above BOXES was the table's
+     bottom border PLUS this footer's own border-top (1.5pt each, 2pt
+     apart). Pack sheets drop the footer's border so the table border
+     is the single line; spacing (2pt/2pt) untouched. */
+  #print-area section.pack-sheet .print-foot { margin-top: 2pt; padding-top: 2pt; border-top: none; }
   #print-area section.pack-sheet tr.p-title th { padding-bottom: 2pt; }
   #print-area section.pack-sheet .label-sub { margin-top: 0; }
   /* Height budget (BM-36-boxes, measured 2026-10-26): the 4.5pt cell
