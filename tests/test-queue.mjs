@@ -639,9 +639,13 @@ try {
   const toast6 = await page.evaluate(() => {
     const t = document.querySelector("#toast");
     const m = document.querySelector("#toast .toast-msg");
-    return { h: t ? Math.round(t.getBoundingClientRect().height) : 0, noTrunc: m ? m.scrollWidth <= m.clientWidth : false, text: t ? t.textContent : "" };
+    return { h: t ? Math.round(t.getBoundingClientRect().height) : 0, mh: m ? Math.round(m.getBoundingClientRect().height) : 0, noTrunc: m ? m.scrollWidth <= m.clientWidth : false, text: t ? t.textContent : "" };
   });
-  eq(toast6.h <= 48, true, "item6: Complete toast is one line at 390 (h=" + toast6.h + ")");
+  /* One line of message (≈19px at 12.5px) + the 44px UNDO button +
+     20px padding = 64px total; the button alone guarantees 64, so the
+     message height (not the toast height) is the one-line proof. */
+  eq(toast6.mh <= 24, true, "item6: Complete toast message is one line at 390 (mh=" + toast6.mh + ")");
+  eq(toast6.h <= 68, true, "item6: Complete toast height consistent with one line at 390 (h=" + toast6.h + ")");
   eq(toast6.noTrunc, true, "item6: Complete toast shows the full title at 390");
   eq(toast6.text.includes("Packed Blooming Mirrors — 6 kits (BM-6)"), true, "item6: Complete toast title present");
   await page.setViewport({ width: 360, height: 664 });
@@ -656,9 +660,11 @@ try {
   await completeWalkToast();
   const toast6b = await page.evaluate(() => {
     const t = document.querySelector("#toast");
-    return t ? Math.round(t.getBoundingClientRect().height) : 0;
+    const m = document.querySelector("#toast .toast-msg");
+    return { h: t ? Math.round(t.getBoundingClientRect().height) : 0, mh: m ? Math.round(m.getBoundingClientRect().height) : 0 };
   });
-  eq(toast6b <= 48, true, "item6: Complete toast is one line at 360 (h=" + toast6b + ")");
+  eq(toast6b.mh <= 24, true, "item6: Complete toast message is one line at 360 (mh=" + toast6b.mh + ")");
+  eq(toast6b.h <= 68, true, "item6: Complete toast height consistent with one line at 360 (h=" + toast6b.h + ")");
 
   /* Retest item 7: the picked "Add MI-36" fits one line in the pinned
      row, as do Print all / Hand pack all in the saved state. */
@@ -672,22 +678,30 @@ try {
     await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Miniature Interiors")).click());
     await page.evaluate(() => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="36"]`).click(); });
     await sleep(200);
+    /* Line count from the text's own boxes — button height alone can't
+       prove one line (padding + min-height dominate it). */
     const addGeo = await page.evaluate(() => {
       const b = document.querySelector("#btn-queue-add");
-      return b ? { h: Math.round(b.getBoundingClientRect().height), over: b.scrollWidth > b.clientWidth } : null;
+      if (!b) return null;
+      const r = document.createRange();
+      r.selectNodeContents(b);
+      return { lines: r.getClientRects().length, over: b.scrollWidth > b.clientWidth };
     });
     eq(!!addGeo, true, "item7-" + w + ": picked Add button present");
-    eq(addGeo && addGeo.h <= 56, true, "item7-" + w + ": picked Add fits one line (h=" + (addGeo && addGeo.h) + ")");
+    eq(addGeo && addGeo.lines, 1, "item7-" + w + ": picked Add is one line");
     eq(addGeo && !addGeo.over, true, "item7-" + w + ": picked Add does not overflow");
     await page.click("#btn-queue-done");
     await sleep(300);
     const savedGeo = await page.evaluate(() => {
       return ["btn-queue-print", "btn-queue-hand"].map(id => {
         const b = document.querySelector("#" + id);
-        return b ? { h: Math.round(b.getBoundingClientRect().height), over: b.scrollWidth > b.clientWidth } : null;
+        if (!b) return null;
+        const r = document.createRange();
+        r.selectNodeContents(b);
+        return { lines: r.getClientRects().length, over: b.scrollWidth > b.clientWidth };
       });
     });
-    eq(savedGeo.every(g => g && g.h <= 56), true, "item7-" + w + ": Print all / Hand pack all fit one line");
+    eq(savedGeo.every(g => g && g.lines === 1), true, "item7-" + w + ": Print all / Hand pack all are one line");
     eq(savedGeo.every(g => g && !g.over), true, "item7-" + w + ": Print all / Hand pack all do not overflow");
   }
 
