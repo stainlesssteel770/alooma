@@ -628,8 +628,9 @@ try {
     });
   }
 
-  /* Retest item 6: the hand-pack Complete toast stays on one line —
-     full title at 390, one line (ellipsis tolerated) at 360. */
+  /* Fix-round (batch c): the hand-pack Complete toast shows the full
+     title, wrapping to 2 lines max, with the UNDO button fully on
+     screen — at 390x844 and 360x740. */
   async function completeWalkToast() {
     await page.click("#btn-check-all");
     await sleep(250);
@@ -640,7 +641,60 @@ try {
     await sheetPrimary(); /* subtract confirm */
     await sleep(600);
   }
-  await page.setViewport({ width: 390, height: 664 });
+  /* Fix-round (batch c): one measurement for the new toast rule — the
+     message wraps to 2 lines max with the full title visible (the last
+     word renders inside the message box, so nothing is clamped away),
+     nothing overflows horizontally, the SKU stays one line, and the
+     UNDO button stays fully on screen. On the old one-line CSS this
+     fails two ways: msgOver (run-1 sw=278 > cw=239) and toast width
+     (phone margins were 8px, ~95.6% of the viewport). */
+  async function measureToast() {
+    return await page.evaluate(() => {
+      const t = document.querySelector("#toast");
+      if (!t || t.hidden) return null;
+      const m = document.querySelector("#toast .toast-msg");
+      const s = document.querySelector("#toast .toast-sku");
+      const b = document.querySelector("#toast button");
+      const out = { toastW: Math.round(t.getBoundingClientRect().width), vw: window.innerWidth, vh: window.innerHeight, msg: m ? m.textContent : "", lines: 0, lastWord: false, msgOver: false, sku: s ? s.textContent : null, skuLines: 0, skuOver: false, undo: null };
+      if (m) {
+        const r = document.createRange(); r.selectNodeContents(m);
+        out.lines = new Set([...r.getClientRects()].map(x => Math.round(x.top))).size;
+        out.msgOver = m.scrollWidth > m.clientWidth + 1;
+        const tn = m.firstChild;
+        if (tn && tn.nodeType === 3) {
+          const txt = tn.textContent; const sp = txt.lastIndexOf(" ");
+          const lw = document.createRange(); lw.setStart(tn, sp + 1); lw.setEnd(tn, txt.length);
+          const rects = [...lw.getClientRects()]; const mr = m.getBoundingClientRect();
+          out.lastWord = rects.length > 0 && rects[0].bottom <= mr.bottom + 1;
+        }
+      }
+      if (s) {
+        const r2 = document.createRange(); r2.selectNodeContents(s);
+        out.skuLines = new Set([...r2.getClientRects()].map(x => Math.round(x.top))).size;
+        out.skuOver = s.scrollWidth > s.clientWidth;
+      }
+      if (b) { const br = b.getBoundingClientRect(); out.undo = { left: Math.round(br.left), right: Math.round(br.right), top: Math.round(br.top), bottom: Math.round(br.bottom), h: Math.round(br.height) }; }
+      return out;
+    });
+  }
+  function toastAsserts(toast, size, titlePart, sku, label) {
+    eq(!!toast, true, label + ": toast present at " + size);
+    if (!toast) return;
+    eq(toast.lines <= 2, true, label + ": message wraps to at most 2 lines at " + size + " (lines=" + toast.lines + ")");
+    eq(toast.lastWord, true, label + ": full title visible at " + size + " (last word rendered)");
+    eq(toast.msgOver, false, label + ": message does not overflow at " + size);
+    eq(toast.msg.includes(titlePart), true, label + ": title present at " + size);
+    eq(toast.sku && toast.sku.trim(), sku, label + ": SKU is " + sku + " at " + size);
+    eq(toast.skuLines, 1, label + ": SKU is one line at " + size);
+    eq(toast.skuOver, false, label + ": SKU does not overflow at " + size);
+    eq(!!toast.undo, true, label + ": Undo button present at " + size);
+    if (toast.undo) {
+      eq(toast.undo.left >= 0 && toast.undo.right <= toast.vw && toast.undo.top >= 0 && toast.undo.bottom <= toast.vh, true, label + ": Undo fully on screen at " + size);
+      eq(toast.undo.h >= 40 && toast.undo.h <= 56, true, label + ": Undo is one line at " + size + " (h=" + toast.undo.h + ")");
+    }
+    eq(toast.toastW <= Math.round(toast.vw * 0.92) + 1, true, label + ": toast at most 92% wide at " + size + " (w=" + toast.toastW + " vw=" + toast.vw + ")");
+  }
+  await page.setViewport({ width: 390, height: 844 });
   /* Item-2's section left every item at 0 — without stock, Hand stops
      at the shortage sheet and no walk starts (run 1 threw on the
      hidden check-all for exactly that). */
@@ -654,19 +708,9 @@ try {
   await sleep(300);
   eq(await page.$eval("#pack-queue-progress", e => e.textContent), "Craft 1 of 1", "item6: walk opens on craft 1 of 1");
   await completeWalkToast();
-  const toast6 = await page.evaluate(() => {
-    const t = document.querySelector("#toast");
-    const m = document.querySelector("#toast .toast-msg");
-    return { h: t ? Math.round(t.getBoundingClientRect().height) : 0, mh: m ? Math.round(m.getBoundingClientRect().height) : 0, noTrunc: m ? m.scrollWidth <= m.clientWidth : false, sw: m ? m.scrollWidth : 0, cw: m ? m.clientWidth : 0, text: t ? t.textContent : "" };
-  });
-  /* One line of message (≈19px at 12.5px) + the 44px UNDO button +
-     20px padding = 64px total; the button alone guarantees 64, so the
-     message height (not the toast height) is the one-line proof. */
-  eq(toast6.mh <= 24, true, "item6: Complete toast message is one line at 390 (mh=" + toast6.mh + ")");
-  eq(toast6.h <= 68, true, "item6: Complete toast height consistent with one line at 390 (h=" + toast6.h + ")");
-  eq(toast6.noTrunc, true, "item6: Complete toast shows the full title at 390 (sw=" + toast6.sw + " cw=" + toast6.cw + ")");
-  eq(toast6.text.includes("Hand packed Blooming Mirrors — 6 kits (BM-6)"), true, "item6: Complete toast title present");
-  await page.setViewport({ width: 360, height: 664 });
+  const toast6 = await measureToast();
+  toastAsserts(toast6, "390x844", "Hand packed Blooming Mirrors — 6 kits", "(BM-6)", "item6");
+  await page.setViewport({ width: 360, height: 740 });
   resetRemote();
   await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
   await reloadApp();
@@ -676,13 +720,8 @@ try {
   await page.click("#btn-queue-hand");
   await sleep(300);
   await completeWalkToast();
-  const toast6b = await page.evaluate(() => {
-    const t = document.querySelector("#toast");
-    const m = document.querySelector("#toast .toast-msg");
-    return { h: t ? Math.round(t.getBoundingClientRect().height) : 0, mh: m ? Math.round(m.getBoundingClientRect().height) : 0 };
-  });
-  eq(toast6b.mh <= 24, true, "item6: Complete toast message is one line at 360 (mh=" + toast6b.mh + ")");
-  eq(toast6b.h <= 68, true, "item6: Complete toast height consistent with one line at 360 (h=" + toast6b.h + ")");
+  const toast6b = await measureToast();
+  toastAsserts(toast6b, "360x740", "Hand packed Miniature Interiors — 6 kits", "(MI-6)", "item6");
 
   /* Retest item 7: the picked "Add MI-36" fits one line in the pinned
      row, as do Print all / Hand pack all in the saved state. */
@@ -802,11 +841,10 @@ try {
     }
   }
 
-  /* Polish item 3: the Complete toast's SKU stays visible at 360 — it
-     rides in its own flex-none span after the ellipsized message, so a
-     long title can truncate but the SKU never gets cut. Same check for
-     the print toast's bare SKU. */
-  await page.setViewport({ width: 360, height: 664 });
+  /* Fix-round (batch c): the Complete toast shows the full title,
+     wrapping to 2 lines max, with the SKU intact and UNDO on screen
+     at 360x740. Same check for the print toast's bare SKU. */
+  await page.setViewport({ width: 360, height: 740 });
   resetRemote();
   await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
   await reloadApp();
@@ -816,20 +854,8 @@ try {
   await page.click("#btn-queue-hand");
   await sleep(300);
   await completeWalkToast();
-  const toast3 = await page.evaluate(() => {
-    const s = document.querySelector("#toast .toast-sku");
-    const m = document.querySelector("#toast .toast-msg");
-    if (!s) return null;
-    return { text: s.textContent, tops: [...new Set([...s.getClientRects()].map(r => Math.round(r.top)))].length,
-      over: s.scrollWidth > s.clientWidth, msg: m ? m.textContent : "" };
-  });
-  eq(!!toast3, true, "polish3: Complete toast has a SKU span at 360");
-  if (toast3) {
-    eq(toast3.text.trim(), "(BM-6)", "polish3: Complete toast SKU is (BM-6) at 360");
-    eq(toast3.tops, 1, "polish3: Complete toast SKU is one line at 360");
-    eq(toast3.over, false, "polish3: Complete toast SKU does not overflow at 360");
-    eq(toast3.msg.includes("Packed Blooming Mirrors"), true, "polish3: Complete toast title still present at 360");
-  }
+  const toast3 = await measureToast();
+  toastAsserts(toast3, "360x740", "Hand packed Blooming Mirrors — 6 kits", "(BM-6)", "polish3");
   /* Print toast, same mechanism, bare SKU (no parens). */
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Blooming Mirrors")).click());
   await sleep(200);

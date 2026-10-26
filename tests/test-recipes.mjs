@@ -652,13 +652,13 @@ try {
   await page.evaluate(() => document.querySelector("#btn-complete-pack").click());
   await sleep(300);
   await confirmIfOpen(page);
-  eq(remote.history[0] && remote.history[0].title, "Packed Blooming Mirrors — 6 kits (BM-6)", "(b) hand-pack entry title before rename");
+  eq(remote.history[0] && remote.history[0].title, "Hand packed Blooming Mirrors — 6 kits (BM-6)", "(b) hand-pack entry title before rename");
   await goSettings(page);
   await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
   await sleep(300);
   await page.evaluate(() => { const inp = document.querySelector('[data-recipe-row="bm"] [data-recipe-name]'); inp.value = "Blooming Mirrors Renamed"; inp.dispatchEvent(new Event("change", { bubbles: true })); });
   await sleep(500);
-  eq(remote.history[0] && remote.history[0].title, "Packed Blooming Mirrors — 6 kits (BM-6)", "(b) old history title unchanged after rename");
+  eq(remote.history[0] && remote.history[0].title, "Hand packed Blooming Mirrors — 6 kits (BM-6)", "(b) old history title unchanged after rename");
   eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors Renamed"))), true, "(b) renamed craft shows new name in picker");
 
   /* Fix-round batch (a) item 6: delivery skips non-whole / huge counts. */

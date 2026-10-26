@@ -306,6 +306,26 @@ try {
   eq(JSON.stringify(remote.history), histBeforeViewer, "viewer reprint: History unchanged");
   eq(JSON.stringify(remote.inventory), invBeforeViewer, "viewer reprint: stock unchanged");
 
+  /* ---- 10. Old data: a saved "packed" entry still loads, shows, undoes ---- */
+  /* A print entry saved before the hand-pack rename (type "packed",
+     title "Packed …") must still load with its Reprint button and undo
+     exactly — old data is never migrated, so the app reads it as-is. */
+  await page.evaluate(() => localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" })));
+  remote.inventory["tree-mirror"].qty = 100;
+  remote.history.unshift({ id: "hlegacy1", ts: "2026-10-20T12:00:00.000Z", type: "packed", title: "Packed Blooming Mirrors — 6 kits (BM-6)", effects: [{ item: "tree-mirror", delta: -6 }], undone: false, craftId: "bm", kits: 6, rows: [{ item: "tree-mirror", name: "Tree Mirror", qty: 6, per6: 6 }] });
+  await reloadApp();
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
+  await sleep(300);
+  eq((await page.$eval(".history-entry", e => e.textContent)).includes("Packed Blooming Mirrors — 6 kits (BM-6)"), true, "old packed: legacy entry loads and shows");
+  eq(await page.$eval(".history-entry", e => !!e.querySelector(".btn-reprint")), true, "old packed: legacy print keeps its Reprint button");
+  await page.evaluate(() => document.querySelector(".history-entry .btn-undo").click());
+  await sleep(250);
+  eq(await page.$eval("#sheet-title", e => e.textContent), "Undo this entry?", "old packed: undo uses the confirm sheet");
+  await page.click("#sheet-primary");
+  await sleep(600);
+  eq(remote.inventory["tree-mirror"].qty, 106, "old packed: undo restores stock (100->106)");
+  eq(remote.history[0].undone, true, "old packed: legacy entry marked undone");
+
   console.log(failures ? "PRINTDONE TESTS FAILED (" + failures + ")" : "all printdone tests passed (" + passes + ")");
 } finally {
   await browser.close();

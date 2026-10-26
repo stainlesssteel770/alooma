@@ -321,7 +321,7 @@ async function tab(name) {
   await sleep(600);
   eq(remoteData.inventory["scissors"].qty, 194, "CAK-18 deducted 6 scissors (200->194)");
   eq(remoteData.inventory["heart-jewelry-box"].qty, -18, "CAK-18 deducted 18 heart boxes");
-  eq(remoteData.history[0].type, "packed", "pack logged");
+  eq(remoteData.history[0].type, "hand-packed", "pack logged");
 
   /* Undo the pack from History (via the confirm sheet): inventory restored exactly */
   await tab("history");
@@ -332,7 +332,7 @@ async function tab(name) {
   await sleep(600);
   eq(remoteData.inventory["scissors"].qty, 200, "undo pack restored scissors");
   eq(remoteData.inventory["heart-jewelry-box"].qty, 0, "undo pack restored heart boxes");
-  eq(remoteData.history.find(h => h.type === "packed").undone, true, "entry marked undone");
+  eq(remoteData.history.find(h => h.type === "hand-packed").undone, true, "entry marked undone");
 
   /* Hand pack on the Packing tab = the checklist: pick HCB-18, tap Hand pack,
      check everything off, Complete. Heat gun 1 (tier: up to 18 = 1), board 18. */
@@ -363,7 +363,7 @@ async function tab(name) {
   eq(remoteData.inventory["heat-gun"].qty, -1, "hand-pack checklist HCB-18 heat gun tier = 1");
   eq(remoteData.inventory["wood-burning-cream"].qty, -1, "hand-pack checklist HCB-18 wood cream tier = 1");
   eq(remoteData.inventory["wood-board"].qty, -18, "hand-pack checklist HCB-18 wood board 18");
-  eq(remoteData.history[0].type, "packed", "Flow: checklist completion logs a packed entry");
+  eq(remoteData.history[0].type, "hand-packed", "Flow: checklist completion logs a hand-packed entry");
   /* Leave the pack tab as later sections expect: Cakery 18 picked */
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await sleep(150);

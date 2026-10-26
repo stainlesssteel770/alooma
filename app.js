@@ -82,11 +82,12 @@
   }
   function showToast(html, actionLabel, actionFn, ms, suffixHtml) {
     var t = $("toast");
-    /* Retest item 6: the message sits in its own column so it can
-       ellipsize to one line instead of wrapping under the button. */
+    /* Fix-round (batch c): the message sits in its own column and wraps
+       to 2 lines max (line-clamp) instead of one-line ellipsis — the
+       longer "Hand packed …" title must stay fully visible. */
     /* Polish item 3: an optional SKU suffix rides in its own flex-none
-       span AFTER the message, so the ellipsis can eat the title but
-       never the SKU — the SKU is what the packer reads back. */
+       span AFTER the message, so wrapping can never split the SKU —
+       the SKU is what the packer reads back. */
     t.innerHTML = '<span class="toast-msg">' + html + "</span>" + (suffixHtml ? '<span class="toast-sku">' + suffixHtml + "</span>" : "");
     if (actionLabel) {
       var b = document.createElement("button");
@@ -101,9 +102,9 @@
   }
   function toast(msg) { showToast(esc(msg), null, null, 4200); }
   function actionToast(msg, entry) {
-    /* Polish item 3: a trailing "(SKU)" leaves the ellipsized message
+    /* Polish item 3: a trailing "(SKU)" leaves the message
        and rides as the toast-sku suffix instead of a nowrap span inside
-       it — inside the message the ellipsis cut the SKU first at 360.
+       it — inside the message the wrap could split the SKU at 360.
        The leading space sits INSIDE the suffix span (a bare space
        between flex items would collapse), and the parens stay inside
        it too, so "(BM-6)" is one unbreakable unit. */

@@ -203,8 +203,8 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 .error-banner { background: var(--red-bg); border: 1px solid #E3B6B1; color: #7C1D16; max-width: 1024px; margin: 10px auto 0; padding: 12px 16px; border-radius: 10px; font-weight: 600; font-size: 16px; }
 .toast[hidden] { display: none !important; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 76px; background: var(--ink); color: #fff; padding: 12px 18px; border-radius: var(--radius); font-weight: 600; font-size: 15.5px; box-shadow: 0 6px 22px rgba(0,0,0,.28); z-index: 60; max-width: min(92vw, 560px); display: flex; align-items: center; gap: 14px; pointer-events: none; }
-.toast button { background: none; border: none; color: #FFD94D; font-weight: 800; font-size: 15.5px; cursor: pointer; min-height: 44px; padding: 4px 6px; letter-spacing: .03em; pointer-events: auto; flex: none; }
-.toast-msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast button { background: none; border: none; color: #FFD94D; font-weight: 800; font-size: 15.5px; cursor: pointer; min-height: 44px; padding: 4px 6px; letter-spacing: .03em; pointer-events: auto; flex: none; white-space: nowrap; }
+.toast-msg { flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .toast-sku { flex: none; white-space: nowrap; }
 /* A SKU must never break mid-code ("BM-" / "6") — in toasts and buttons. */
 .nowrap { white-space: nowrap; }
@@ -385,11 +385,11 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
      button must sit above the ~134px bar+tab band to count as visible,
      so the browser scrolls it clear instead of leaving it parked. */
   html { scroll-padding-bottom: 210px; }
-  /* Polish item 3: the SKU span + its gap cost the message ~55px at phone
-     widths, which tipped the 390 title into ellipsis (run 1). A 6px gap
-     reclaims 8px across the two gaps, so the full title fits again
-     alongside the SKU. */
-  .toast { bottom: 132px; left: 8px; right: 8px; transform: none; max-width: none; font-size: 12.5px; padding: 10px 12px; gap: 6px; }
+  /* Fix-round (batch c): the Complete title wraps to 2 lines max instead
+     of one-line ellipsis — the "Hand packed …" title is 5 chars longer
+     than "Packed …" and tipped into ellipsis at 390 (batch-c run 1).
+     Phone toast spans 92vw (4vw margins) so message + SKU + UNDO fit. */
+  .toast { bottom: 132px; left: 4vw; right: 4vw; transform: none; max-width: none; font-size: 12.5px; padding: 10px 12px; gap: 6px; }
   .toast button { font-size: 13px; }
   /* Brief item 14: the header status must never run off the right edge.
      Shrink the header spacing/type on phones so badge + status fit one
