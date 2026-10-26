@@ -2650,6 +2650,10 @@
     var cand = JSON.parse(JSON.stringify(recipes[idx]));
     mutate(cand);
     var err = validateRecipe(cand);
+    /* Fix-round item 5: renaming onto another craft's name is blocked
+       too (case-insensitive) — validateRecipe only sees one craft, so
+       the sibling check lives here. */
+    if (!err && recipes.some(function (r) { return r.id !== recipeId && r.name.trim().toLowerCase() === String(cand.name).trim().toLowerCase(); })) err = "A craft with that name already exists.";
     if (err) {
       var row = document.querySelector('[data-recipe-row="' + recipeId + '"]');
       var errEl = row ? row.querySelector("[data-recipe-error]") : null;
@@ -2719,7 +2723,10 @@
         var errEl2 = row2 ? row2.querySelector("[data-recipe-error]") : null;
         if (!name) { if (errEl2) errEl2.textContent = "Give the new item a name."; return; }
         var slug = slugify(name);
-        if (Object.keys(L.ITEMS).indexOf(slug) >= 0) { if (errEl2) errEl2.textContent = "An item with that name already exists."; return; }
+        /* Fix-round item 5: the slug check alone misses names whose id
+           isn't their slug (e.g. "AY - Special Request" lives under
+           english-ay-printout), so compare display names too. */
+        if (Object.keys(L.ITEMS).indexOf(slug) >= 0 || Object.keys(L.ITEMS).some(function (id) { return L.ITEMS[id].trim().toLowerCase() === name.toLowerCase(); })) { if (errEl2) errEl2.textContent = "An item with that name already exists."; return; }
         var pend = pendingNewItem;
         var unit = unitEl ? unitEl.value.trim() : "";
         commitRecipe(id, function (r) {
@@ -2780,6 +2787,10 @@
       if (!/^[A-Z]{2,4}$/.test(code)) { fail("Code must be 2–4 letters."); return; }
       var recipes = settings().recipes || [];
       if (recipes.some(function (r) { return r.code.toUpperCase() === code; })) { fail("That code is already used."); return; }
+      /* Fix-round item 5: duplicate craft names blocked (case-insensitive)
+         — the old code only blocked duplicate codes, so "blooming mirrors"
+         sailed through next to "Blooming Mirrors". */
+      if (recipes.some(function (r) { return r.name.trim().toLowerCase() === name.toLowerCase(); })) { fail("A craft with that name already exists."); return; }
       var base = slugify(name), slug = base, n = 2;
       var ids = recipes.map(function (r) { return r.id; });
       while (ids.indexOf(slug) >= 0) slug = base + "-" + (n++);
