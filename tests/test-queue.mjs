@@ -494,6 +494,28 @@ try {
   eq(topGeo.craftsTop >= 0 && topGeo.craftsTop <= 120, true, "item2: crafts grid at the top after Add (top=" + topGeo.craftsTop + ")");
   eq(topGeo.chipsTop > 0 && topGeo.chipsTop < topGeo.vh, true, "item2: kit chips in view after Add (top=" + topGeo.chipsTop + ")");
 
+  /* Retest item 3: a manual-count Add closes the manual box and resets
+     the picker to the default chips. */
+  await page.setViewport({ width: 390, height: 664 });
+  await reloadApp();
+  await queueFirst("Tambourines", 12);
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Blooming Mirrors")).click());
+  await page.click("#pack-kits-plus");
+  await sleep(200);
+  await page.evaluate(() => { const f = document.querySelector("#pack-kits"); f.focus(); f.value = "42"; f.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(250);
+  await page.click("#btn-queue-add");
+  await sleep(300);
+  const manualGeo = await page.evaluate(() => ({
+    manualHidden: document.querySelector("#pack-kits-manual").hidden,
+    chipsHidden: document.querySelector("#pack-chips").hidden,
+    fieldVal: document.querySelector("#pack-kits").value
+  }));
+  eq(manualGeo.manualHidden, true, "item3: manual box closes after a manual-count Add");
+  eq(manualGeo.chipsHidden, false, "item3: chips return after a manual-count Add");
+  eq(manualGeo.fieldVal, "", "item3: kits field clears after Add");
+  eq((await queueLines()).some(l => l.text.includes("BM-42")), true, "item3: the manual-count line queued as BM-42");
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();
