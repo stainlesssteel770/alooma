@@ -1829,13 +1829,20 @@
     /* New pack-sheet layout (general, no per-craft rules): header line 1
        is the craft name left + a small 8pt Date top-right on the same
        line (a reprint still shows its ORIGINAL date here); header line 2
-       is the kits/Order ID/Packed by subtitle (it wraps to 2 lines —
-       the subtitle's second line costs 17.55pt, paid back by the
-       footer shrinking below); the footer is BOXES only and is omitted
-       entirely when there are no boxes and it isn't a reprint, so a
-       no-boxes sheet has no footer block at all. REPRINT stays as its
-       own div last in the footer when present. BOXES uses commas on
-       the sheet (the on-screen " + " separator elsewhere is untouched). */
+       is the kits/Order ID/Packed by subtitle; the footer is BOXES only
+       and is omitted entirely when there are no boxes and it isn't a
+       reprint, so a no-boxes sheet has no footer block at all. REPRINT
+       stays as its own div last in the footer when present. BOXES uses
+       commas on the sheet (the on-screen " + " separator elsewhere is
+       untouched). The <br> after the Order ID blank is load-bearing,
+       not cosmetic: without it the subtitle's UNWRAPPED width (403pt)
+       exceeds the table width, and Chrome's auto layout answers by
+       narrowing the Item column ~17pt — which wrapped MI's long names
+       (Tools & supplies tray #2, Scrapbook paper pack) to 2 lines each
+       and spilled the MI-boxes footer. With the forced break the
+       title cell's max is the 262pt craft name, the columns keep their
+       natural widths, and the visual result is identical (the subtitle
+       wrapped at exactly this point anyway). */
     var foot = "";
     if ((boxes && boxes.length) || opts.reprint) {
       foot = '<div class="print-foot">' + (boxes && boxes.length ? '<span class="foot-boxes">BOXES: ' + esc(boxes.join(", ")) + "</span>" : "") +
@@ -1844,7 +1851,7 @@
     return '<section class="print-page pack-sheet"><table><thead>' +
       '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title-row"><div class="label-title">' + esc(craft.name) + "</div>" +
       '<div class="label-date">Date: ' + (opts.date ? esc(opts.date) : "__________") + "</div></div>" +
-      '<div class="label-sub">Total kits: ' + kits + " · Order ID: ____________ · Packed by: " + (by ? esc(by) : "____________") + "</div>" +
+      '<div class="label-sub">Total kits: ' + kits + " · Order ID: ____________ ·<br>Packed by: " + (by ? esc(by) : "____________") + "</div>" +
       "</th></tr>" +
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>" + foot + "</section>";
