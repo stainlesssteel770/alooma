@@ -149,8 +149,9 @@ try {
   await packSelect("The Cakery", 18);
   await page.click("#btn-pack-print");
   await sleep(300);
-  /* Single-line pack footer: the blank shortened 20 -> 12 underscores so
-     Packed by + Date fit one line at 12.5pt; the blank line itself stays. */
+  /* Pack footer: the blank shortened 20 -> 12 underscores (Batch B);
+     Date has since left the footer for header line 1 — the blank line
+     itself stays. */
   eq((await printAreaText()).includes("Packed by: ____________"), true, "single print empty: blank line kept");
   eq(remoteData.history[0].packedBy, undefined, "single print empty: no packedBy stored");
 
