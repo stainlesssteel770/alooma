@@ -1022,6 +1022,20 @@ async function tab(name) {
   await chk(async () => eq(await page.evaluate(() => localStorage.getItem("alooma.countedby.v1")), "Noa", "item14: wrapper import restores Counted by"), "item14: wrapper import restores Counted by");
   await chk(async () => eq(remoteData.history[0].title, "Imported a backup file", "item14: wrapper import logged in History"), "item14: wrapper import logged in History");
   await chk(async () => eq(remoteData.settings.recipes.find(r => r.id === "bm").lines.length, 1, "item14: wrapper import replaced recipes (BM down to 1 line)"), "item14: wrapper import replaced recipes (BM down to 1 line)");
+  /* Fix-round item 14, Path A: a BM-only backup must NOT delete the
+     other built-ins from the catalog — TAM stays packable. */
+  await tab("pack");
+  await chk(async () => eq(await page.evaluate(() => { const t = [...document.querySelectorAll("#pack-crafts .craft-btn .craft-text")].map(e => e.textContent).join(" | "); return ["Blooming Mirrors", "Tambourines", "Judaic Clay-Art", "Hafrashat Challah", "The Cakery", "Miniature Interiors"].every(n => t.includes(n)); }), true, "item14: BM-only import keeps all six built-in crafts packable"), "item14: BM-only import keeps all six built-in crafts packable");
+  await page.evaluate(() => { const b = [...document.querySelectorAll("#pack-crafts .craft-btn")].find(e => e.textContent.includes("Tambourines")); if (b) b.click(); });
+  await sleep(200);
+  await chk(async () => eq(await page.$eval("#pack-crafts .craft-btn.selected .craft-text", e => e.textContent.includes("Tambourines")), true, "item14: TAM button selects after BM-only import"), "item14: TAM button selects after BM-only import");
+  /* Reload: the queue line and the TAM craft both survive. */
+  await page.reload({ waitUntil: "networkidle0" });
+  await sleep(400);
+  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), [{ craftId: "tam", kits: 12 }], "item14: queue keeps TAM-12 across reload after import"), "item14: queue keeps TAM-12 across reload after import");
+  await tab("pack");
+  await chk(async () => eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn .craft-text")].some(e => e.textContent.includes("Tambourines"))), true, "item14: TAM still packable after reload"), "item14: TAM still packable after reload");
+  await tab("settings");
   /* Old bare-data file (no recipes key): warns about the reset, then
      restores built-ins WITHOUT touching queue or names. */
   const oldData = { inventory: JSON.parse(JSON.stringify(remoteData.inventory)), history: JSON.parse(JSON.stringify(remoteData.history)), settings: { features: { boxes: false, bins: false } } };
@@ -1032,6 +1046,17 @@ async function tab(name) {
   await chk(async () => eq(remoteData.settings.recipes.find(r => r.id === "bm").lines.length, 12, "item14: old-file import restored built-in BM (12 lines)"), "item14: old-file import restored built-in BM (12 lines)");
   await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), [{ craftId: "tam", kits: 12 }], "item14: old-file import leaves the queue alone"), "item14: old-file import leaves the queue alone");
   await chk(async () => eq(await page.evaluate(() => localStorage.getItem("alooma.packedby.v1")), "Ruth", "item14: old-file import leaves names alone"), "item14: old-file import leaves names alone");
+  /* Existing full backup: re-importing the export captured above
+     round-trips exactly — same crafts, same queue, same names, and no
+     differ warning for an equivalent file. */
+  await feedFile(JSON.stringify(exported));
+  await chk(async () => eq(await page.$eval("#sheet-title", e => e.textContent), "Replace all data with this backup?", "item14: full-backup import asks first"), "item14: full-backup import asks first");
+  await chk(async () => eq((await sheetSummary()).includes("differ"), false, "item14: full-backup import does not warn when recipes match"), "item14: full-backup import does not warn when recipes match");
+  await page.click("#sheet-primary");
+  await sleep(500);
+  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), [{ craftId: "bm", kits: 6 }], "item14: full-backup import restores its queue"), "item14: full-backup import restores its queue");
+  await chk(async () => eq(await page.evaluate(() => localStorage.getItem("alooma.packedby.v1")), "Sara", "item14: full-backup import restores its names"), "item14: full-backup import restores its names");
+  await chk(async () => eq(remoteData.settings.recipes.find(r => r.id === "bm").lines.length, 12, "item14: full-backup import keeps full BM"), "item14: full-backup import keeps full BM");
   /* Malformed recipes: rejected outright, nothing changed, no sheet. */
   const histLenBeforeBad = remoteData.history.length;
   const badData = JSON.parse(JSON.stringify(remoteData));

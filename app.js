@@ -2453,7 +2453,7 @@
       if (!data.settings || data.settings.recipes === undefined) {
         recipeWarn = " This backup has no saved recipes (old format) — importing will reset recipes to the built-ins, dropping your current custom recipes and lines.";
       } else if (JSON.stringify(L.normalizeRecipes(data.settings.recipes)) !== curEff) {
-        recipeWarn = " This backup's recipes differ from your current ones — importing will replace them (lines are replaced, not merged).";
+        recipeWarn = " This backup's recipes differ from your current ones — importing will replace matching crafts' lines (built-in crafts missing from the backup stay).";
       }
       openSheet({
         title: "Replace all data with this backup?",
@@ -2461,6 +2461,24 @@
         primary: "Replace all data",
         onConfirm: function () {
           state.data = data;
+          /* Fix-round item 14, Path A: merge the backup's recipes onto
+             the built-in 6 instead of replacing the catalog — a backup
+             that lists only BM must not delete TAM and the other crafts.
+             Backup recipes override matching built-ins by id; built-ins
+             missing from the backup stay; custom crafts are kept. */
+          if (isWrapper && state.data.settings && Array.isArray(state.data.settings.recipes)) {
+            var incoming = L.normalizeRecipes(state.data.settings.recipes);
+            var merged = L.builtInRecipes().map(function (b) {
+              for (var i = 0; i < incoming.length; i++) if (incoming[i].id === b.id) return incoming[i];
+              return b;
+            });
+            incoming.forEach(function (r) {
+              var seen = false;
+              for (var j = 0; j < merged.length; j++) if (merged[j].id === r.id) { seen = true; break; }
+              if (!seen) merged.push(r);
+            });
+            state.data.settings.recipes = merged;
+          }
           normalizeData();
           /* Wrapper-only restores: a validated queue (known crafts,
              valid kits) and the device names. Old files skip this, so
