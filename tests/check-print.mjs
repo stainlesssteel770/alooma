@@ -175,7 +175,7 @@ try {
   });
   ok(pack.rows === 19 && pack.ticks === 19, "pack sheet CAK-36: 19 rows, 19 tick boxes");
   ok(pack.text.includes("Total kits: 36") && pack.text.includes("Order ID:"), "pack sheet: subtitle is 'Total kits: 36 · Order ID: ___ Packed by: ___ · Date: ___'");
-  ok(pack.subText.includes("Packed by: ____________"), "pack sheet: Packed by moved to header line 2 (blank when no name set)");
+  ok(pack.subText.includes("Packed by: ________"), "pack sheet: Packed by moved to header line 2 (blank when no name set)");
   ok(pack.text.includes("Per 6") && pack.text.includes("Total"), "pack sheet: Per 6 + Total columns");
   ok(!pack.text.includes("SKU"), "pack sheet: no SKU line (mockup)");
   ok(pack.text.includes("BOXES: Big Box, Small Box"), "pack sheet: the order's boxes are printed (comma-separated)");
@@ -201,6 +201,14 @@ try {
   ok(packTexts.length >= 2, "pack sheet CAK-36: big rows spill to a 2nd page rather than shrinking (" + packTexts.length + " pages)");
   ok(packTexts.every(t => t.includes("Cakery") && t.trim().length > 30), "pack sheet: craft title repeats on every page, none blank (a footer flowed to its own last page is allowed)");
   ok(packTexts.every(t => t.includes("Packed by")), "pack sheet: subtitle Packed by repeats on every page (it lives in the thead)");
+  /* Header-repeat regression test (batch (b) fix): the longest sheet
+     (Cakery, 2 pages) repeats the FULL header on its last page — title
+     plus subtitle with both Packed by and Date. This FAILED on the
+     3-line subtitle (runs 40372731228-40382956540: the last page had
+     neither) and passes on the 2-line subtitle. */
+  const lastPage = packTexts[packTexts.length - 1];
+  ok(lastPage.includes("Cakery") && lastPage.includes("Packed by") && lastPage.includes("Date:"), "pack sheet CAK-36: last page repeats the full header (title + Packed by + Date)");
+
   ok(!packTexts[0].includes("BOXES") && packTexts[packTexts.length - 1].includes("BOXES: Big Box, Small Box"), "pack sheet PDF: BOXES appears only on the last page, with the footer");
   {
     /* Fix-round item 9, OPEN (not fixed): Chrome halves the collapsed
@@ -244,8 +252,9 @@ try {
 
   /* New pack-sheet layout geometry (no-boxes probes): header line 1 is
      the craft name alone; the subtitle carries Total kits / Order ID /
-     Packed by / Date on three lines (fix-round item 8: Date on its own
-     line, in-flow, never overlapping the title), and no footer renders
+     Packed by / Date on two lines (fix-round item 8: Date shares line 2
+     with Packed by at 8-underscore blanks, in-flow, never overlapping
+     the title), and no footer renders
      without boxes. Page counts are owned by the
      matrix below — these probes only log theirs. */
   async function singlePack(name, kits, file) {
@@ -261,7 +270,7 @@ try {
     const nm = runs1.find(r => r.s.includes(name.split(" ")[0]));
     const dt = runs1.find(r => r.s.includes("Date:"));
     const sb = runs1.find(r => r.s.includes("Total kits:"));
-    ok(!!nm && !!dt && !!sb && dt.y < sb.y, name + "-" + kits + ": Date sits below subtitle line 1, on its own line (never on the title line)");
+    ok(!!nm && !!dt && !!sb && dt.y < sb.y, name + "-" + kits + ": Date sits on subtitle line 2, below line 1 (never on the title line)");
     const subFoot = await page.evaluate(() => ({ sub: (document.querySelector("#print-area .label-sub") || {}).textContent || "", hasFoot: !!document.querySelector("#print-area .print-foot") }));
     ok(subFoot.sub.includes("Packed by") && !subFoot.hasFoot, name + "-" + kits + ": subtitle carries Packed by, no footer without boxes");
     await checkGeometry(file, name + "-" + kits + " new-layout geometry");
@@ -393,7 +402,7 @@ try {
     ok(!!hdr, "header proof: title + subtitle rendered");
     if (hdr) {
       ok(!hdr.hasAbsDate, "pack sheet: no absolute Date element left (Date lives in the subtitle now)");
-      ok(hdr.subText.includes("Date: ____________"), "pack sheet: subtitle carries the blank Date on its own line (" + hdr.subText + ")");
+      ok(hdr.subText.includes("Date: ________"), "pack sheet: subtitle carries the blank Date on line 2 (" + hdr.subText + ")");
       ok(hdr.titleRowKids === 1, "pack sheet: title row holds only the title");
       ok(!hdr.overlap, "pack sheet: subtitle sits below the title, never overlapping it");
       ok(hdr.footText.includes("BOXES:"), "pack sheet: boxes footer rendered for the border check");
@@ -493,6 +502,44 @@ try {
   const footPages = cntTexts.map((t, i) => t.includes("Counted by") ? i : -1).filter(i => i >= 0);
   ok(footPages.length === 1, "count sheet: exactly one 'Counted by' footer in the whole job (was one per craft)");
   ok(footPages[0] === cntTexts.length - 1, "count sheet: the footer is on the last page");
+
+  /* Subtitle line-count regression test (batch (b) fix): every craft's
+     pack sheet renders its subtitle in at most 2 lines — including the
+     longest craft names and the longest Order ID rendering (the
+     12-underscore blank; Order ID has no input, so the blank IS the
+     longest it gets). This FAILED on the 3-line subtitle (3 subtitle
+     lines measured on the run-4 Cakery PDF) and passes on the 2-line
+     subtitle. Line count comes from the rendered subtitle's text boxes
+     in the DOM. A shortage sheet ("Print anyway") is cleared if stock
+     runs short this late in the suite; it does not affect the count. */
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(300);
+  try {
+    if (await page.$eval("#sheet-backdrop", e => !e.hidden)) await page.click("#sheet-cancel");
+    await sleep(300);
+  } catch (e) { /* no sheet open, nothing to discard */ }
+  for (const craft of L.CRAFTS) {
+    await page.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), craft.name);
+    await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
+    await sleep(300);
+    await page.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
+    await sleep(300);
+    try {
+      if (await page.$eval("#sheet-backdrop", e => !e.hidden)) await page.click("#sheet-primary");
+      await sleep(300);
+    } catch (e) { /* no shortage sheet */ }
+    const subInfo = await page.evaluate(() => {
+      const sub = document.querySelector("#print-area .label-sub");
+      if (!sub) return { lines: -1, text: "" };
+      const r = document.createRange();
+      r.selectNodeContents(sub);
+      const tops = new Set([...r.getClientRects()].map(x => Math.round(x.top)));
+      return { lines: tops.size, text: sub.textContent };
+    });
+    ok(subInfo.lines !== -1 && subInfo.lines <= 2, "subtitle lines: " + craft.name + " renders at most 2 subtitle lines (" + subInfo.lines + ")");
+    ok(subInfo.text.includes("Packed by"), "subtitle content: " + craft.name + " subtitle still carries Packed by");
+    ok(subInfo.text.includes("Date:"), "subtitle content: " + craft.name + " subtitle still carries Date");
+  }
 
   console.log(fail ? "PRINT CHECKS FAILED (" + fail + ")" : "all print checks passed");
 } finally {

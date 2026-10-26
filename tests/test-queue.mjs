@@ -136,7 +136,7 @@ try {
   const sections = await page.$$eval("#print-area .print-page", els => els.map(e => e.querySelector(".label-title").textContent));
   eq(sections, ["The Cakery", "Tambourines", "Hafrashat Challah"], "Print all: one job, one section per craft, queue order kept");
   const subtitles = await page.$$eval("#print-area .print-page .label-sub", els => els.map(e => e.textContent.replace(/\s+/g, " ").trim()));
-  eq(subtitles, ["Total kits: 36 · Order ID: ____________ Packed by: ____________ Date: ____________", "Total kits: 12 · Order ID: ____________ Packed by: ____________ Date: ____________", "Total kits: 18 · Order ID: ____________ Packed by: ____________ Date: ____________"], "Print all: each section keeps its own kit count");
+  eq(subtitles, ["Total kits: 36 · Order ID: ____________ Packed by: ________ · Date: ________", "Total kits: 12 · Order ID: ____________ Packed by: ________ · Date: ________", "Total kits: 18 · Order ID: ____________ Packed by: ________ · Date: ________"], "Print all: each section keeps its own kit count");
   eq((await queueLines()).length, 0, "Print all: the queue clears — printing completed every line");
   eq(remoteData.history.length, 3, "Print all: 3 History entries at print time (A4)");
   eq(remoteData.history.map(h => h.title), [
@@ -275,7 +275,7 @@ try {
   await sheetPrimary(); /* YES */
   await sleep(300);
   const dupSections = await page.$$eval("#print-area .print-page .label-sub", els => els.map(e => e.textContent.replace(/\s+/g, " ").trim()));
-  eq(dupSections, ["Total kits: 12 · Order ID: ____________ Packed by: ____________ Date: ____________", "Total kits: 18 · Order ID: ____________ Packed by: ____________ Date: ____________"], "duplicates: YES keeps two separate sheets, never merged");
+  eq(dupSections, ["Total kits: 12 · Order ID: ____________ Packed by: ________ · Date: ________", "Total kits: 18 · Order ID: ____________ Packed by: ________ · Date: ________"], "duplicates: YES keeps two separate sheets, never merged");
   eq((await queueLines()).length, 0, "duplicates: YES completes both lines — the queue clears");
   eq(remoteData.history.slice(0, 2).map(h => h.title), [
     "Packed The Cakery — 18 kits (CAK-18)",
