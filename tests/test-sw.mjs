@@ -38,7 +38,7 @@ const server = http.createServer((req, res) => {
   });
 });
 await new Promise(r => server.listen(PORT, "127.0.0.1", r));
-const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"], timeout: 90000 });
 try {
   const page = await browser.newPage();
   await page.setRequestInterception(true);
@@ -67,8 +67,9 @@ try {
   await sleep(800);
   const keys = await page.evaluate(() => caches.keys());
   ok(!keys.includes("alooma-shell-OLD"), "SW: old cache deleted on activate (keys: " + keys.join(",") + ")");
+  ok(keys.includes("alooma-shell-v2"), "SW: live cache is alooma-shell-v2 (keys: " + keys.join(",") + ")");
 
-  /* v1 bytes are cached now; mutate the served file, reload online. */
+  /* v2 bytes are cached now; mutate the served file, reload online. */
   const v1 = await page.evaluate(() => fetch("app.js").then(r => r.text()));
   ok(v1.length > 1000, "SW: v1 app.js fetched through the worker");
   fs.appendFileSync(path.join(TMP, "app.js"), "\n// SW-UPDATE-MARKER-V2\n");
