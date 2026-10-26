@@ -1864,7 +1864,7 @@
     return '<section class="print-page pack-sheet"><table><thead>' +
       '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title-row"><div class="label-title">' + esc(craft.name) + "</div>" +
       '<div class="label-date">Date: ' + (opts.date ? esc(opts.date) : "__________") + "</div></div>" +
-      '<div class="label-sub">Total kits: ' + kits + " · Order ID: ____________ · <br>Packed by: " + (by ? esc(by) : "____________") + "</div>" +
+      '<div class="label-sub">Total kits: ' + kits + " · Order ID: ____________ <br>Packed by: " + (by ? esc(by) : "____________") + "</div>" +
       "</th></tr>" +
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>" + foot + "</section>";
