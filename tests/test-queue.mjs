@@ -623,6 +623,10 @@ try {
     await sleep(600);
   }
   await page.setViewport({ width: 390, height: 664 });
+  /* Item-2's section left every item at 0 — without stock, Hand stops
+     at the shortage sheet and no walk starts (run 1 threw on the
+     hidden check-all for exactly that). */
+  resetRemote();
   await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
   await reloadApp();
   await queueFirst("Blooming Mirrors", 6);
@@ -631,11 +635,6 @@ try {
   await page.click("#btn-queue-hand");
   await sleep(300);
   eq(await page.$eval("#pack-queue-progress", e => e.textContent), "Craft 1 of 1", "item6: walk opens on craft 1 of 1");
-  console.log("ITEM6-DIAG", JSON.stringify(await page.evaluate(() => {
-    const ca = document.querySelector("#btn-check-all");
-    const r = ca ? ca.getBoundingClientRect() : null;
-    return { orderHidden: document.querySelector("#pack-order").hidden, listHidden: document.querySelector("#pack-checklist").hidden, checkRect: r ? { w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top) } : null, progress: document.querySelector("#pack-queue-progress")?.textContent, activeTab: document.querySelector(".tab-panel.active")?.id };
-  })));
   await completeWalkToast();
   const toast6 = await page.evaluate(() => {
     const t = document.querySelector("#toast");
@@ -646,6 +645,7 @@ try {
   eq(toast6.noTrunc, true, "item6: Complete toast shows the full title at 390");
   eq(toast6.text.includes("Packed Blooming Mirrors — 6 kits (BM-6)"), true, "item6: Complete toast title present");
   await page.setViewport({ width: 360, height: 664 });
+  resetRemote();
   await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
   await reloadApp();
   await queueFirst("Miniature Interiors", 6);
