@@ -514,7 +514,9 @@ try {
      Removing the line leaves the inventory row (no item delete in v1). */
   eq(addedB4 && addedB4.rows.some(r => r[0] === "Widget X (each)" && r[1] === "94"), true, "(b) unused custom item lands in Added items (stock kept)");
 
-  /* (b5) Warning above the max + line/pair add + dup validation + rename. */
+  /* (b5) No one-label warning any more (layout task: the warning is
+     removed — a long recipe simply flows) + line/pair add + dup
+     validation + rename. */
   const tenLines = ["tree-mirror", "scissors", "heat-gun", "wood-burning-cream", "clay-tray-a", "clay-tray-b", "cake-box", "tambourines", "white-clay", "english-ay-printout"].map(id => ({ item: id, qty: 6, per: 6 }));
   remote.settings = { features: { boxes: false, bins: false, bulkTab: true }, boxes: [], boxRules: [], bins: {},
     recipes: L.builtInRecipes().concat([
@@ -529,10 +531,10 @@ try {
   await goSettings(page);
   await page.evaluate(() => document.querySelector('[data-recipe-row="ten-line"] [data-recipe-edit]').click());
   await sleep(300);
-  eq(await page.evaluate(() => { const w = document.querySelector('[data-recipe-row="ten-line"] [data-recipe-warning]'); return w ? w.textContent.includes("second page") : false; }), true, "(b) editor warns above the max (10 lines)");
+  eq(await page.evaluate(() => !!document.querySelector('[data-recipe-row="ten-line"] [data-recipe-warning]')), false, "(b) editor never warns above the max (10 lines, warning removed)");
   await page.evaluate(() => document.querySelector('[data-recipe-row="nine-line"] [data-recipe-edit]').click());
   await sleep(300);
-  eq(await page.evaluate(() => !!document.querySelector('[data-recipe-row="nine-line"] [data-recipe-warning]')), false, "(b) editor silent at exactly the max (9 lines)");
+  eq(await page.evaluate(() => !!document.querySelector('[data-recipe-row="nine-line"] [data-recipe-warning]')), false, "(b) editor never warns at exactly the max (9 lines)");
   await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
   await sleep(300);
   const lineCount = async () => await page.evaluate(() => document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]').length);
