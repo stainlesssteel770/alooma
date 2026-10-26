@@ -400,6 +400,24 @@ try {
         await pickCraft("#pack-crafts", craftName);
         await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
         await sleep(250);
+        /* Run-6 diagnostic: item-11 fails for EVERY name incl. "Scissors",
+           which cannot wrap in a ~190px column — report real geometry +
+           rect counts so the next fix targets the true cause (wrapped text
+           vs zero boxes vs range-vs-element rects). TEMPORARY: remove once
+           the cause is known. */
+        const diag = await page.evaluate(() => {
+          const t = document.querySelector("#pack-table");
+          const first = document.querySelector("#pack-table tbody .row-name");
+          const cell = first ? first.closest("td") : null;
+          let rangeInfo = null;
+          if (first) {
+            const r = document.createRange(); r.selectNodeContents(first);
+            rangeInfo = { rangeRects: r.getClientRects().length, rangeTops: [...r.getClientRects()].map(x => Math.round(x.top)), elRects: first.getClientRects().length };
+          }
+          const pack = document.querySelector("#tab-pack");
+          return { vw: window.innerWidth, layout: t ? getComputedStyle(t).tableLayout : null, tableW: t ? t.clientWidth : null, cellW: cell ? cell.clientWidth : null, packHidden: pack ? !!pack.hidden : null, rows: document.querySelectorAll("#pack-table tbody tr").length, sample: first ? first.textContent.trim() : null, rangeInfo };
+        });
+        console.log("ITEM11-DIAG " + w + " bins-" + (binsOn ? "on" : "off") + " " + craftName + ": " + JSON.stringify(diag));
         const bad = await page.evaluate(() => [...document.querySelectorAll("#pack-table tbody .row-name")].map(el => {
           const r = document.createRange(); r.selectNodeContents(el);
           const lines = [...new Set([...r.getClientRects()].map(x => Math.round(x.top)))].length;
