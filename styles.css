@@ -461,15 +461,15 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   #print-area section.pack-sheet .label-title-row { position: relative; }
   /* Fix-round item 9: a collapsed table splits its shared row border
      across a page break — Cakery's page-1 bottom line printed at half
-     width (0.75pt vs 1.5pt, measured in the before PDF). Cloning the
-     box decoration makes each fragment paint its own full borders,
-     so the fragment's last line is a full 1.5pt. Pack sheets only;
-     single-page sheets are unfragmented and unaffected. Table-level
-     clone alone did NOT fix it (CI run 40372731228 still showed the
-     halved last line), so the cells carry it too — Chrome fragments
-     the rows, and the row boxes are what need cloning. */
-  #print-area section.pack-sheet table { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-  #print-area section.pack-sheet td, #print-area section.pack-sheet th { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+     width (0.75pt vs 1.5pt, measured in the before PDF). REVERTED:
+     box-decoration-break: clone (table-level, then table+cell) did NOT
+     fix the halved line (CI runs 40372731228 and 40376472384 both
+     still showed 2,...,1) AND it broke the repeated thead on page 2
+     (run 40376472384 diagnostic: p2 len=209, no title, no subtitle)
+     while repeats passed pre-batch-(b). Item 9 stays OPEN pending
+     Mark's call — the other routes are worse: border-collapse:
+     separate breaks the BM-36-boxes one-label fit, and box-shadow
+     separators need background-graphics to print on thermal. */
 }
 
 /* Merged pack flow (2026-10-23): Print / Hand pack choice + batch hand-pack list */
