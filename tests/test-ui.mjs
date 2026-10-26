@@ -187,6 +187,26 @@ async function tab(name) {
   eq(remoteData.inventory["scissors"].qty, 200, "receive committed to (mock) repo");
   eq(remoteData.history[0].type, "received", "receive logged in history data");
 
+  /* Fix-round batch (a) item 6: Receive rejects decimals, huge counts, 0. */
+  const hist0 = remoteData.history.length;
+  const recvReject = async (v) => {
+    await page.evaluate((x) => {
+      const row = document.querySelector('.inv-item[data-item="scissors"]');
+      if (!row.querySelector(".inv-panel")) row.querySelector(".inv-main").click();
+      row.querySelector(".inv-panel-input").value = x;
+      row.querySelector(".inv-panel-go").click();
+    }, v);
+    await sleep(600);
+  };
+  await recvReject("6.5");
+  eq(await page.evaluate(() => { const b = document.querySelector("#error-banner"); return !b.hidden && b.textContent.includes("1 to 999"); }), true, "(a) Receive decimal rejected with 1-999 message");
+  eq(remoteData.inventory["scissors"].qty, 200, "(a) decimal receive saved nothing");
+  await recvReject("100000");
+  eq(remoteData.inventory["scissors"].qty, 200, "(a) huge receive saved nothing");
+  await recvReject("0");
+  eq(remoteData.inventory["scissors"].qty, 200, "(a) zero receive saved nothing");
+  eq(remoteData.history.length, hist0, "(a) rejected receives logged nothing");
+
   /* Threshold: open panel, switch to Warning mode, set 250 -> badge shows */
   await page.evaluate(() => {
     const row = document.querySelector('.inv-item[data-item="scissors"]');
