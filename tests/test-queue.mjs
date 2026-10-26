@@ -176,8 +176,9 @@ try {
   }
   await completeChecklist();
   /* Item 7: the hand-pack toast keeps the whole (SKU) unbroken — the
-     parens sit inside the nowrap span, so the bracket can't split. */
-  eq(await page.$eval("#toast .nowrap", e => e.textContent), "(BM-6)", "item7: hand-pack toast (SKU) unbroken with parens inside the span");
+     parens sit inside the toast-sku span (Polish item 3 moved the SKU
+     out of the ellipsized message; the span still holds it whole). */
+  eq(await page.$eval("#toast .toast-sku", e => e.textContent.trim()), "(BM-6)", "item7: hand-pack toast (SKU) unbroken with parens inside the span");
   eq(await page.$eval("#pack-queue-progress", e => e.textContent), "Craft 2 of 3", "Hand pack all: completing craft 1 opens craft 2 automatically");
   await completeChecklist();
   eq(await page.$eval("#pack-queue-progress", e => e.textContent), "Craft 3 of 3", "Hand pack all: completing craft 2 opens craft 3 automatically");
@@ -782,6 +783,54 @@ try {
       eq(clay.tops, 1, "polish1-" + w + ": Clay name is one line (full " + clay.full + " cell-content " + clay.cell + " table " + clay.table + " doc " + clay.doc + ")");
       eq(clay.over, false, "polish1-" + w + ": Clay name does not overflow");
     }
+  }
+
+  /* Polish item 3: the Complete toast's SKU stays visible at 360 — it
+     rides in its own flex-none span after the ellipsized message, so a
+     long title can truncate but the SKU never gets cut. Same check for
+     the print toast's bare SKU. */
+  await page.setViewport({ width: 360, height: 664 });
+  resetRemote();
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
+  await reloadApp();
+  await queueFirst("Blooming Mirrors", 6);
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  await page.click("#btn-queue-hand");
+  await sleep(300);
+  await completeWalkToast();
+  const toast3 = await page.evaluate(() => {
+    const s = document.querySelector("#toast .toast-sku");
+    const m = document.querySelector("#toast .toast-msg");
+    if (!s) return null;
+    return { text: s.textContent, tops: [...new Set([...s.getClientRects()].map(r => Math.round(r.top)))].length,
+      over: s.scrollWidth > s.clientWidth, msg: m ? m.textContent : "" };
+  });
+  eq(!!toast3, true, "polish3: Complete toast has a SKU span at 360");
+  if (toast3) {
+    eq(toast3.text.trim(), "(BM-6)", "polish3: Complete toast SKU is (BM-6) at 360");
+    eq(toast3.tops, 1, "polish3: Complete toast SKU is one line at 360");
+    eq(toast3.over, false, "polish3: Complete toast SKU does not overflow at 360");
+    eq(toast3.msg.includes("Packed Blooming Mirrors"), true, "polish3: Complete toast title still present at 360");
+  }
+  /* Print toast, same mechanism, bare SKU (no parens). */
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Blooming Mirrors")).click());
+  await sleep(200);
+  await page.evaluate(() => document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click());
+  await sleep(200);
+  await page.evaluate(() => document.querySelector("#btn-pack-print").scrollIntoView({block: "center"}));
+  await page.click("#btn-pack-print");
+  await page.waitForFunction(() => { const s = document.querySelector("#toast .toast-sku"); return s && !document.querySelector("#toast").hidden; }, { timeout: 15000 });
+  const toast3p = await page.evaluate(() => {
+    const s = document.querySelector("#toast .toast-sku");
+    return s ? { text: s.textContent, tops: [...new Set([...s.getClientRects()].map(r => Math.round(r.top)))].length,
+      over: s.scrollWidth > s.clientWidth } : null;
+  });
+  eq(!!toast3p, true, "polish3: Print toast has a SKU span at 360");
+  if (toast3p) {
+    eq(toast3p.text.trim(), "BM-6", "polish3: Print toast SKU is BM-6 at 360");
+    eq(toast3p.tops, 1, "polish3: Print toast SKU is one line at 360");
+    eq(toast3p.over, false, "polish3: Print toast SKU does not overflow at 360");
   }
 
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
