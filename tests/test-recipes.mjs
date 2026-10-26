@@ -636,6 +636,30 @@ try {
   await sleep(300);
   eq(await page.evaluate(() => document.querySelector(".history-entry .history-effects")?.textContent.includes("Renamed Widget")), true, "(c) new entry effect list shows the new name");
 
+  /* ---- Retest item 8: snapshot reprint Per-6 comes from the snapshot ---- */
+  /* Change the recipe quantity, reload, and reprint the OLD entry: its
+     Per-6 and total must still match what was packed, not the new rate. */
+  remote.settings.recipes[0].lines[0].qty = 12;
+  await load(1);
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
+  await sleep(300);
+  await page.evaluate(() => document.querySelectorAll(".history-entry .btn-reprint")[1].click());
+  await sleep(400);
+  const snapRows = await page.evaluate(() => {
+    return [...document.querySelectorAll("#print-area tbody tr")].map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent.trim()));
+  });
+  const snapOldRow = snapRows.find(r => r[1] === "Test Widget");
+  eq(!!snapOldRow, true, "item8: old entry reprints its row");
+  eq(snapOldRow && snapOldRow[2], "6", "item8: old reprint Per-6 comes from the snapshot (6, not 12)");
+  eq(snapOldRow && snapOldRow[3], "6", "item8: old reprint total matches what was packed");
+  /* A new pack uses the new rate for both Per-6 and total. */
+  await pick("Snap Test", 6);
+  const snapNewRows = await printSheet();
+  const snapNewRow = snapNewRows.find(r => r[1] === "Renamed Widget");
+  eq(!!snapNewRow, true, "item8: new pack prints its row");
+  eq(snapNewRow && snapNewRow[2], "12", "item8: new pack Per-6 uses the new rate");
+  eq(snapNewRow && snapNewRow[3], "12", "item8: new pack total uses the new rate");
+
   /* ---- (d) Clay rename fits one line on the BM label ---- */
   await resetSeed();
   await pick("Blooming Mirrors", 6);
