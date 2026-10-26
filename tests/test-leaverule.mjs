@@ -198,6 +198,10 @@ try {
   await pickPack("Blooming Mirrors", 6);
   await page.click("#btn-pack-hand");
   await sleep(200);
+  /* The plain click silently hit the fixed tab bar in run 5 (the button
+     scrolled to just above it, so the tap landed on the bar, not the
+     handler — no throw, no sheet). Center it first, the proven pattern. */
+  await page.evaluate(() => document.querySelector("#btn-check-all").scrollIntoView({ block: "center" }));
   await page.click("#btn-check-all");
   await sleep(400);
   /* Run 4 failed on the next click with "not clickable", i.e. the
