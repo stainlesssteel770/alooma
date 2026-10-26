@@ -478,7 +478,9 @@ try {
   await sleep(150);
   await page.evaluate(() => { const i = document.querySelector("#pack-kits"); i.focus(); i.value = "42"; i.dispatchEvent(new Event("input", { bubbles: true })); });
   await sleep(200);
-  await page.click("#btn-queue-add");
+  /* Item 4: this section runs in the saved state, where Add is hidden —
+     the Queue tap appends the pick and re-enters Queue mode. */
+  await page.click("#btn-pack-queue");
   await sleep(250);
   const lines6 = await page.$$eval("#pack-queue .queue-line", els => els.map(e => ({
     sel: e.querySelector(".queue-kits") ? e.querySelector(".queue-kits").value : null,
