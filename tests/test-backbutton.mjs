@@ -41,7 +41,8 @@ const server = http.createServer((req, res) => {
 
 const browser = await puppeteer.launch({
   headless: "new",
-  args: ["--no-sandbox", "--disable-setuid-sandbox", "--window-size=390,664"],
+  args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--window-size=390,664"],
+  timeout: 90000,
 });
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 664 });
@@ -142,9 +143,13 @@ try {
   await sleep(400);
   eq(await page.$eval("#tab-history", (el) => el.classList.contains("active")), true, "6: returning to #history stays on History");
 
-  if (fails) { console.log("Z BACKBUTTON TESTS FAILED (" + fails + ")"); process.exit(1); }
-  console.log("Z BACKBUTTON TESTS PASSED");
+  /* Fix-round item 1 harness: the exit used to sit INSIDE try, so a
+     failing run called process.exit before finally ran and the browser
+     was never closed (leaked chrome). The exit now runs after finally. */
+  if (fails) { console.log("Z BACKBUTTON TESTS FAILED (" + fails + ")"); }
+  else { console.log("Z BACKBUTTON TESTS PASSED"); }
 } finally {
   await browser.close();
   server.close();
 }
+process.exit(fails ? 1 : 0);
