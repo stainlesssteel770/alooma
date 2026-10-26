@@ -44,7 +44,7 @@ const server = http.createServer((req, res) => {
   });
 });
 await new Promise(r => server.listen(PORT, "127.0.0.1", r));
-const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"], timeout: 90000 });
 try {
   const page = await browser.newPage();
   // A3: the 1440 block leaves an unsaved pick, so the 1920 goto raises the
