@@ -770,7 +770,7 @@ async function tab(name) {
   eq((await page.$eval("#pack-boxes-text", e => e.textContent)).includes("Box C"), true, "C1: Change override adds Box C for this order");
   await page.click("#btn-pack-print");
   await sleep(250);
-  eq((await page.evaluate(() => document.querySelector("#print-area").textContent)).includes("BOXES: Box A, Box B, Box C"), true, "C1+C3: packing sheet prints BOXES: Box A, Box B, Box C");
+  eq((await page.evaluate(() => document.querySelector("#print-area").textContent)).includes("BOXES: Box A + Box B + Box C"), true, "C1+C3: packing sheet prints BOXES: Box A + Box B + Box C");
   /* A4: that print completed CAK-12 — undo it so the checklist Complete
      below deducts exactly once. The print also cleared the pick AND the
      Box C override, so re-pick CAK-12 and re-apply Box C first — the
