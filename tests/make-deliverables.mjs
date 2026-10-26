@@ -205,7 +205,7 @@ try {
   await sleep(200);
   await page.pdf({ path: "/tmp/alooma-single-boxes.pdf", preferCSSPageSize: true, printBackground: true });
   await checkPdf("/tmp/alooma-single-boxes.pdf", "single WITH BOXES", pages => {
-    ok(pages.map(p => p.text).join(" ").includes("BOXES: Big Box + Small Box"), "single WITH BOXES: BOXES line present");
+    ok(pages.map(p => p.text).join(" ").includes("BOXES: Big Box, Small Box"), "single WITH BOXES: BOXES line present");
   });
   remoteData.settings.features.boxes = false;
   await freshQueue();
