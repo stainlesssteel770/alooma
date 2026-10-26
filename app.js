@@ -545,8 +545,19 @@
      with the name as it stood when packed. Reprint and the History
      effect list read names from it when present; legacy entries
      without one fall back to current names. */
-  function snapshotPack(pack) {
-    return pack.map(function (r) { return { item: r.item, name: r.name, qty: r.qty }; });
+  function snapshotPack(pack, craftId) {
+    /* Retest item 8: freeze the Per-6 rate at pack time, so a later
+       recipe change can't rewrite an old entry's reprint column. */
+    var per6 = null;
+    if (craftId) {
+      per6 = {};
+      L.computePack(craftId, 6).forEach(function (r) { per6[r.item] = r.qty; });
+    }
+    return pack.map(function (r) {
+      var line = { item: r.item, name: r.name, qty: r.qty };
+      if (per6) line.per6 = per6[r.item];
+      return line;
+    });
   }
   function snapshotName(entry, itemId) {
     if (entry.recipe) {
@@ -968,7 +979,7 @@
     var entries = lines.map(function (ln) {
       var craft = L.craftById(ln.craftId);
       var pack = L.computePack(ln.craftId, ln.kits);
-      var extra = { craftId: ln.craftId, kits: ln.kits, recipe: snapshotPack(pack) };
+      var extra = { craftId: ln.craftId, kits: ln.kits, recipe: snapshotPack(pack, ln.craftId) };
       if (by) extra.packedBy = by;
       return newEntry(
         "packed",
@@ -1062,7 +1073,7 @@
            can restore the line and step the walk back to it. */
         extra.queueLine = { craftId: ln.craftId, kits: ln.kits };
         extra.queueIndex = i;
-        extra.recipe = snapshotPack(pack);
+        extra.recipe = snapshotPack(pack, ln.craftId);
         var entry = newEntry(
           "packed",
           "Packed " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
@@ -1278,7 +1289,7 @@
             "bulk",
             "Bulk " + craft.name + " — " + ln.kits + " kits (" + L.sku(ln.craftId, ln.kits) + ")",
             pack.map(function (r) { return { item: r.item, delta: -r.qty }; }),
-            { craftId: ln.craftId, kits: ln.kits, recipe: snapshotPack(pack) }
+            { craftId: ln.craftId, kits: ln.kits, recipe: snapshotPack(pack, ln.craftId) }
           );
           L.applyEffects(state.data.inventory, entry.effects, +1);
           state.data.history.unshift(entry);
@@ -1734,7 +1745,7 @@
           /* Recipe (c): an edit re-packs at the new kits, so the
              snapshot refreshes to the new pack (current names) — a
              reprint after an edit must match the edited entry. */
-          var updates = { kits: k, recipe: snapshotPack(pack) };
+          var updates = { kits: k, recipe: snapshotPack(pack, entry.craftId) };
           /* Batch C item 10: keep a later walk-undo consistent with the
              edit — the restored line carries the edited kit count. */
           if (entry.queueLine) updates.queueLine = { craftId: entry.craftId, kits: k };
@@ -1767,8 +1778,10 @@
     opts = opts || {};
     var craft = L.craftById(craftId);
     /* Recipe (c): a snapshot reprint renders its frozen rows (names +
-       totals). The Per-6 column stays from the current recipe — it is
-       a rate reference, and renames never change quantities. */
+       totals). Retest item 8: the Per-6 column comes from the
+       snapshot when present — a rate frozen at pack time — and only
+       falls back to the current recipe for legacy snapshots without
+       per6. */
     var pack = opts.pack || L.computePack(craftId, kits);
     var binsOn = settings().features.bins;
     var sheetPack = pack.slice();
@@ -1783,6 +1796,7 @@
        old per-line map for every built-in craft. */
     var per6 = {};
     L.computePack(craftId, 6).forEach(function (r) { per6[r.item] = r.qty; });
+    if (opts.pack) opts.pack.forEach(function (r) { if (r.per6 !== undefined) per6[r.item] = r.per6; });
     var rows = sheetPack.map(function (r) {
       return '<tr><td class="tick"><span class="tick-box"></span></td><td>' + esc(r.name) + "</td>" +
         (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), r.item)) + "</td>" : "") +
@@ -1812,7 +1826,7 @@
     function doPrint() {
       clearError();
       var by = storedBy(PACKBY_LS);
-      var extra = { craftId: craft.id, kits: cur.kits, recipe: snapshotPack(cur.pack) };
+      var extra = { craftId: craft.id, kits: cur.kits, recipe: snapshotPack(cur.pack, craft.id) };
       if (by) extra.packedBy = by;
       var entry = newEntry(
         "packed",
