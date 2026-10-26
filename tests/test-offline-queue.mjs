@@ -56,7 +56,7 @@ const server = http.createServer((req, res) => {
   });
 });
 await new Promise(r => server.listen(PORT, "127.0.0.1", r));
-const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"], timeout: 90000 });
 try {
   const page = await browser.newPage();
   await page.evaluateOnNewDocument(() => {
@@ -181,7 +181,7 @@ try {
 
   /* ---- Service worker + snapshot: the app opens with no signal ---- */
   await waitFor(async () => page.evaluate(() => navigator.serviceWorker.getRegistration().then(r => !!r).catch(() => false)), "service worker registered");
-  eq(await page.evaluate(() => caches.keys().then(k => k.includes("alooma-shell-v1"))), true, "E4: app shell is cached");
+  eq(await page.evaluate(() => caches.keys().then(k => k.includes("alooma-shell-v2"))), true, "E4: app shell is cached (alooma-shell-v2)");
   /* No signal, for real: the mock stops answering (online = false) AND the
      local server dies, so even the Pages-copy fallback has nowhere to
      answer from — only the service worker's cache and the on-device
