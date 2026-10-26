@@ -319,7 +319,14 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
      box itself need not be the full target) and tighter num padding
      on headers and values alike (the header text drives num width). */
   #pack-table input[type="checkbox"] { width: 24px; height: 24px; margin: 0; }
-  #pack-table th.num, #pack-table td.num { padding-left: 4px; padding-right: 4px; }
+  /* Polish item 1, fourth attempt: run 3 flipped 375/390 to pass and
+     measured the 360 deficit exactly — name 157px vs 151px of cell
+     content, a 6px gap. Free 16px more from the side columns only:
+     2px side padding on the checkbox cell and the num columns. Those
+     columns sit at their max width, so the freed room flows to the
+     wrapping name column. */
+  #pack-table td:first-child { padding-left: 2px; padding-right: 2px; }
+  #pack-table th.num, #pack-table td.num { padding-left: 2px; padding-right: 2px; }
   .kits-block .chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
   /* Pack's chips toggle with the "+" manual box: hidden must win over the
      grid display above, or "+" never hides the chips at phone widths. */
