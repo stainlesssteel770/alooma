@@ -158,12 +158,12 @@ try {
   ok(!pack.titleText.includes("BOXES"), "pack sheet: top stays title + subtitle only (no BOXES under the title)");
   ok(pack.footText.includes("BOXES: Big Box, Small Box") && pack.footText.includes("Packed by"), "pack sheet: BOXES line sits in the footer, above 'Packed by'");
   ok(!pack.footText.includes("Date:"), "pack sheet: Date left the footer (it lives on header line 1 now)");
-  /* Header line 1's Date is 8pt: read the computed size under print
-     media, then restore screen media for the rest of the suite. */
-  await page.emulateMediaType("print");
-  const datePx = await page.evaluate(() => { const d = document.querySelector("#print-area .label-date"); return d ? parseFloat(getComputedStyle(d).fontSize) : -1; });
-  await page.emulateMediaType("screen");
-  ok(Math.abs(datePx - 8 * 96 / 72) < 0.5, "pack sheet: header Date is 8pt (computed " + datePx + "px)");
+  /* The 8pt + top-alignment proof lives on a throwaway page after the
+     matrix (never emulateMediaType on a page that later calls page.pdf:
+     restoring to "screen" makes every later PDF render in screen media
+     — Letter pages with the print-area hidden — which silently voided
+     the CAK-36 spill, singlePack, inventory and count assertions in
+     run 1. */
   const cakCraft = Object.values(L.CRAFTS).find(c => c.name === "The Cakery");
   const expectCells = {};
   cakCraft.items.forEach(ln => { expectCells[L.ITEMS[ln.item]] = [String(L.lineQty(ln, 6)), String(L.lineQty(ln, 36))]; });
@@ -206,9 +206,11 @@ try {
   await checkGeometry("/tmp/alooma-packsheet-hcb.pdf", "pack sheet HCB-12");
 
   /* New pack-sheet layout geometry (no-boxes probes): header line 1 has
-     the craft name + Date on one baseline, and the footer holds Packed
-     by with no Date. Page counts are owned by the matrix below — these
-     probes only log theirs. */
+     the craft name + Date on the title line (Date pinned top-right,
+     so its baseline sits ~18pt above the 30pt name's — the exact
+     top-alignment is proved on the throwaway page below), and the
+     footer holds Packed by with no Date. Page counts are owned by the
+     matrix below — these probes only log theirs. */
   async function singlePack(name, kits, file) {
     await page.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);
     await page.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
@@ -221,8 +223,8 @@ try {
     const runs1 = (await p1.getTextContent()).items.filter(it => it.str.trim()).map(it => ({ s: it.str, y: it.transform[5] }));
     const nm = runs1.find(r => r.s.includes(name.split(" ")[0]));
     const dt = runs1.find(r => r.s.includes("Date:"));
-    const dy = (nm && dt) ? Math.abs(nm.y - dt.y).toFixed(1) : "?";
-    ok(!!nm && !!dt && Math.abs(nm.y - dt.y) < 4, name + "-" + kits + ": header line 1 has name + Date on one baseline (dy=" + dy + "pt)");
+    const sb = runs1.find(r => r.s.includes("Total kits:"));
+    ok(!!nm && !!dt && !!sb && dt.y > sb.y, name + "-" + kits + ": header Date sits on the title line, above the subtitle");
     const footText = await page.evaluate(() => { const f = document.querySelector("#print-area .print-foot"); return f ? f.textContent : ""; });
     ok(footText.includes("Packed by") && !footText.includes("Date:"), name + "-" + kits + ": footer holds Packed by, no Date");
     await checkGeometry(file, name + "-" + kits + " new-layout geometry");
@@ -320,6 +322,35 @@ try {
   const onePage = matrixResults.filter(r => r.pages === 1).sort((a, b) => rowCount(b.name) - rowCount(a.name));
   const longest = onePage.find(r => r.withBoxes) || onePage[0];
   if (longest) console.log("MATRIX longest 1-label craft: " + longest.name + " (" + rowCount(longest.name) + " rows) -> " + longest.file);
+
+  /* Header Date proof, on a throwaway page that never calls page.pdf:
+     8pt computed size + top-alignment with the title's first line +
+     right-alignment with the title row. This page is closed right
+     after, so no emulated media can poison a later PDF. */
+  {
+    const pg = await openMatrixPage(false);
+    await pg.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Tambourines")).click());
+    await pg.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="36"]').click(); });
+    await sleep(300);
+    await pg.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
+    await sleep(300);
+    await pg.emulateMediaType("print");
+    const hdr = await pg.evaluate(() => {
+      const row = document.querySelector("#print-area .label-title-row");
+      const t = document.querySelector("#print-area .label-title");
+      const d = document.querySelector("#print-area .label-date");
+      if (!row || !t || !d) return null;
+      const rr = row.getBoundingClientRect(), tr = t.getBoundingClientRect(), dr = d.getBoundingClientRect();
+      return { datePx: parseFloat(getComputedStyle(d).fontSize), topDy: dr.top - tr.top, rightDy: rr.right - dr.right };
+    });
+    ok(!!hdr, "header Date proof: title row + title + date all rendered");
+    if (hdr) {
+      ok(Math.abs(hdr.datePx - 8 * 96 / 72) < 0.5, "pack sheet: header Date is 8pt (computed " + hdr.datePx + "px)");
+      ok(Math.abs(hdr.topDy) < 2, "pack sheet: header Date top-aligns with the title's first line (dy=" + hdr.topDy.toFixed(2) + "px)");
+      ok(Math.abs(hdr.rightDy) < 2, "pack sheet: header Date sits at the title row's right edge (dy=" + hdr.rightDy.toFixed(2) + "px)");
+    }
+    await pg.close();
+  }
 
   /* Print all (queue, brief item 1): 3 crafts, one job, queue order — the
      geometry gate runs on it too, like every other print. The first line
