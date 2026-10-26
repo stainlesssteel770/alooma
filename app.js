@@ -1842,7 +1842,10 @@
        and spilled the MI-boxes footer. With the forced break the
        title cell's max is the 262pt craft name, the columns keep their
        natural widths, and the visual result is identical (the subtitle
-       wrapped at exactly this point anyway). */
+       wrapped at exactly this point anyway). The space before the <br>
+       is also load-bearing: textContent gives a bare <br> no separator
+       at all, so without it the subtitle reads "·Packed by" to the
+       queue tests' normalized-text assertions. */
     var foot = "";
     if ((boxes && boxes.length) || opts.reprint) {
       foot = '<div class="print-foot">' + (boxes && boxes.length ? '<span class="foot-boxes">BOXES: ' + esc(boxes.join(", ")) + "</span>" : "") +
@@ -1851,7 +1854,7 @@
     return '<section class="print-page pack-sheet"><table><thead>' +
       '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title-row"><div class="label-title">' + esc(craft.name) + "</div>" +
       '<div class="label-date">Date: ' + (opts.date ? esc(opts.date) : "__________") + "</div></div>" +
-      '<div class="label-sub">Total kits: ' + kits + " · Order ID: ____________ ·<br>Packed by: " + (by ? esc(by) : "____________") + "</div>" +
+      '<div class="label-sub">Total kits: ' + kits + " · Order ID: ____________ · <br>Packed by: " + (by ? esc(by) : "____________") + "</div>" +
       "</th></tr>" +
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table>" + foot + "</section>";
