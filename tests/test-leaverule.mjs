@@ -35,7 +35,7 @@ const server = http.createServer((req, res) => {
   });
 });
 await new Promise(r => server.listen(PORT, "127.0.0.1", r));
-const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"], timeout: 90000 });
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 390, height: 664 });
@@ -117,20 +117,38 @@ try {
     eq(await page.$$eval("#pack-crafts .craft-btn.selected", els => els.length), 0, "Discard cleared the craft (target " + target + ")");
   }
 
-  /* ---- 2. A queue prompts; Stay keeps it, Discard clears it ---- */
+  /* ---- 2. Fix-round item 2: a saved queue alone never prompts, and
+     Discard drops only the half-finished pick — the saved lines stay,
+     across the switch AND a reload. ---- */
   await pickPack("Blooming Mirrors", 6);
   await page.click("#btn-pack-queue");
   await sleep(300);
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 1, "queue: one line before the switch");
   await clickTab("inventory");
-  eq(await promptOpen(), true, "queue prompts on the way out");
-  await stay();
-  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 1, "Stay keeps the queue");
-  await clickTab("inventory");
-  await discard();
-  eq(await currentTab(), "inventory", "Discard switches with a queue");
+  eq(await promptOpen(), false, "saved queue alone prompts nothing");
+  eq(await currentTab(), "inventory", "saved queue alone switches freely");
   await clickTab("pack");
-  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 0, "Discard cleared the queue");
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 1, "saved queue survives the switch");
+  /* Mark's exact test: save a 2nd line, tap a craft (half-finished
+     pick), switch, Discard, reload — the 2 lines remain. */
+  await pickPack("Tambourines", 12);
+  await page.click("#btn-pack-queue");
+  await sleep(300);
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 2, "queue: two lines saved");
+  await pickPack("Blooming Mirrors", 6);
+  await clickTab("inventory");
+  eq(await promptOpen(), true, "half-finished pick prompts with a saved queue");
+  await discard();
+  eq(await currentTab(), "inventory", "Discard switches with a saved queue");
+  await clickTab("pack");
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 2, "Discard kept the 2 saved lines");
+  eq(await page.$eval("#pack-kits", e => e.value), "", "Discard cleared the half-finished pick");
+  eq(await page.$$eval("#pack-crafts .craft-btn.selected", els => els.length), 0, "Discard cleared the picked craft");
+  const dialogsBeforeQ = dialogs;
+  await page.reload({ waitUntil: "networkidle0", timeout: 30000 });
+  await sleep(500);
+  eq(dialogs, dialogsBeforeQ, "reload with only a saved queue shows no browser prompt");
+  eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 2, "saved queue survives reload");
 
   /* ---- 3. A Bulk list prompts; Discard clears list + pick ---- */
   await clickTab("bulk");
