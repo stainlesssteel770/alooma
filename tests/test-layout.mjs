@@ -375,6 +375,34 @@ try {
     await page.click("#btn-print-menu"); await sleep(150);
   }
 
+  /* Fix-round item 11: phone checklist names on one line, by layout
+     only (no font change). Every craft at 6 kits, bins off AND on,
+     at the two phone gate sizes (360x740, 375x667). Line count from
+     distinct Range tops over each .row-name span — the bin tag is a
+     separate span below the name and must not count. The seed flip +
+     reload is view-only-safe (the mock serves the current seed on GET);
+     picking a craft never saves, so no prompt can interrupt the tour. */
+  for (const binsOn of [false, true]) {
+    remoteData.settings.features.bins = binsOn;
+    for (const [w, h] of [[360, 740], [375, 667]]) {
+      await page.setViewport({ width: w, height: h });
+      await page.goto("http://127.0.0.1:8911/index.html", { waitUntil: "networkidle0", timeout: 30000 });
+      await sleep(400);
+      await tab("pack");
+      for (const craft of L.CRAFTS) {
+        await pickCraft("#pack-crafts", craft.name);
+        await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
+        await sleep(250);
+        const bad = await page.evaluate(() => [...document.querySelectorAll("#pack-table tbody .row-name")].map(el => {
+          const r = document.createRange(); r.selectNodeContents(el);
+          const lines = [...new Set([...r.getClientRects()].map(x => Math.round(x.top)))].length;
+          return lines === 1 ? null : el.textContent.trim();
+        }).filter(Boolean));
+        ok(bad.length === 0, "item11 " + w + " bins-" + (binsOn ? "on" : "off") + " " + craft.name + ": every checklist name on one line", bad.join(", "));
+      }
+    }
+  }
+
   console.log(pass + " passed, " + fail + " failed");
 } finally {
   await browser.close();

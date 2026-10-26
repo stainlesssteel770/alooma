@@ -328,6 +328,21 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
      wrapping name column. */
   #pack-table td:first-child { padding-left: 2px; padding-right: 2px; }
   #pack-table th.num, #pack-table td.num { padding-left: 2px; padding-right: 2px; }
+  /* Fix-round item 11: phone checklist names on one line, by layout
+     only (no font change). Auto layout let the header text ("On hand")
+     and long counts size the side columns, starving the name column
+     until long names wrapped. Fixed layout pins the side columns
+     narrow — tick 28px (24px box + 2px padding each side), Need 40px
+     and On hand 48px (3- and 4-digit counts at 16.5px bold) — so the
+     remainder flows to the name, and the name cell's side padding
+     trims 6px -> 4px for 4px more. Headers may wrap ("On hand" to two
+     lines) — only names must hold one line. Counts of 5+ digits can
+     overflow the num columns; real warehouse counts are far smaller. */
+  #pack-table { table-layout: fixed; }
+  #pack-table th:first-child, #pack-table td:first-child { width: 28px; }
+  #pack-table th:nth-child(3), #pack-table td:nth-child(3) { width: 40px; }
+  #pack-table th:nth-child(4), #pack-table td:nth-child(4) { width: 48px; }
+  #pack-table td:nth-child(2) { padding-left: 4px; padding-right: 4px; }
   .kits-block .chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
   /* Pack's chips toggle with the "+" manual box: hidden must win over the
      grid display above, or "+" never hides the chips at phone widths. */
