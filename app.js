@@ -2989,8 +2989,10 @@
            fires at Print all / Hand pack all, not while adding. */
         packQueue.push({ craftId: cur.craft.id, kits: cur.kits });
         persistPackQueue();
-        /* Bulk-like: the picker clears for the next line. */
-        state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false;
+        /* Bulk-like: the picker clears for the next line. Retest item 3:
+           a manual-count Add also closes the manual box, so the picker
+           resets to the default chips. */
+        state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false; packKitsManual = false;
         renderPack();
         /* Retest item 2: after Add, back to the TOP — the craft picker
            and kit chips — not down to the new line. */
