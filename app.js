@@ -1826,15 +1826,28 @@
         (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), r.item)) + "</td>" : "") +
         '<td class="qty regular">' + per6[r.item] + '</td><td class="qty">' + r.qty + "</td></tr>";
     }).join("");
+    /* New pack-sheet layout (general, no per-craft rules): header line 1
+       is the craft name left + a small 8pt Date top-right on the same
+       line (a reprint still shows its ORIGINAL date here); header line 2
+       is the kits/Order ID/Packed by subtitle (it wraps to 2 lines —
+       the subtitle's second line costs 17.55pt, paid back by the
+       footer shrinking below); the footer is BOXES only and is omitted
+       entirely when there are no boxes and it isn't a reprint, so a
+       no-boxes sheet has no footer block at all. REPRINT stays as its
+       own div last in the footer when present. BOXES uses commas on
+       the sheet (the on-screen " + " separator elsewhere is untouched). */
+    var foot = "";
+    if ((boxes && boxes.length) || opts.reprint) {
+      foot = '<div class="print-foot">' + (boxes && boxes.length ? '<span class="foot-boxes">BOXES: ' + esc(boxes.join(", ")) + "</span>" : "") +
+        (opts.reprint ? "<div>REPRINT</div>" : "") + "</div>";
+    }
     return '<section class="print-page pack-sheet"><table><thead>' +
-      '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title">' + esc(craft.name) + "</div>" +
-      '<div class="label-sub">Total kits: ' + kits + " &nbsp;&nbsp; Order ID: ____________</div>" +
+      '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title-row"><div class="label-title">' + esc(craft.name) + "</div>" +
+      '<div class="label-date">Date: ' + (opts.date ? esc(opts.date) : "__________") + "</div></div>" +
+      '<div class="label-sub">Total kits: ' + kits + " · Order ID: ____________ · Packed by: " + (by ? esc(by) : "____________") + "</div>" +
       "</th></tr>" +
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
-      "<tbody>" + rows + "</tbody></table>" +
-      '<div class="print-foot">' + (boxes && boxes.length ? '<span class="foot-boxes">BOXES: ' + esc(boxes.join(" + ")) + " · </span>" : "") +
-      "<span>Packed by: " + (by ? esc(by) : "____________") + " · </span><span>Date: " + (opts.date ? esc(opts.date) : "__________") + "</span>" +
-      (opts.reprint ? "<div>REPRINT</div>" : "") + "</div></section>";
+      "<tbody>" + rows + "</tbody></table>" + foot + "</section>";
   }
   /* A4: single Print prints this one craft's sheet and completes it at the
      same moment — stock deducts and History logs at print time. A short
@@ -2544,8 +2557,6 @@
     var recipes = settings().recipes || [];
     var html = "";
     recipes.forEach(function (r) {
-      var entries = recipeEntries(r);
-      var warn = entries > L.MAX_LINES_ONE_LABEL;
       html += '<div class="recipe-row" data-recipe-row="' + esc(r.id) + '">';
       html += '<div class="recipe-head"><strong>' + esc(r.name) + '</strong> <span class="recipe-code">' + esc(r.code) + "</span>" +
         (r.hidden ? ' <span class="recipe-hidden">Hidden</span>' : "") +
@@ -2580,7 +2591,6 @@
         }
         html += '<div class="btn-row"><button type="button" class="btn" data-add-line>Add line</button><button type="button" class="btn" data-add-pair>Add alternating pair</button></div>';
         html += '<p class="field-error" data-recipe-error></p>';
-        if (warn) html += '<p class="hint" data-recipe-warning>This recipe has ' + entries + " items — it won't fit on one 4x6 label and will spill to a second page.</p>";
         html += "</div>";
       }
       html += "</div>";
