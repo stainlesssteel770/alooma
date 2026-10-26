@@ -404,6 +404,7 @@ try {
   });
   eq(walkPos.cls.includes("walking"), true, "item1-walk: row carries the walking class");
   eq(walkPos.pos, "static", "item1-walk: row unpins during the walk");
+  eq(await rowVisible("btn-queue-done"), true, "item4-walk: Done stays visible mid-walk from saved state");
   /* The walk table is long, so Done is scrolled to center first — a
      user scrolls to it too; only the first-paint queue taps above are
      required to land without scrolling. */
@@ -567,6 +568,45 @@ try {
   eq(await rowVisible("pack-queue-actions"), true, "item4: saved-queue row visible after reload");
   eq(await rowVisible("btn-queue-print"), true, "item4: Print all still there after reload");
   eq(await rowVisible("btn-queue-hand"), true, "item4: Hand pack all still there after reload");
+
+  /* Retest item 5: queue cards keep the X in a fixed right column,
+     and craft picker rows wrap names inside their own column —
+     checked at 360, 375 and 390 with all 6 crafts. */
+  await page.setViewport({ width: 390, height: 664 });
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Miniature Interiors")).click());
+  await page.evaluate(() => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="36"]`).click(); });
+  await sleep(150);
+  await page.click("#btn-pack-queue");
+  await sleep(300);
+  for (const w of [360, 375, 390]) {
+    await page.setViewport({ width: w, height: 664 });
+    await reloadApp();
+    await page.waitForFunction(() => document.querySelectorAll("#pack-crafts .craft-btn").length === 6, { timeout: 15000 });
+    await sleep(300);
+    const geo = await page.evaluate(() => {
+      const btns = [...document.querySelectorAll("#pack-crafts .craft-btn")].map(b => {
+        const r = b.getBoundingClientRect();
+        return { top: Math.round(r.top), h: Math.round(r.height), over: b.scrollWidth > b.clientWidth };
+      });
+      const cards = [...document.querySelectorAll("#pack-queue .queue-line")].map(c => {
+        const cr = c.getBoundingClientRect();
+        const x = c.querySelector(".queue-remove").getBoundingClientRect();
+        return { cy: (cr.top + cr.bottom) / 2, xy: (x.top + x.bottom) / 2, xLeft: Math.round(x.left), cRight: Math.round(cr.right), xTop: Math.round(x.top), xBottom: Math.round(x.bottom), cTop: Math.round(cr.top), cBottom: Math.round(cr.bottom) };
+      });
+      return { btns, cards };
+    });
+    eq(geo.btns.length, 6, "item5-" + w + ": all 6 crafts shown");
+    eq(geo.btns.every(b => !b.over), true, "item5-" + w + ": no picker button overflows");
+    const rows = {};
+    geo.btns.forEach(b => { (rows[b.top] = rows[b.top] || []).push(b.h); });
+    eq(Object.values(rows).every(hs => hs.every(h => Math.abs(h - hs[0]) <= 1)), true, "item5-" + w + ": same-row buttons share a height");
+    eq(geo.cards.length >= 2, true, "item5-" + w + ": queue cards present");
+    geo.cards.forEach((c, i) => {
+      eq(Math.abs(c.xy - c.cy) <= 6, true, "item5-" + w + ": card " + i + " X vertically centred");
+      eq(c.xLeft >= c.cRight - 60, true, "item5-" + w + ": card " + i + " X in the right column");
+      eq(c.xTop >= c.cTop && c.xBottom <= c.cBottom, true, "item5-" + w + ": card " + i + " X never on its own line");
+    });
+  }
 
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
