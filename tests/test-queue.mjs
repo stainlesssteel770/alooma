@@ -736,6 +736,39 @@ try {
     eq(Math.abs(miSel - miPlain) <= 1, true, "polish2-" + w + ": selecting Miniature Interiors does not change its height (" + miPlain + " -> " + miSel + ")");
   }
 
+  /* Polish item 1: Clay name is one line on the hand-pack checklist at
+     360/375/390 — with bins on, as on Mark's phone (the bin tag may sit
+     on its own line; the name itself must not wrap). */
+  remoteData.settings.features.bins = true;
+  remoteData.settings.bins = remoteData.settings.bins || {};
+  remoteData.settings.bins["colored-clay-tool-tray"] = "B3";
+  for (const w of [360, 375, 390]) {
+    await page.setViewport({ width: w, height: 664 });
+    await page.evaluate(() => localStorage.removeItem("alooma.packqueue.v1"));
+    await reloadApp();
+    await page.waitForSelector("#pack-crafts .craft-btn");
+    await sleep(300);
+    await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Blooming Mirrors")).click());
+    await sleep(200);
+    await page.evaluate(() => document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click());
+    await sleep(200);
+    await page.evaluate(() => document.querySelector("#btn-pack-hand").scrollIntoView({block: "center"}));
+    await page.click("#btn-pack-hand");
+    await page.waitForFunction(() => document.querySelectorAll("#pack-table tbody tr").length > 0, { timeout: 15000 });
+    const clay = await page.evaluate(() => {
+      const el = [...document.querySelectorAll("#pack-table .row-name")].find(s => s.textContent === "Clay Tray + 6 Picks");
+      if (!el) return null;
+      const tops = [...new Set([...el.getClientRects()].map(r => Math.round(r.top)))];
+      return { tops: tops.length, over: el.scrollWidth > el.clientWidth, text: el.textContent };
+    });
+    eq(!!clay, true, "polish1-" + w + ": Clay row present on the BM-6 checklist");
+    if (clay) {
+      eq(clay.text, "Clay Tray + 6 Picks", "polish1-" + w + ": Clay name text");
+      eq(clay.tops, 1, "polish1-" + w + ": Clay name is one line");
+      eq(clay.over, false, "polish1-" + w + ": Clay name does not overflow");
+    }
+  }
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();
