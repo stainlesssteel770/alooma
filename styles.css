@@ -435,6 +435,26 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   #print-area section.pack-sheet .print-foot { margin-top: 2pt; padding-top: 2pt; }
   #print-area section.pack-sheet tr.p-title th { padding-bottom: 2pt; }
   #print-area section.pack-sheet .label-sub { margin-top: 0; }
+  /* Height budget (BM-36-boxes, measured 2026-10-26): the 4.5pt cell
+     padding is the single biggest eater — 9pt × 13 rows = 117pt, more
+     than the title block and the footer combined. Trimming it to 2.5pt
+     vertical on pack sheets only recovers 52pt on BM (13 rows) and
+     48pt on MI, at the same 12.5pt text and 1.5pt borders; horizontal
+     padding stays 6pt so Item keeps its width. Count/inventory sheets
+     are untouched (their pagination is accepted as-is). */
+  #print-area section.pack-sheet th, #print-area section.pack-sheet td { padding-top: 2.5pt; padding-bottom: 2.5pt; }
+  /* New pack-sheet layout: header line 1 is the craft name full-width
+     with the small 8pt Date pinned top-right over it (out of flow, as
+     in Tab's mockups). A flex row was tried first and REGRESSED MI:
+     the date + gap stole ~79pt from the name, wrapping "Miniature
+     Interiors" (262pt, fits the 268pt full width) to a second title
+     line and spilling its last row to page 2. Absolute positioning
+     keeps the name's full width, so the title block is exactly the
+     old height; the geometry gate in check-print fails loudly if a
+     name's first line ever runs under the date. Title/subtitle sizes
+     untouched. */
+  #print-area section.pack-sheet .label-title-row { position: relative; }
+  #print-area section.pack-sheet .label-date { position: absolute; top: 0; right: 0; font-size: 8pt; font-weight: 700; white-space: nowrap; }
 }
 
 /* Merged pack flow (2026-10-23): Print / Hand pack choice + batch hand-pack list */
