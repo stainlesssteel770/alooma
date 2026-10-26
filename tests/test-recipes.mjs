@@ -621,6 +621,23 @@ try {
   eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent.includes("already exists")), true, "(b) duplicate item name blocked even when its slug differs (AY - Special Request)");
   eq(putCount, puts4 + 1, "(b) only the name restore saved, not the blocked item");
 
+  /* Fix-round batch (a) item 6: recipe qty/per capped at 999. */
+  const puts5 = putCount;
+  const setLastQty = async (v) => { await page.evaluate((x) => { const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')]; const i = rows[rows.length - 1].querySelector("[data-line-qty]"); i.value = x; i.dispatchEvent(new Event("change", { bubbles: true })); }, v); await sleep(400); };
+  await setLastQty("1000");
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent.includes("999")), true, "(b) recipe qty over 999 blocked");
+  eq(putCount, puts5, "(b) blocked qty saves nothing");
+  await setLastQty("6.5");
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent !== ""), true, "(b) decimal qty blocked");
+  eq(putCount, puts5, "(b) blocked decimal saves nothing");
+  await setLastQty("6");
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent), "", "(b) valid qty clears the error");
+  eq(putCount, puts5 + 1, "(b) valid qty saves");
+  await page.evaluate(() => { const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')]; const i = rows[rows.length - 1].querySelector("[data-line-per]"); i.value = "0"; i.dispatchEvent(new Event("change", { bubbles: true })); });
+  await sleep(400);
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent !== ""), true, "(b) per 0 blocked");
+  eq(putCount, puts5 + 1, "(b) blocked per saves nothing");
+
   /* (b6) Rename keeps old history titles. */
   await resetSeed();
   rows = await (async () => { await pick("Blooming Mirrors", 6); await page.evaluate(() => document.querySelector("#btn-pack-hand").click()); await sleep(300); return null; })();
@@ -639,6 +656,25 @@ try {
   await sleep(500);
   eq(remote.history[0] && remote.history[0].title, "Packed Blooming Mirrors — 6 kits (BM-6)", "(b) old history title unchanged after rename");
   eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors Renamed"))), true, "(b) renamed craft shows new name in picker");
+
+  /* Fix-round batch (a) item 6: delivery skips non-whole / huge counts. */
+  await resetSeed();
+  await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); });
+  await sleep(300);
+  await page.evaluate(() => { if (document.querySelector("#delivery-entry").hidden) document.querySelector("#btn-delivery").click(); });
+  await sleep(250);
+  await page.evaluate(() => {
+    document.querySelector('#delivery-entry-list input[data-item="scissors"]').value = "6.5";
+    document.querySelector('#delivery-entry-list input[data-item="tambourines"]').value = "100000";
+    document.querySelector('#delivery-entry-list input[data-item="white-clay"]').value = "10";
+  });
+  await page.click("#btn-apply-delivery");
+  await sleep(250);
+  await confirmIfOpen(page);
+  await sleep(300);
+  eq(remote.inventory["scissors"].qty, 100, "(b) delivery decimal skipped (was 6.5, not 6)");
+  eq(remote.inventory["tambourines"].qty, 100, "(b) delivery huge count skipped");
+  eq(remote.inventory["white-clay"].qty, 110, "(b) delivery valid line still saves");
 
   /* ---- (c) History snapshot + reprint/effect freeze ---- */
   /* Seed a one-line custom craft + custom item, pack it, rename the
