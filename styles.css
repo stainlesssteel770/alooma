@@ -370,7 +370,11 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
      button must sit above the ~134px bar+tab band to count as visible,
      so the browser scrolls it clear instead of leaving it parked. */
   html { scroll-padding-bottom: 210px; }
-  .toast { bottom: 132px; left: 8px; right: 8px; transform: none; max-width: none; font-size: 12.5px; padding: 10px 12px; gap: 10px; }
+  /* Polish item 3: the SKU span + its gap cost the message ~55px at phone
+     widths, which tipped the 390 title into ellipsis (run 1). A 6px gap
+     reclaims 8px across the two gaps, so the full title fits again
+     alongside the SKU. */
+  .toast { bottom: 132px; left: 8px; right: 8px; transform: none; max-width: none; font-size: 12.5px; padding: 10px 12px; gap: 6px; }
   .toast button { font-size: 13px; }
   /* Brief item 14: the header status must never run off the right edge.
      Shrink the header spacing/type on phones so badge + status fit one
