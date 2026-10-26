@@ -256,7 +256,10 @@ try {
   await sleep(300);
   await packCraft("Blooming Mirrors");
   await packChip(6);
-  await page.click("#btn-pack-queue");
+  /* Polish item 5: a pick with a saved queue is Queue mode now, so the
+     single-actions Queue button is hidden — the 4th line goes in via
+     Add. The queue below is identical (BM-6 x3 + TAM-12). */
+  await page.click("#btn-queue-add");
   await sleep(300);
   /* Center the Hand button before the real click: a minimal scroll can park
      it under the fixed bottom nav, and the click would then hit a tab
@@ -355,6 +358,12 @@ try {
     await page.click("#btn-queue-done");
     await sleep(300);
   }
+  /* Polish item 5: section 10 left one restored line saved, and a pick
+     with a saved queue enters Queue mode — but this section tests the
+     single-actions kits box, so drop that leftover line first (guarded:
+     on old code the walk never restored and the queue is already empty). */
+  await page.evaluate(() => { const b = document.querySelector("#pack-queue .queue-remove"); if (b) b.click(); });
+  await sleep(250);
   await packCraft("Blooming Mirrors");
   await page.evaluate(() => document.querySelector("#pack-kits-plus").click());
   await sleep(150);
