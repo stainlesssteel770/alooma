@@ -1905,9 +1905,12 @@
   function printInventory(mode) {
     var binsOn = settings().features.bins;
     var date = printDate();
+    /* Fix-round item 3: printed sheets use AT OR UNDER, matching the
+       screen badge and the README ("at or below"). The old strict <
+       left an at-threshold item unflagged in print only. */
     function isLow(itemId) {
       var rec = state.data.inventory[itemId];
-      return !!(rec && rec.threshold !== null && rec.threshold !== undefined && rec.qty < rec.threshold);
+      return !!(rec && rec.threshold !== null && rec.threshold !== undefined && rec.qty <= rec.threshold);
     }
     var sections = L.inventoryGroups().map(function (g) {
       var items = g.items.slice();
