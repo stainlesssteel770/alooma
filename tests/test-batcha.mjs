@@ -224,8 +224,9 @@ try {
   });
   eq(packToastOk, "ok", "2b: pack toast clear of bar/nav");
   /* Item 7: the pack toast's span now holds the whole "(BM-6)" —
-     parens inside the span is the fix, not a regression. */
-  eq(await page.evaluate(() => { const s = document.querySelector("#toast .nowrap"); return s ? s.textContent : null; }), "(BM-6)", "2b: pack toast SKU in a nowrap span");
+     parens inside the span is the fix, not a regression. Polish item 3
+     moved that span out of the ellipsized message into toast-sku. */
+  eq(await page.evaluate(() => { const s = document.querySelector("#toast .toast-sku"); return s ? s.textContent.trim() : null; }), "(BM-6)", "2b: pack toast SKU in a toast-sku span");
 
   /* ---- 8. Discard on a tab switch leaves a clean form, no red error ---- */
   await tab("pack");
