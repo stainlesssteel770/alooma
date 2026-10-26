@@ -47,7 +47,9 @@ h3 { margin: 16px 0 8px; font-size: 17px; }
 
 /* crafts */
 .craft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-bottom: 16px; }
-.craft-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 12px; font-size: 16px; font-weight: 600; cursor: pointer; text-align: left; min-height: 56px; color: var(--ink); position: relative; }
+.craft-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 12px; font-size: 16px; font-weight: 600; cursor: pointer; text-align: left; min-height: 56px; color: var(--ink); position: relative; display: flex; gap: 6px; align-items: flex-start; min-width: 0; }
+.craft-check { flex: none; }
+.craft-text { flex: 1; min-width: 0; overflow-wrap: break-word; }
 .craft-btn small { display: block; font-weight: 400; color: var(--muted); font-size: 14px; margin-top: 2px; }
 .craft-btn.selected { border: 2px solid #2457A6; background: #E8EEF8; color: #1B4382; }
 .craft-btn.selected small { color: #1B4382; }
@@ -235,10 +237,11 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
 .list-head-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 4px; }
 .list-head-row h3 { font-size: 17px; margin: 0; }
 .list-head-row .btn { min-height: 44px; }
-.queue-line { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 8px 8px 12px; margin: 8px 0; font-weight: 600; flex-wrap: wrap; }
+.queue-line { display: flex; align-items: stretch; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 8px 8px 12px; margin: 8px 0; font-weight: 600; }
+.queue-main { flex: 1; min-width: 0; }
 .queue-line.dup { background: #FFF4E5; border-color: #E8A838; }
 .queue-line .queue-kits { min-height: 44px; font-size: 16px; font-weight: 600; border: 1.5px solid var(--line); border-radius: 8px; padding: 0 6px; background: #fff; }
-.queue-line .queue-remove { min-width: 44px; min-height: 44px; margin-left: auto; }
+.queue-line .queue-remove { min-width: 44px; min-height: 44px; flex: none; align-self: center; }
 .queue-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
 /* Retest item 1: the queue row was the only flex row missing its
    [hidden] override (single-actions, boxes-line and boxes-edit all have
