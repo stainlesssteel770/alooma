@@ -32,6 +32,11 @@ jobs:
       - name: Recipe tests (editor sub-batches a+b — catalog migration + editor UI)
         run: node tests/test-recipes.mjs
 
+      # Layout task: the changed print tests run first, so a matrix
+      # failure surfaces in minutes, not at step 20.
+      - name: Print checks (4x6 PDFs, no blank labels)
+        run: node tests/check-print.mjs
+
       # Speed rule (2026-10-25): the suites changed most recently run
       # first, so their failures surface in minutes, not at step 20.
       - name: Print-done tests (A4 print completes orders)
@@ -70,8 +75,6 @@ jobs:
 
       - name: Accessibility scan (axe)
         run: node tests/test-a11y.mjs
-      - name: Print checks (4x6 PDFs, no blank labels)
-        run: node tests/check-print.mjs
 
       - name: Screenshots at 390px (batch-report evidence)
         run: node tests/screenshots.mjs
