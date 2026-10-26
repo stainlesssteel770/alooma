@@ -164,7 +164,7 @@ const server = http.createServer((req, res) => {
   });
 });
 await new Promise(r => server.listen(PORT, "127.0.0.1", r));
-const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"], timeout: 90000 });
 try {
   const page = await browser.newPage();
   page.on("pageerror", e => console.log("PAGEERROR " + e.message));
@@ -471,7 +471,12 @@ try {
   eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors"))), true, "(b) unhidden craft back in picker");
   await hctx.close();
 
-  /* (b4) New item at 0 and packable. */
+  /* (b4) New item at 0 and packable. Fix-round item 4: the item must
+     appear in the Inventory TAB and History must refresh live, no
+     reload — the old code threw in renderInventory (no row for the new
+     item), aborting renderAll before History. */
+  const errs4 = [];
+  page.on("pageerror", e => errs4.push(e.message));
   await resetSeed();
   await goSettings(page);
   await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
@@ -484,6 +489,13 @@ try {
   await sleep(500);
   eq(await waitPut(b => b && b.settings && b.settings.customItems && b.settings.customItems.some(it => it.id === "widget-x"), "new item"), true, "(b) new item saved (widget-x in customItems)");
   eq(await page.evaluate(() => { const s = document.querySelector('[data-recipe-row="bm"] [data-line-item]'); return s ? s.value : null; }), "widget-x", "(b) line now uses the new item");
+  await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); });
+  await sleep(400);
+  eq(errs4.length, 0, "(b) no page error after creating the item (was: renderInventory threw on the missing row)");
+  eq(await page.evaluate(() => !!document.querySelector('#inventory-groups .inv-item[data-item="widget-x"]')), true, "(b) new item appears in the Inventory tab live, no reload");
+  await page.evaluate(() => { document.querySelector('[data-tab="history"]').click(); });
+  await sleep(400);
+  eq(await page.evaluate(() => document.querySelector('[data-tab="history"]').classList.contains("active") && !!document.querySelector("#history-list")), true, "(b) History tab refreshes live after the new item");
   await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); document.querySelector("#btn-print-inventory").click(); });
   await sleep(400);
   const invB4 = await page.evaluate(() => [...document.querySelectorAll("#print-area .print-page")].map(sec => ({
