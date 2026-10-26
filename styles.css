@@ -455,6 +455,13 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
      gate in check-print still guards title/subtitle overlap.
      Title/subtitle sizes untouched. */
   #print-area section.pack-sheet .label-title-row { position: relative; }
+  /* Fix-round item 9: a collapsed table splits its shared row border
+     across a page break — Cakery's page-1 bottom line printed at half
+     width (0.75pt vs 1.5pt, measured in the before PDF). Cloning the
+     box decoration makes each fragment paint its own full borders,
+     so the fragment's last line is a full 1.5pt. Pack sheets only;
+     single-page sheets are unfragmented and unaffected. */
+  #print-area section.pack-sheet table { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 }
 
 /* Merged pack flow (2026-10-23): Print / Hand pack choice + batch hand-pack list */
