@@ -727,15 +727,17 @@
     $("btn-queue-print").disabled = !packQueue.length;
     $("btn-queue-hand").disabled = !packQueue.length;
     $("btn-queue-clear").hidden = packQueue.length < 2;
-    /* Queue mode only: the bottom row (Add / Print all / Hand pack all /
-       Done) belongs to Queue mode — single mode shows the list alone. */
-    $("pack-queue-actions").hidden = !queueMode;
-    /* Item 11: during a walk the Add / Print all / Hand pack all buttons
-       hide; Done stays so the walk can be left. */
+    /* Retest item 4: Queue mode shows only Add + Done. Once Done is
+       tapped, the saved queue shows only Print all + Hand pack all —
+       they stay visible while the queue has lines, so a saved queue
+       never loses Print all. During a walk only Done shows. */
     var walking = queueHandIdx >= 0;
-    $("btn-queue-add").hidden = walking;
-    $("btn-queue-print").hidden = walking;
-    $("btn-queue-hand").hidden = walking;
+    var saved = !queueMode && packQueue.length > 0;
+    $("pack-queue-actions").hidden = !queueMode && !saved;
+    $("btn-queue-add").hidden = walking || saved;
+    $("btn-queue-done").hidden = saved;
+    $("btn-queue-print").hidden = walking || queueMode;
+    $("btn-queue-hand").hidden = walking || queueMode;
     /* Item 1 fold-in: the pinned queue row unpins during a walk so it
        never covers the sticky Complete bar (same bottom band). */
     $("pack-queue-actions").classList.toggle("walking", walking);
