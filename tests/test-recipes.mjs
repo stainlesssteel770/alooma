@@ -613,13 +613,17 @@ try {
   await page.evaluate(() => { const inp = document.querySelector('[data-recipe-row="bm"] [data-recipe-name]'); inp.value = "Blooming Mirrors X"; inp.dispatchEvent(new Event("change", { bubbles: true })); });
   await sleep(500);
   eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent), "", "(b) restoring the name clears the error");
+  /* The restore is a no-change edit (the stored name was already X), so
+     saveData's diffAction correctly issues NO put — the render still
+     clears the error. Count it here, not at the end. */
+  eq(putCount, puts4, "(b) restoring the same name saves nothing (no-change no-op)");
   await page.select('[data-recipe-row="bm"] [data-line-item]', '__new__');
   await sleep(300);
   await page.evaluate(() => { document.querySelector('[data-new-item-name]').value = "AY - Special Request"; document.querySelector('[data-new-item-unit]').value = ""; });
   await page.evaluate(() => document.querySelector('[data-new-item-create]').click());
   await sleep(500);
   eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent.includes("already exists")), true, "(b) duplicate item name blocked even when its slug differs (AY - Special Request)");
-  eq(putCount, puts4 + 1, "(b) only the name restore saved, not the blocked item");
+  eq(putCount, puts4, "(b) blocked item saves nothing (restore above was already a no-change no-op)");
 
   /* Fix-round batch (a) item 6: recipe qty/per capped at 999. */
   const puts5 = putCount;
