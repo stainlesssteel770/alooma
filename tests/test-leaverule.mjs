@@ -132,7 +132,12 @@ try {
   /* Mark's exact test: save a 2nd line, tap a craft (half-finished
      pick), switch, Discard, reload — the 2 lines remain. */
   await pickPack("Tambourines", 12);
-  await page.click("#btn-pack-queue");
+  /* With a saved queue present, the pick enters Queue mode at once, so
+     the single-actions Queue button hides — the 2nd line is added with
+     the queue row's Add button, not #btn-pack-queue (which is hidden
+     here; clicking it throws "not clickable"). */
+  eq(await page.$eval("#pack-single-actions", e => e.hidden), true, "pick with a saved queue enters Queue mode (single actions hide)");
+  await page.click("#btn-queue-add");
   await sleep(300);
   eq(await page.$$eval("#pack-queue .queue-line", els => els.length), 2, "queue: two lines saved");
   await pickPack("Blooming Mirrors", 6);
