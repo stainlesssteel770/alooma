@@ -37,6 +37,16 @@ jobs:
       - name: Print checks (4x6 PDFs, no blank labels)
         run: node tests/check-print.mjs
 
+      # Fix-round item 1 leak probe: count chrome processes and free
+      # memory right before print-done. The pre-print-done suites all
+      # close their browsers in finally, so a nonzero count here proves
+      # a leak (or a runner-level problem); zero rules leaks out.
+      - name: Chrome count + memory before print-done (leak probe)
+        run: |
+          echo "chrome processes: $(ps aux | grep '[c]hrome' | wc -l)"
+          ps aux | grep '[c]hrome' | awk '{print $2, $3, $4, $11, $12}' | head -20 || true
+          free -m
+
       # Speed rule (2026-10-25): the suites changed most recently run
       # first, so their failures surface in minutes, not at step 20.
       - name: Print-done tests (A4 print completes orders)
