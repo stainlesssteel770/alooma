@@ -28,7 +28,7 @@ const server = http.createServer((req, res) => {
 const PORT = 8911;
 await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 const axeSrc = fs.readFileSync(path.join(ROOT, "node_modules", "axe-core", "axe.min.js"), "utf8");
-const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+const browser = await puppeteer.launch({ executablePath: EXE, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"], timeout: 90000 });
 let fail = 0;
 try {
   const page = await browser.newPage();
