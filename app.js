@@ -1145,9 +1145,19 @@
     var kits = strictKits($("pack-kits").value);
     var hasSel = !!state.packCraft && L.validKits(kits);
     var walking = queueHandIdx >= 0;
-    /* Brief 5c: exactly Queue / Print / Hand pack, and only once both are
-       chosen — never in Queue mode, never mid-walk (item 11). */
-    $("pack-single-actions").hidden = !hasSel || queueMode || walking;
+    /* Fix-round item 12: a craft with 0 lines can't be printed or
+       packed — its single actions hide, and a note says why (shown
+       only when the hiding is because of empty, not Queue mode/walk).
+       The help text is restored whenever the pick isn't empty, so the
+       note never leaks onto a later pick. */
+    var empty = hasSel && L.computePack(state.packCraft, kits).length === 0;
+    $("pack-single-actions").hidden = !hasSel || empty || queueMode || walking;
+    if (empty && !queueMode && !walking) {
+      $("pack-help").textContent = "This craft has no items yet — add lines in Settings → Recipes.";
+      $("pack-help").hidden = false;
+    } else {
+      $("pack-help").textContent = "Pick a craft, then the number of kits.";
+    }
     /* The checklist shows only while hand-packing (single or walk). */
     $("pack-order").hidden = !(packMode === "hand" && hasSel);
     $("pack-checklist").hidden = packMode !== "hand";
@@ -1182,9 +1192,12 @@
     });
     var add = $("btn-bulk-add");
     var kits = strictKits($("bulk-kits").value);
-    add.disabled = !(!!state.bulkCraft && L.validKits(kits));
+    /* Fix-round item 12: a 0-line craft can't be bulk-added either. */
+    var bulkEmpty = !!state.bulkCraft && L.validKits(kits) && L.computePack(state.bulkCraft, kits).length === 0;
+    add.disabled = !(!!state.bulkCraft && L.validKits(kits)) || bulkEmpty;
     if (!state.bulkCraft) { add.textContent = "Pick a craft"; }
     else if (!L.validKits(kits)) { add.textContent = "Choose kits"; }
+    else if (bulkEmpty) { add.textContent = "No items yet"; }
     else { add.innerHTML = "Add <span class=\"nowrap\">" + esc(L.sku(state.bulkCraft, kits)) + "</span>"; }
     var rec = $("btn-bulk-record");
     rec.disabled = !bulkLines.length;
@@ -1198,6 +1211,7 @@
     if (!requireEditor()) return;
     var kits = strictKits($("bulk-kits").value);
     if (!state.bulkCraft || !L.validKits(kits)) return;
+    if (!L.computePack(state.bulkCraft, kits).length) return;
     /* Batch C item 3: no prompt while adding — the duplicate check fires
        at Record all only (the old v3 D1 add-time prompt is gone). */
     queueBulkLine(state.bulkCraft, kits);
@@ -1888,7 +1902,7 @@
      The pick clears afterward so a second tap can't double-deduct. */
   function printSingle() {
     if (!requireEditor()) return;
-    var cur = currentPack(); if (!cur) return;
+    var cur = currentPack(); if (!cur || !cur.pack.length) return;
     var craft = cur.craft;
     var boxes = currentBoxes();
     var shorts = cur.pack.filter(function (r) { return qtyOf(r.item) < r.qty; });
@@ -3069,7 +3083,7 @@
        this pick as the first line; Print prints and completes it now;
        Hand pack opens the checklist for this one craft. */
     $("btn-pack-queue").addEventListener("click", function () {
-      var cur = currentPack(); if (!cur) return;
+      var cur = currentPack(); if (!cur || !cur.pack.length) return;
       gateLarge("pack", function () {
         packQueue.push({ craftId: cur.craft.id, kits: cur.kits });
         persistPackQueue();
@@ -3079,7 +3093,7 @@
       });
     });
     $("btn-pack-print").addEventListener("click", function () { gateLarge("pack", printSingle); });
-    $("btn-pack-hand").addEventListener("click", function () { gateLarge("pack", function () { packMode = "hand"; renderPack(); }); });
+    $("btn-pack-hand").addEventListener("click", function () { var cur = currentPack(); if (!cur || !cur.pack.length) return; gateLarge("pack", function () { packMode = "hand"; renderPack(); }); });
     $("bulk-kits").addEventListener("focus", function () { bulkPrevKits = $("bulk-kits").value; });
     $("bulk-kits").addEventListener("input", function () {
       renderBulk();

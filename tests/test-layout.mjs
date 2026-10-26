@@ -403,6 +403,33 @@ try {
     }
   }
 
+  /* Fix-round item 12: a craft with 0 lines can't be printed or
+     packed. Seed a lines:[] craft (normalizeRecipes keeps it — only
+     its lines are empty), pick it, and prove the single actions hide,
+     the note shows, Queue refuses it, and Bulk Add disables. The Print
+     handler guard is code-level (printSingle also needs the editor, so
+     a view-only click can't isolate it); the hidden actions + Queue
+     guard are the observable proof. */
+  remoteData.settings.recipes = [{ id: "emptycraft", code: "EC", name: "Empty Craft", lines: [] }];
+  await page.setViewport({ width: 360, height: 740 });
+  await page.goto("http://127.0.0.1:8911/index.html", { waitUntil: "networkidle0", timeout: 30000 });
+  await sleep(400);
+  await tab("pack");
+  await pickCraft("#pack-crafts", "Empty Craft");
+  await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
+  await sleep(250);
+  eq(await page.evaluate(() => document.querySelector("#pack-single-actions").hidden), true, "item12: Queue/Print/Hand hidden for a 0-item craft");
+  eq(await page.evaluate(() => { const h = document.querySelector("#pack-help"); return !h.hidden && h.textContent.includes("no items yet"); }), true, "item12: 'no items yet' note shown");
+  await page.evaluate(() => { document.querySelector("#btn-pack-queue").click(); });
+  await sleep(250);
+  eq(await page.evaluate(() => document.querySelector("#pack-queue-count").textContent), "0", "item12: Queue refuses a 0-item craft");
+  await tab("bulk");
+  await pickCraft("#bulk-crafts", "Empty Craft");
+  await page.evaluate(() => { const el = document.querySelector("#bulk-kits"); el.value = "6"; el.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(250);
+  eq(await page.evaluate(() => document.querySelector("#btn-bulk-add").disabled), true, "item12: Bulk Add disabled for a 0-item craft");
+  eq(await page.evaluate(() => document.querySelector("#btn-bulk-add").textContent), "No items yet", "item12: Bulk Add says why");
+
   console.log(pass + " passed, " + fail + " failed");
 } finally {
   await browser.close();
