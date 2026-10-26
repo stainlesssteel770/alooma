@@ -80,11 +80,14 @@
       t.style.bottom = "";
     }
   }
-  function showToast(html, actionLabel, actionFn, ms) {
+  function showToast(html, actionLabel, actionFn, ms, suffixHtml) {
     var t = $("toast");
     /* Retest item 6: the message sits in its own column so it can
        ellipsize to one line instead of wrapping under the button. */
-    t.innerHTML = '<span class="toast-msg">' + html + "</span>";
+    /* Polish item 3: an optional SKU suffix rides in its own flex-none
+       span AFTER the message, so the ellipsis can eat the title but
+       never the SKU — the SKU is what the packer reads back. */
+    t.innerHTML = '<span class="toast-msg">' + html + "</span>" + (suffixHtml ? '<span class="toast-sku">' + suffixHtml + "</span>" : "");
     if (actionLabel) {
       var b = document.createElement("button");
       b.textContent = actionLabel;
@@ -98,12 +101,16 @@
   }
   function toast(msg) { showToast(esc(msg), null, null, 4200); }
   function actionToast(msg, entry) {
-    /* A trailing "(SKU)" stays unbroken: a long craft name may wrap the
-       toast to a second line, but the SKU itself never splits mid-code. */
-    /* Item 7: the parens sit INSIDE the nowrap span, so "(BM-6)" is one
-       unbreakable unit — the bracket can no longer split across lines. */
-    var html = esc(msg).replace(/\(([^()]*-\d+)\)$/, "<span class=\"nowrap\">($1)</span>");
-    showToast(html, "UNDO", function () { undoEntry(entry, true); }, 10000);
+    /* Polish item 3: a trailing "(SKU)" leaves the ellipsized message
+       and rides as the toast-sku suffix instead of a nowrap span inside
+       it — inside the message the ellipsis cut the SKU first at 360.
+       The leading space sits INSIDE the suffix span (a bare space
+       between flex items would collapse), and the parens stay inside
+       it too, so "(BM-6)" is one unbreakable unit. */
+    var m = esc(msg).match(/\s*\(([^()]*-\d+)\)$/);
+    var html = esc(msg), suffix = null;
+    if (m) { html = esc(msg).slice(0, m.index); suffix = " (" + m[1] + ")"; }
+    showToast(html, "UNDO", function () { undoEntry(entry, true); }, 10000, suffix);
   }
   /* v2 A3: batch saves (a whole delivery / count) get one UNDO that
      reverses every entry in the batch */
@@ -133,8 +140,13 @@
     saveData("Undid print");
   }
   function printToast(msg, entries) {
-    var html = esc(msg).replace(/([A-Z]{2,}-\d+)$/, "<span class=\"nowrap\">$1</span>");
-    showToast(html, "UNDO", function () { undoPrintEntries(entries); }, 10000);
+    /* Polish item 3: same treatment as actionToast for a trailing bare
+       SKU ("Printed BM-6" — no parens, so the space goes inside the
+       suffix span the same way). */
+    var m = esc(msg).match(/\s*([A-Z]{2,}-\d+)$/);
+    var html = esc(msg), suffix = null;
+    if (m) { html = esc(msg).slice(0, m.index); suffix = " " + m[1]; }
+    showToast(html, "UNDO", function () { undoPrintEntries(entries); }, 10000, suffix);
   }
   function commitPrint(entries, toastMsg) {
     entries.forEach(function (e) { L.applyEffects(state.data.inventory, e.effects, +1); state.data.history.unshift(e); });
