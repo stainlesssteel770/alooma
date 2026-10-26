@@ -591,7 +591,10 @@
       if (c.hidden) return; /* recipe editor: hidden crafts leave the pickers only */
       var b = document.createElement("button");
       b.className = "craft-btn" + (c.id === selectedId ? " selected" : "");
-      b.innerHTML = (c.id === selectedId ? '<span class="craft-check" aria-hidden="true">✓</span>' : "") +
+      /* Polish item 2: the tick column is always rendered (empty when
+         unselected), so selecting a craft never steals width from its
+         name and never changes the row's height. */
+      b.innerHTML = '<span class="craft-check" aria-hidden="true">' + (c.id === selectedId ? "✓" : "") + "</span>" +
         '<span class="craft-text">' + esc(c.name) + "<small>" + esc(c.code) + " · " + craftEntryCount(c) + " items</small></span>";
       b.addEventListener("click", function () { onPick(c.id); });
       box.appendChild(b);
