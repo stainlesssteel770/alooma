@@ -2819,7 +2819,15 @@
       }
       if (t.hasAttribute("data-line-remove")) {
         var ridx = recipeLineIdx(t);
+        /* Fix-round item 16: removal offers Undo instead of a blocking
+           confirm — the toast restores the exact line at its old index. */
+        var recipes = settings().recipes || [];
+        var recipe = recipes.find(function (r) { return r.id === id; });
+        var removed = recipe && recipe.lines[ridx] ? JSON.parse(JSON.stringify(recipe.lines[ridx])) : null;
         commitRecipe(id, function (r) { r.lines.splice(ridx, 1); }, "Recipe line removed");
+        if (removed) showToast("Recipe line removed", "UNDO", function () {
+          commitRecipe(id, function (r) { r.lines.splice(Math.min(ridx, r.lines.length), 0, removed); }, "Recipe line restored");
+        }, 10000);
         return;
       }
       if (t.hasAttribute("data-add-line") || t.hasAttribute("data-add-pair")) {

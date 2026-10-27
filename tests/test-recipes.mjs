@@ -641,6 +641,12 @@ try {
   await sleep(500);
   eq(await lineCount(), bmLines0 + 1, "(b) Remove line drops the row");
   eq(putCount, puts3 + 1, "(b) Remove line saves immediately");
+  /* Fix-round item 16: the removal toast's UNDO restores the exact row. */
+  await page.evaluate(() => { const b = document.querySelector("#toast button"); if (b) b.click(); });
+  await sleep(500);
+  eq(await lineCount(), bmLines0 + 2, "(b) Undo restores the removed row");
+  eq(await page.evaluate(() => !!document.querySelector('[data-recipe-row="bm"] [data-line-item2]')), true, "(b) Undo restores the pair row itself");
+  eq(putCount, puts3 + 2, "(b) Undo restore saves");
   await page.evaluate(() => { const inp = document.querySelector('[data-recipe-row="bm"] [data-recipe-name]'); inp.value = "Blooming Mirrors X"; inp.dispatchEvent(new Event("change", { bubbles: true })); });
   await sleep(500);
   eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors X"))), true, "(b) rename shows in the picker");
