@@ -2673,6 +2673,10 @@
   }
   function itemOptions(selected, showNew) {
     var html = "";
+    /* Fix-round item 15: an unchosen row gets an explicit empty option
+       (selected unless the Create-new-item form is open for it) so the
+       select never misleadingly displays the first item. */
+    if (!selected) html += '<option value=""' + (!showNew ? " selected" : "") + ">Choose an item…</option>";
     Object.keys(L.ITEMS).forEach(function (id) {
       var unit = L.itemUnit(id);
       html += '<option value="' + esc(id) + '"' + (id === selected ? " selected" : "") + ">" + esc(L.ITEMS[id]) + (unit ? " (" + esc(unit) + ")" : "") + "</option>";
@@ -2828,8 +2832,16 @@
         var row = document.querySelector('[data-recipe-row="' + id + '"]');
         var errEl = row ? row.querySelector("[data-recipe-error]") : null;
         if (t.hasAttribute("data-add-line")) {
-          if (!free.length) { if (errEl) errEl.textContent = "Every item is already in this craft — nothing left to add."; return; }
-          commitRecipe(id, function (r) { r.lines.push({ item: free[0], qty: 1, per: 6 }); }, "Recipe line added");
+          /* Fix-round item 15: Add line adds an EMPTY row the user must
+             choose — never a random item at qty 1. It saves via the
+             unvalidated commitRecipe path; editing it before choosing
+             errors "Every line needs an item" (validateRecipe), and an
+             unchosen row never packs or prints (isValidLine drops it
+             from the active catalog on reload — it is a session draft
+             until an item is chosen). The all-items-used guard goes
+             away with the random pick: a new row can always take a
+             freshly created item. */
+          commitRecipe(id, function (r) { r.lines.push({ item: "", qty: 1, per: 6 }); }, "Recipe line added");
         } else {
           if (free.length < 2) { if (errEl) errEl.textContent = "Need two unused items for a pair — this craft already uses nearly everything."; return; }
           commitRecipe(id, function (r) { r.lines.push({ items: [free[0], free[1]], qty: 1, per: 6 }); }, "Recipe pair added");

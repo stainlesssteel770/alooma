@@ -595,6 +595,25 @@ try {
     return { qty: last.querySelector("[data-line-qty]").value, per: last.querySelector("[data-line-per]").value };
   });
   eq(newRow, { qty: "1", per: "6" }, "(b) new line defaults qty 1 per 6");
+  /* Fix-round item 15: the new row is EMPTY — you must choose an item,
+     and editing it before choosing errors instead of saving. */
+  const newRowSel = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')];
+    const last = rows[rows.length - 1];
+    const sel = last.querySelector("[data-line-item]");
+    return { value: sel.value, first: sel.options[0].textContent };
+  });
+  eq(newRowSel, { value: "", first: "Choose an item…" }, "(b) new line is an empty row you must choose");
+  const puts15 = putCount;
+  await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')];
+    const inp = rows[rows.length - 1].querySelector("[data-line-qty]");
+    inp.value = "2";
+    inp.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await sleep(400);
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent), "Every line needs an item.", "(b) editing an unchosen row errors");
+  eq(putCount, puts15, "(b) unchosen-row edit saves nothing");
   const puts1 = putCount;
   const setLastLineItem = async (val) => {
     await page.evaluate((v) => {
