@@ -258,7 +258,7 @@ try {
     const miFirst = fragPages.findIndex(p => p.text.includes("Miniature Interiors")) + 1;
     const sharedPage = fragPages.findIndex(p => p.text.includes("Shared items")) + 1;
     const miLast = (sharedPage > 0 ? sharedPage - 1 : fragPages.length);
-    const ayPage = fragPages.findIndex(p => p.text.includes("AY - Special Request")) + 1;
+    const ayPage = fragPages.findIndex(p => p.text.includes("AY - by request")) + 1;
     console.log(`FRAG ${tag} miPages=${miFirst ? (miLast - miFirst + 1) : 0} miFirst=${miFirst} ayPage=${ayPage} fixed=${ayPage === miFirst && miFirst > 0}`);
   }
 

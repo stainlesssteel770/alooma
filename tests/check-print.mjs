@@ -369,14 +369,6 @@ try {
         matrixResults.push({ name, kits, withBoxes, pages, file });
         if (name === "The Cakery") {
           ok(pages >= 2, "matrix: CAK-" + kits + " boxes=" + withBoxes + " bins=" + binsOn + " still flows (expected exception, " + pages + " pages)");
-        } else if (binsOn && name === "Miniature Interiors") {
-          ok(pages === 2, "matrix: MI-" + kits + " boxes=" + withBoxes + " bins=on accepted at 2 labels (" + pages + " pages)");
-          if (pages >= 2) {
-            const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(file)) }).promise;
-            const p2 = await doc.getPage(2);
-            const t2 = (await p2.getTextContent()).items.map(it => it.str).join(" ");
-            console.log("MIPACK MI-" + kits + " boxes=" + withBoxes + " bins=on page 2 holds: " + t2.slice(0, 300));
-          }
         } else {
           ok(pages === 1, "matrix: " + name + "-" + kits + " boxes=" + withBoxes + " bins=" + binsOn + " fits one label (" + pages + " pages)");
           if (pages > 1) {
@@ -561,11 +553,6 @@ try {
         ok(a.maxRight <= a.pageW + 1, tag + ": nothing cut off past the page edge (maxRight=" + Math.round(a.maxRight) + " pageW=" + Math.round(a.pageW) + ")");
         if (name === "The Cakery") {
           ok(a.numPages <= 2, tag + ": Cakery at most 2 labels (" + a.numPages + " pages)");
-        } else if (binsOn && name === "Miniature Interiors") {
-          ok(a.numPages === 2, tag + ": MI bins-on accepted at 2 labels (" + a.numPages + " pages)");
-          if (a.numPages > 1) {
-            console.log("MIPACK-SHEET MI-" + kits + " bins-on page 2 lines: " + a.pages[1].lines.join(" | ").slice(0, 300));
-          }
         } else {
           ok(a.numPages === 1, tag + ": fits one label (" + a.numPages + " pages)");
         }
@@ -579,8 +566,7 @@ try {
 
   /* MI count-sheet re-measurement (run-11 add-on): the Oct-25 MI-count
      2-page acceptance predates the header redo, so measure MI's count
-     sheet fresh on the current layout, bins on and off, before locking
-     in any pack-sheet MI expectation. LOGGING ONLY — no assertions:
+     sheet fresh on the current layout, bins on and off, after the 2026-10-27 MI renames (the pack sheet now fits 1 label bins-on). LOGGING ONLY — no assertions:
      the count sheet has no per-craft page-count check, and this block
      reports (it does not lock in) MI count pagination. The isolated MI
      section uses the same .print-page trim trick the suite already uses
@@ -620,7 +606,7 @@ try {
         if (!t || !t.textContent.includes("Miniature Interiors")) sec.remove();
       });
       const kept = [...document.querySelectorAll("#print-area .print-page")].length;
-      const ay = document.querySelector("#print-area").textContent.includes("AY - Special Request");
+      const ay = document.querySelector("#print-area").textContent.includes("AY - by request");
       return { kept, ay };
     });
     const file = "/tmp/alooma-micount-bins" + (binsOn ? "on" : "off") + ".pdf";

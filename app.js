@@ -349,6 +349,21 @@
       if (!state.data.inventory[id]) state.data.inventory[id] = { qty: 0, threshold: null };
     });
     if (!Array.isArray(state.data.history)) state.data.history = [];
+    /* Round 2 item 1 (2026-10-27 MI renames; IDs unchanged): stored
+       history freezes display names at pack/count time, so rewrite them
+       on load — old backups and old snapshots show the new names, while
+       counts and SKUs stay attached to the same item IDs. Runs on every
+       load path and on import (both call normalizeData); the bases are
+       cloned after normalization, so this creates no phantom save. */
+    var RENAMED = { "Tools & supplies tray #2": "Supplies tray #2", "Scrapbook paper pack": "Scrapbook pack", "AY - Special Request": "AY - by request" };
+    state.data.history.forEach(function (entry) {
+      if (entry.recipe) entry.recipe.forEach(function (ln) {
+        if (ln.name && RENAMED[ln.name]) ln.name = RENAMED[ln.name];
+      });
+      if (typeof entry.title === "string") Object.keys(RENAMED).forEach(function (old) {
+        if (entry.title.indexOf(old) >= 0) entry.title = entry.title.split(old).join(RENAMED[old]);
+      });
+    });
   }
   function settings() {
     if (!state.data.settings) state.data.settings = L.defaultSettings();
@@ -1885,9 +1900,8 @@
        not cosmetic: without it the subtitle's UNWRAPPED width (403pt
        before Date joined line 2, longer now) exceeds the table width,
        and Chrome's auto layout answers by narrowing the Item column
-       ~17pt — which wrapped MI's long names (Tools & supplies tray #2,
-       Scrapbook paper pack) to 2 lines each and spilled the MI-boxes
-       footer. With the forced break the title cell's max is the 262pt
+       ~17pt — which wrapped MI's long names to 2 lines each and
+       spilled the MI-boxes footer. With the forced break the title cell's max is the 262pt
        craft name, the columns keep their natural widths, and the
        visual result is identical (the subtitle wrapped at exactly this
        point anyway). The space before the <br> is also load-bearing:
@@ -2881,7 +2895,7 @@
         if (!name) { if (errEl2) errEl2.textContent = "Give the new item a name."; return; }
         var slug = slugify(name);
         /* Fix-round item 5: the slug check alone misses names whose id
-           isn't their slug (e.g. "AY - Special Request" lives under
+           isn't their slug (e.g. "AY - by request" lives under
            english-ay-printout), so compare display names too. */
         if (Object.keys(L.ITEMS).indexOf(slug) >= 0 || Object.keys(L.ITEMS).some(function (id) { return L.ITEMS[id].trim().toLowerCase() === name.toLowerCase(); })) { if (errEl2) errEl2.textContent = "An item with that name already exists."; return; }
         var pend = pendingNewItem;

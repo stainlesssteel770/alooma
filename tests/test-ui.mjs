@@ -1077,6 +1077,49 @@ async function tab(name) {
   await chk(async () => eq(putCount, putsBeforeEmpty, "degenerate: empty backup saved nothing"), "degenerate: empty backup saved nothing");
   await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), qBeforeEmpty, "degenerate: queue unchanged"), "degenerate: queue unchanged");
 
+  /* Round 2 item 1: an OLD backup (pre-rename names frozen in history)
+     imports fine and its history shows the NEW names; stock counts stay
+     attached to the same item IDs, and the queue/names are untouched
+     (bare file). */
+  const oldHistData = {
+    inventory: JSON.parse(JSON.stringify(remoteData.inventory)),
+    history: [
+      { id: "old-mi-pack", ts: "2026-10-20T12:00:00.000Z", type: "packed", craftId: "mi", kits: 6, title: "Packed MI-6",
+        recipe: [
+          { item: "tools-supplies-tray-2", name: "Tools & supplies tray #2", qty: 1, per6: 1, per: 6 },
+          { item: "scrapbook-paper-pack", name: "Scrapbook paper pack", qty: 1, per6: 1, per: 6 },
+          { item: "english-ay-printout", name: "AY - Special Request", qty: 6, per6: 6, per: 6 }
+        ],
+        effects: [
+          { item: "english-ay-printout", delta: -6 },
+          { item: "tools-supplies-tray-2", delta: -1 },
+          { item: "scrapbook-paper-pack", delta: -1 }
+        ] },
+      { id: "old-count-fix", ts: "2026-10-20T13:00:00.000Z", type: "count-fix", title: "Count fix Scrapbook paper pack: 3 \u2192 7",
+        effects: [{ item: "scrapbook-paper-pack", delta: 4 }] }
+    ],
+    settings: { features: { boxes: false, bins: false } }
+  };
+  oldHistData.inventory["tools-supplies-tray-2"] = { qty: 7, threshold: null };
+  oldHistData.inventory["scrapbook-paper-pack"] = { qty: 3, threshold: null };
+  oldHistData.inventory["english-ay-printout"] = { qty: 12, threshold: null };
+  await feedFile(JSON.stringify(oldHistData));
+  await chk(async () => eq((await sheetSummary()).includes("no saved recipes"), true, "rename-migration: old-file import warns recipes will reset"), "rename-migration: old-file import warns recipes will reset");
+  await page.click("#sheet-primary");
+  await sleep(500);
+  await chk(async () => eq(remoteData.history.find(e => e.id === "old-mi-pack").recipe.find(l => l.item === "tools-supplies-tray-2").name, "Supplies tray #2", "rename-migration: Tools tray history renamed"), "rename-migration: Tools tray history renamed");
+  await chk(async () => eq(remoteData.history.find(e => e.id === "old-mi-pack").recipe.find(l => l.item === "scrapbook-paper-pack").name, "Scrapbook pack", "rename-migration: Scrapbook history renamed"), "rename-migration: Scrapbook history renamed");
+  await chk(async () => eq(remoteData.history.find(e => e.id === "old-mi-pack").recipe.find(l => l.item === "english-ay-printout").name, "AY - by request", "rename-migration: AY history renamed"), "rename-migration: AY history renamed");
+  await chk(async () => eq(remoteData.history.find(e => e.id === "old-count-fix").title, "Count fix Scrapbook pack: 3 \u2192 7", "rename-migration: count-fix title renamed"), "rename-migration: count-fix title renamed");
+  await chk(async () => eq(remoteData.inventory["tools-supplies-tray-2"].qty, 7, "rename-migration: Tools tray count attached"), "rename-migration: Tools tray count attached");
+  await chk(async () => eq(remoteData.inventory["scrapbook-paper-pack"].qty, 3, "rename-migration: Scrapbook count attached"), "rename-migration: Scrapbook count attached");
+  await chk(async () => eq(remoteData.inventory["english-ay-printout"].qty, 12, "rename-migration: AY count attached"), "rename-migration: AY count attached");
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
+  await sleep(300);
+  await chk(async () => eq(await page.$eval("#history-list", e => e.textContent.includes("AY - by request")), true, "rename-migration: history tab shows the new AY name"), "rename-migration: history tab shows the new AY name");
+  await chk(async () => eq(await page.$eval("#history-list", e => e.textContent.includes("AY - Special Request")), false, "rename-migration: history tab shows no old AY name"), "rename-migration: history tab shows no old AY name");
+
+
   /* Disconnect: back to view-only, token gone from this device */
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
   await sleep(150);

@@ -688,10 +688,10 @@ try {
   eq(putCount, puts4, "(b) restoring the same name saves nothing (no-change no-op)");
   await page.select('[data-recipe-row="bm"] [data-line-item]', '__new__');
   await sleep(300);
-  await page.evaluate(() => { document.querySelector('[data-new-item-name]').value = "AY - Special Request"; document.querySelector('[data-new-item-unit]').value = ""; });
+  await page.evaluate(() => { document.querySelector('[data-new-item-name]').value = "AY - by request"; document.querySelector('[data-new-item-unit]').value = ""; });
   await page.evaluate(() => document.querySelector('[data-new-item-create]').click());
   await sleep(500);
-  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent.includes("already exists")), true, "(b) duplicate item name blocked even when its slug differs (AY - Special Request)");
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent.includes("already exists")), true, "(b) duplicate item name blocked even when its slug differs (AY - by request)");
   eq(putCount, puts4, "(b) blocked item saves nothing (restore above was already a no-change no-op)");
 
   } catch (e) { fail++; console.log("FAIL (item 5): " + e.message); }
