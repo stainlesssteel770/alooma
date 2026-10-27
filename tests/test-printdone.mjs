@@ -99,6 +99,7 @@ try {
     await page.evaluate(() => { window.print = () => {}; });
   }
 
+  try {
   /* ---- 1. Single Print (covered) completes immediately ---- */
   await pickPack("Hafrashat Challah", 6);
   await page.click("#btn-pack-print");
@@ -113,6 +114,8 @@ try {
   eq(remote.history.length, 0, "print UNDO: entry spliced out of History entirely");
   eq(remote.inventory["heat-gun"].qty, 100, "print UNDO: stock restored");
 
+  } catch (e) { failures++; console.log("FAIL (§1): " + e.message); }
+  try {
   /* ---- 2. Single Print (short): Go back prints nothing; Print anyway completes ---- */
   remote.inventory["heat-gun"].qty = 0;
   await reloadApp();
@@ -136,6 +139,8 @@ try {
   remote.inventory["heat-gun"].qty = 100;
   await reloadApp();
 
+  } catch (e) { failures++; console.log("FAIL (§2): " + e.message); }
+  try {
   /* ---- 3. Print all completes every line at once, one UNDO removes all ---- */
   await queueFirst("Blooming Mirrors", 6);
   await queueAdd("Tambourines", 12);
@@ -159,6 +164,8 @@ try {
   eq(remote.history.length, 0, "print all UNDO: all three entries spliced out");
   eq(remote.inventory["heat-gun"].qty, 100, "print all UNDO: stock restored");
 
+  } catch (e) { failures++; console.log("FAIL (§3): " + e.message); }
+  try {
   /* ---- 4. Print all still runs the shortage guard first ---- */
   remote.inventory["scissors"].qty = 5;
   await reloadApp();
@@ -180,6 +187,8 @@ try {
   remote.inventory["scissors"].qty = 100;
   await reloadApp();
 
+  } catch (e) { failures++; console.log("FAIL (§4): " + e.message); }
+  try {
   /* ---- 5. Hand pack still completes at the end, not at any print ---- */
   await pickPack("Hafrashat Challah", 6);
   await page.click("#btn-pack-hand");
@@ -197,6 +206,8 @@ try {
   eq(remote.inventory["heat-gun"].qty, 99, "hand pack: stock deducted at Complete");
   eq(await page.$eval("#pack-sku", e => e.textContent), "HCB-6", "hand pack: pick stays after Complete (unchanged behavior)");
 
+  } catch (e) { failures++; console.log("FAIL (§5): " + e.message); }
+  try {
   /* ---- 6. History-tab Undo still MARKS undone (does not splice) ---- */
   await page.click('[data-tab="history"]');
   await sleep(300);
@@ -243,6 +254,8 @@ try {
   eq(remote.history[0].undone, true, "history undo: entry marked undone");
   eq(remote.inventory["heat-gun"].qty, 100, "history undo: stock restored");
 
+  } catch (e) { failures++; console.log("FAIL (§6): " + e.message); }
+  try {
   /* ---- 6b. Fix-round item 17: a reprint keeps the frozen 1/18 rate ---- */
   await page.click('[data-tab="pack"]');
   await sleep(300);
@@ -283,6 +296,8 @@ try {
   eq(remote.history.length, 1, "6b cleanup: fresh print undone out of History");
   eq(await page.$$eval(".history-entry .btn-reprint", els => els.length), 0, "reprint: undone entry offers no Reprint");
 
+  } catch (e) { failures++; console.log("FAIL (§6b): " + e.message); }
+  try {
   /* ---- 7. Print all: Reprint works per craft ---- */
   await page.click('[data-tab="pack"]');
   await sleep(300);
@@ -310,6 +325,8 @@ try {
   eq(JSON.stringify(remote.history), histBeforePerCraft, "print-all reprint: History unchanged");
   eq(JSON.stringify(remote.inventory), invBeforePerCraft, "print-all reprint: stock unchanged");
 
+  } catch (e) { failures++; console.log("FAIL (§7): " + e.message); }
+  try {
   /* ---- 8. No Reprint on Bulk entries (never printed) ---- */
   await page.click('[data-tab="bulk"]');
   await sleep(300);
@@ -330,6 +347,8 @@ try {
   eq(reprintFlags[0], false, "bulk reprint: the Bulk entry has no Reprint button");
   eq(reprintFlags[1] && reprintFlags[2], true, "bulk reprint: the older printed entries keep theirs (the undone one correctly has none)");
 
+  } catch (e) { failures++; console.log("FAIL (§8): " + e.message); }
+  try {
   /* ---- 9. Viewers can Reprint too ---- */
   const histBeforeViewer = JSON.stringify(remote.history);
   const invBeforeViewer = JSON.stringify(remote.inventory);
@@ -345,6 +364,8 @@ try {
   eq(JSON.stringify(remote.history), histBeforeViewer, "viewer reprint: History unchanged");
   eq(JSON.stringify(remote.inventory), invBeforeViewer, "viewer reprint: stock unchanged");
 
+  } catch (e) { failures++; console.log("FAIL (§9): " + e.message); }
+  try {
   /* ---- 10. Old data: a saved "packed" entry still loads, shows, undoes ---- */
   /* A print entry saved before the hand-pack rename (type "packed",
      title "Packed …") must still load with its Reprint button and undo
@@ -365,6 +386,7 @@ try {
   eq(remote.inventory["tree-mirror"].qty, 106, "old packed: undo restores stock (100->106)");
   eq(remote.history[0].undone, true, "old packed: legacy entry marked undone");
 
+  } catch (e) { failures++; console.log("FAIL (§10): " + e.message); }
   console.log(failures ? "PRINTDONE TESTS FAILED (" + failures + ")" : "all printdone tests passed (" + passes + ")");
 } finally {
   await browser.close();

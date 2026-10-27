@@ -133,6 +133,9 @@ const browser = await puppeteer.launch({ executablePath: EXE, headless: true, ar
 try {
   const page = await browser.newPage();
   page.on("pageerror", e => console.log("PAGEERROR " + e.message));
+  /* Crash-proofing hoists: CORS is used by the request handlers in the matrix, sheets, and count units (not just A4, where it is declared), matrixRemote/openMatrixPage are called by the items-8+10 unit, and MATRIX_CRAFTS/MATRIX_KITS are iterated by the sheets unit's sheet-names loop — so all five live outside the unit try blocks (same values, same timing, only wider scope). The lint gate proved the MATRIX_ hoist is load-bearing: without it the sheets loop is a runtime ReferenceError. */
+  let CORS, matrixRemote, openMatrixPage, MATRIX_CRAFTS, MATRIX_KITS;
+  try {
   /* A4: pack printing now completes the order, so it requires the editor
      token like every other editor harness — without it printSingle
      no-ops and the print area stays empty. */
@@ -140,7 +143,7 @@ try {
     localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
   });
   await page.setRequestInterception(true);
-  const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
+  CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
   page.on("request", req => {
     const url = req.url();
     if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: CORS, body: "" });
@@ -153,6 +156,8 @@ try {
   await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
   await sleep(500);
 
+  } catch (e) { fail++; console.log("FAIL (A4): " + e.message); }
+  try {
   /* ---- Packing sheet: CAK-36 (Per 6 vs Total must differ somewhere) ---- */
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
@@ -223,6 +228,8 @@ try {
     ok(hs.length >= 10 && hs.every(h => h >= 1), "pack sheet CAK-36: page-1 table lines all present (fragment-edge line at half height, item 9 open: " + hs.join(",") + ")");
   }
 
+  } catch (e) { fail++; console.log("FAIL (CAK-36): " + e.message); }
+  try {
   /* CAK-12: all 19 lines still listed (2 pages now, by design).
      A4: the CAK-36 print completed and cleared the pick, so re-pick. */
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
@@ -239,6 +246,8 @@ try {
   await checkGeometry("/tmp/alooma-packsheet12.pdf", "pack sheet CAK-12");
   ok(pack12Texts.every(t => t.trim().length > 30), "pack sheet CAK-12: no blank pages (" + pack12Texts.length + " pages)");
 
+  } catch (e) { fail++; console.log("FAIL (CAK-12): " + e.message); }
+  try {
   /* Evidence for Mark's thermal test: a SHORT craft's pack sheet (HCB-12). */
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat Challah")).click());
   await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="12"]').click(); });
@@ -250,12 +259,16 @@ try {
   /* Fix-round item 17: the Per-6 column shows the rate when it isn't
      per-6 — tier18 lines read 1/18, plain lines stay bare. */
   const hcbRates = await page.evaluate(() => [...document.querySelectorAll("#print-area tbody tr")].map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent.trim())));
-  eq(hcbRates.find(c => c[1] === "Heat gun")[2], "1/18", "pack sheet HCB-12: Heat gun Per 6 shows 1/18");
-  eq(hcbRates.find(c => c[1] === "Wood burning cream")[2], "1/18", "pack sheet HCB-12: Wood burning cream Per 6 shows 1/18");
+  const heatRate = (hcbRates.find(c => c[1] === "Heat gun") || [])[2];
+  ok(heatRate === "1/18", "pack sheet HCB-12: Heat gun Per 6 shows 1/18 (got " + heatRate + ")");
+  const creamRate = (hcbRates.find(c => c[1] === "Wood burning cream") || [])[2];
+  ok(creamRate === "1/18", "pack sheet HCB-12: Wood burning cream Per 6 shows 1/18 (got " + creamRate + ")");
   ok(hcbRates.every(c => c[2] === "1/18" || !c[2].includes("/")), "pack sheet HCB-12: only the 1-per-18 lines carry a rate suffix");
   await page.pdf({ path: "/tmp/alooma-packsheet-hcb.pdf", preferCSSPageSize: true, printBackground: true });
   await checkGeometry("/tmp/alooma-packsheet-hcb.pdf", "pack sheet HCB-12");
 
+  } catch (e) { fail++; console.log("FAIL (item 17): " + e.message); }
+  try {
   /* New pack-sheet layout geometry (no-boxes probes): header line 1 has
      the craft name + Date on the title line (Date pinned top-right,
      so its baseline sits ~18pt above the 30pt name's — the exact
@@ -286,6 +299,8 @@ try {
   const tamPages = await singlePack("Tambourines", 6, "/tmp/alooma-packsheet-tam.pdf");
   console.log("singlePack TAM-6: " + tamPages + " pages (count owned by the matrix)");
 
+  } catch (e) { fail++; console.log("FAIL (layout probes): " + e.message); }
+  try {
   /* New pack-sheet layout matrix: every craft at 6 and 36 kits, with and
      without BOXES (3-box case). Spec gate: every craft fits ONE label
      except The Cakery (19 items). Row counts don't change with kits —
@@ -294,9 +309,9 @@ try {
      matrix pages so 24 prints never hit a shortage sheet; each half
      gets its own page + mock so the box rules don't leak into the
      main page's CAK-36 assertions above. */
-  const MATRIX_CRAFTS = ["Blooming Mirrors", "Tambourines", "Judaic Clay-Art", "Hafrashat Challah", "The Cakery", "Miniature Interiors"];
-  const MATRIX_KITS = [6, 36];
-  function matrixRemote(withBoxes, binsOn) {
+  MATRIX_CRAFTS = ["Blooming Mirrors", "Tambourines", "Judaic Clay-Art", "Hafrashat Challah", "The Cakery", "Miniature Interiors"];
+  MATRIX_KITS = [6, 36];
+  matrixRemote = function(withBoxes, binsOn) {
     const rm = JSON.parse(JSON.stringify(remote));
     rm.history = [];
     Object.keys(rm.inventory).forEach(k => { rm.inventory[k].qty = 10000; rm.inventory[k].threshold = null; });
@@ -311,8 +326,8 @@ try {
       });
     } else rm.settings.boxRules = [];
     return rm;
-  }
-  async function openMatrixPage(withBoxes, binsOn) {
+  };
+  openMatrixPage = async function(withBoxes, binsOn) {
     const pg = await browser.newPage();
     await pg.evaluateOnNewDocument(() => {
       localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
@@ -329,7 +344,7 @@ try {
     await pg.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
     await sleep(500);
     return pg;
-  }
+  };
   async function matrixPrint(pg, name, kits, file) {
     await pg.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);
     await pg.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
@@ -384,6 +399,8 @@ try {
   const onePage = matrixResults.filter(r => r.pages === 1).sort((a, b) => rowCount(b.name) - rowCount(a.name));
   const longest = onePage.find(r => r.withBoxes) || onePage[0];
   if (longest) console.log("MATRIX longest 1-label craft: " + longest.name + " (" + rowCount(longest.name) + " rows) -> " + longest.file);
+  } catch (e) { fail++; console.log("FAIL (matrix): " + e.message); }
+  try {
   /* Bins-on sheet fix (item-11 follow-up): the Bin column is sized to
      "888" (styles.css td.bin 21pt), so Item gains ~19pt. The sheet check
      now asserts: bins-off 1 line, bins-on at most 2 lines (never 3+),
@@ -614,6 +631,8 @@ try {
     await pg.close();
   }
 
+  } catch (e) { fail++; console.log("FAIL (sheets): " + e.message); }
+  try {
   /* Fix-round items 8 + 10 proof, on a throwaway page that never calls
      page.pdf (this page is closed right after, so no emulated media
      can poison a later PDF). With boxes on, the TAM-36 sheet has a
@@ -656,6 +675,8 @@ try {
     await pg.close();
   }
 
+  } catch (e) { fail++; console.log("FAIL (items 8+10): " + e.message); }
+  try {
   /* Print all (queue, brief item 1): 3 crafts, one job, queue order — the
      geometry gate runs on it too, like every other print. The first line
      enters Queue mode via the Queue button; the rest Add. */
@@ -721,6 +742,8 @@ try {
     await checkGeometry(file, "inventory single-craft (" + name + ")");
   }
 
+  } catch (e) { fail++; console.log("FAIL (print all): " + e.message); }
+  try {
   /* ---- Count sheet ---- */
   await page.evaluate(() => { document.querySelector("#btn-print-count").click(); });
   await sleep(300);
@@ -748,6 +771,8 @@ try {
   ok(footPages.length === 1, "count sheet: exactly one 'Counted by' footer in the whole job (was one per craft)");
   ok(footPages[0] === cntTexts.length - 1, "count sheet: the footer is on the last page");
 
+  } catch (e) { fail++; console.log("FAIL (count): " + e.message); }
+  try {
   /* Subtitle line-count regression test (batch (b) fix): every craft's
      pack sheet renders its subtitle in at most 2 lines — including the
      longest craft names and the longest Order ID rendering (the
@@ -786,6 +811,7 @@ try {
     ok(subInfo.text.includes("Date:"), "subtitle content: " + craft.name + " subtitle still carries Date");
   }
 
+  } catch (e) { fail++; console.log("FAIL (subtitle): " + e.message); }
   console.log(fail ? "PRINT CHECKS FAILED (" + fail + ")" : "all print checks passed");
 } finally {
   await browser.close();
