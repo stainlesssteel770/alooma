@@ -288,14 +288,10 @@
     activeItems = ITEMS;
     activeUnits = {};
   }
-  /* Max recipe lines that fit ONE 4x6 label with title + subtitle + footer
-     at the original sizes — MEASURED by the item-9 label-fit audit (CI run
-     40209337998): a complete sheet (rows + footer) fits up to 9 rows
-     (JCA's 9 rows fit with 9pt spare) while 10 rows spill the footer alone
-     to a second label (TAM). Row heights vary with name wrapping, so 9 is
-     the largest row count OBSERVED fitting with footer; spill stays the
-     fallback. The (b) editor warns above this count, never blocks. */
-  var MAX_LINES_ONE_LABEL = 9;
+  /* Fix-round item 18: the old MAX_LINES_ONE_LABEL = 9 constant is
+     deleted — stale since the pack-sheet padding trim (BM's 12 lines
+     fit one label now), and nothing referenced it. Spill stays the
+     fallback for genuinely oversize sheets. */
 
   function craftById(id) {
     var crafts = curCrafts();
@@ -535,8 +531,7 @@
     setCatalog: setCatalog, resetCatalog: resetCatalog,
     builtInRecipes: builtInRecipes, normalizeRecipes: normalizeRecipes,
     normalizeCustomItems: normalizeCustomItems,
-    itemName: itemName, itemUnit: itemUnit,
-    MAX_LINES_ONE_LABEL: MAX_LINES_ONE_LABEL
+    itemName: itemName, itemUnit: itemUnit
   };
   /* ITEMS/CRAFTS stay live views of the ACTIVE catalog: the app and the
      tests read L.ITEMS / L.CRAFTS everywhere, and those reads must see

@@ -4,10 +4,11 @@
    built-in defaults and gains setCatalog, called by the app after every
    load. Covers: defaults identical to today; per-N rounding (heat gun
    1-per-18; tray pair); Fix 1 — kits {10, 15, 40} x EVERY line of EVERY
-   craft, new lineQty vs today's lineQty identical; Fix 2 — the measured
-   max line count that fits one 4x6 label (see MAX_LINES_ONE_LABEL: 9,
-   measured by the item-9 label-fit audit, run 40209337998 — JCA's 9 rows
-   fit with footer at 9pt spare, TAM's 10 rows spill the footer alone);
+   craft, new lineQty vs today's lineQty identical; Fix 2 — line counts
+   vs the old measured max (9, by the item-9 label-fit audit, run
+   40209337998 — JCA's 9 rows fit with footer at 9pt spare, TAM's 10 rows
+   spill the footer alone; the MAX_LINES_ONE_LABEL constant itself was
+   deleted as stale in fix-round item 18, since BM's 12 now fit);
    old-data load produces no diff; custom recipes/items flow through the
    real pickers, sheets and inventory; boundary prints (JCA 9 lines = 1
    page, TAM 10 lines = 2 pages, custom 9-line craft = 1 page).
@@ -103,8 +104,7 @@ for (const craft of L.CRAFTS) {
   }
 }
 
-/* Fix 2: measured max line count (see header) + which built-ins exceed it. */
-eq(L.MAX_LINES_ONE_LABEL, 9, "Fix 2: measured max is 9 lines");
+/* Fix 2: line counts vs the old measured max (see header) + which built-ins exceed it. */
 for (const craft of L.CRAFTS) {
   const n = L.computePack(craft.id, 6).length;
   if (craft.id === "jca") eq(n, 9, "Fix 2: JCA at exactly the max (9 entries)");
