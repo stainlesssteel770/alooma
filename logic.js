@@ -333,9 +333,10 @@
     return [Math.ceil(total / 2), Math.floor(total / 2)];
   }
 
-  /* Full pack list for a craft + kit count: [{item, name, qty}] in recipe order.
-     Pair lines expand to two entries (A then B), so converted JCA packs
-     exactly like the old trayA/trayB lines did. */
+  /* Full pack list for a craft + kit count: [{item, name, qty, per}] in
+     recipe order, where per is the kits-per-one rate (6 normally, 18
+     for tier18 lines). Pair lines expand to two entries (A then B),
+     so converted JCA packs exactly like the old trayA/trayB lines did. */
   function computePack(craftId, kits) {
     var craft = craftById(craftId);
     if (!craft) throw new Error("Unknown craft: " + craftId);
@@ -344,10 +345,15 @@
     craftLines(craft).forEach(function (ln) {
       if (Array.isArray(ln.items)) {
         var q = pairQtys(ln, kits);
-        out.push({ item: ln.items[0], name: items[ln.items[0]], qty: q[0] });
-        out.push({ item: ln.items[1], name: items[ln.items[1]], qty: q[1] });
+        out.push({ item: ln.items[0], name: items[ln.items[0]], qty: q[0], per: 6 });
+        out.push({ item: ln.items[1], name: items[ln.items[1]], qty: q[1], per: 6 });
       } else {
-        out.push({ item: ln.item, name: items[ln.item], qty: lineQty(ln, kits) });
+        /* Fix-round item 17: carry the rate so sheets can show 1/18
+           instead of a bare 1 for tier18 lines. */
+        var per = 6;
+        if (typeof ln.qty === "number") per = (Number.isInteger(ln.per) && ln.per > 0) ? ln.per : 6;
+        else if (ln.rule === "tier18") per = 18;
+        out.push({ item: ln.item, name: items[ln.item], qty: lineQty(ln, kits), per: per });
       }
     });
     return out;

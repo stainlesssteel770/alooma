@@ -560,15 +560,20 @@
      without one fall back to current names. */
   function snapshotPack(pack, craftId) {
     /* Retest item 8: freeze the Per-6 rate at pack time, so a later
-       recipe change can't rewrite an old entry's reprint column. */
-    var per6 = null;
+       recipe change can't rewrite an old entry's reprint column.
+       Fix-round item 17: freeze the rate (per) the same way, so a
+       reprint keeps showing 1/18 after a recipe change. A row's own
+       per wins when present; otherwise the 6-kit pack's rate fills in. */
+    var per6 = null, per = null;
     if (craftId) {
-      per6 = {};
-      L.computePack(craftId, 6).forEach(function (r) { per6[r.item] = r.qty; });
+      per6 = {}; per = {};
+      L.computePack(craftId, 6).forEach(function (r) { per6[r.item] = r.qty; per[r.item] = r.per; });
     }
     return pack.map(function (r) {
       var line = { item: r.item, name: r.name, qty: r.qty };
       if (per6) line.per6 = per6[r.item];
+      if (r.per !== undefined) line.per = r.per;
+      else if (per) line.per = per[r.item];
       return line;
     });
   }
@@ -1849,47 +1854,46 @@
        to their A/B entries, tier lines compute to 1) and identical to the
        old per-line map for every built-in craft. */
     var per6 = {};
-    L.computePack(craftId, 6).forEach(function (r) { per6[r.item] = r.qty; });
-    if (opts.pack) opts.pack.forEach(function (r) { if (r.per6 !== undefined) per6[r.item] = r.per6; });
+    /* Fix-round item 17: the Per-6 column shows the rate when it isn't
+       per-6 ("1/18" for tier18 lines, not a bare "1"). The snapshot's
+       frozen per wins; legacy snapshots without per fall back to the
+       current recipe's rate, mirroring the per6 fallback. The header
+       stays "Per 6". */
+    var perRate = {};
+    L.computePack(craftId, 6).forEach(function (r) { per6[r.item] = r.qty; perRate[r.item] = r.per; });
+    if (opts.pack) opts.pack.forEach(function (r) { if (r.per6 !== undefined) per6[r.item] = r.per6; if (r.per !== undefined) perRate[r.item] = r.per; });
     var rows = sheetPack.map(function (r) {
       return '<tr><td class="tick"><span class="tick-box"></span></td><td>' + esc(r.name) + "</td>" +
         (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), r.item)) + "</td>" : "") +
-        '<td class="qty regular">' + per6[r.item] + '</td><td class="qty">' + r.qty + "</td></tr>";
+        '<td class="qty regular">' + per6[r.item] + (perRate[r.item] && perRate[r.item] !== 6 ? "/" + perRate[r.item] : "") + '</td><td class="qty">' + r.qty + "</td></tr>";
     }).join("");
     /* New pack-sheet layout (general, no per-craft rules): header line 1
-       is the craft name alone; the subtitle carries kits/Order ID on
-       line 1, Packed by + Date on line 2. Fix-round item 8, final form:
-       Date used to be an 8pt absolutely-positioned element on line 1,
-       where it printed ON TOP of long titles (Hafrashat Challah
-       unreadable, worse on a filled reprint date). It now lives in-flow
-       on subtitle line 2, at full subtitle size — in-flow text can
-       never overlap the title. The blanks are 8 underscores, not 12:
-       at 13.5pt bold, 12-underscore blanks run line 2 to ~284pt
-       against the 269pt table width and wrap; 8-underscore blanks run
-       ~238pt and hold one line. The 2-line subtitle also restores the
-       repeated header: the 3-line header (Date on its own line, thead
-       ~108.5pt) broke thead repetition in Chrome — Cakery page 2 lost
-       its header in runs 40372731228-40382956540 — while the 1-line
-       branch experiment and the old 2-line subtitle both repeat fine.
-       A reprint still shows its ORIGINAL date here. Fix-round item 7: the stray
+       is the craft name alone; header line 2 is the kits/Order ID/
+       Packed by/Date subtitle. Fix-round item 8: Date used to be an 8pt
+       absolutely-positioned element on line 1, where it printed ON TOP
+       of long titles (Hafrashat Challah unreadable, worse on a filled
+       reprint date). It now lives in-flow on line 2, at full subtitle
+       size — in-flow text can never overlap the title, and it costs 0pt
+       of height (a separate date line would cost ~10.4pt). A reprint
+       still shows its ORIGINAL date here. Fix-round item 7: the stray
        " · " after the Order ID blank is gone. The footer is BOXES only
        and is omitted entirely when there are no boxes and it isn't a
        reprint, so a no-boxes sheet has no footer block at all. REPRINT
        stays as its own div last in the footer when present. BOXES uses
        commas on the sheet (the on-screen " + " separator elsewhere is
        untouched). The <br> after the Order ID blank is load-bearing,
-       not cosmetic: without it the subtitle's UNWRAPPED width (~403pt
-       for lines 1+2 alone, longer with Date) exceeds the table width,
+       not cosmetic: without it the subtitle's UNWRAPPED width (403pt
+       before Date joined line 2, longer now) exceeds the table width,
        and Chrome's auto layout answers by narrowing the Item column
        ~17pt — which wrapped MI's long names (Tools & supplies tray #2,
        Scrapbook paper pack) to 2 lines each and spilled the MI-boxes
        footer. With the forced break the title cell's max is the 262pt
        craft name, the columns keep their natural widths, and the
-       visual result is identical (the subtitle wrapped at exactly
-       this point anyway). The space before the <br> is also
-       load-bearing: textContent gives a bare <br> no separator at
-       all, so without it the subtitle reads "____________Packed by"
-       to the queue tests' normalized-text assertions. */
+       visual result is identical (the subtitle wrapped at exactly this
+       point anyway). The space before the <br> is also load-bearing:
+       textContent gives a bare <br> no separator at all, so without it
+       the subtitle reads "____________Packed by" to the queue tests'
+       normalized-text assertions. */
     var foot = "";
     if ((boxes && boxes.length) || opts.reprint) {
       foot = '<div class="print-foot">' + (boxes && boxes.length ? '<span class="foot-boxes">BOXES: ' + esc(boxes.join(", ")) + "</span>" : "") +

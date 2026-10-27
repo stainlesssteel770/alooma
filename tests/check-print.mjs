@@ -247,15 +247,20 @@ try {
   await sleep(300);
   const hcbTitle = await page.evaluate(() => { const t = document.querySelector("#print-area .label-title"); return t ? t.textContent : ""; });
   ok(hcbTitle.includes("Hafrashat Challah"), "evidence: short-craft pack sheet really is Hafrashat Challah");
+  /* Fix-round item 17: the Per-6 column shows the rate when it isn't
+     per-6 — tier18 lines read 1/18, plain lines stay bare. */
+  const hcbRates = await page.evaluate(() => [...document.querySelectorAll("#print-area tbody tr")].map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent.trim())));
+  eq(hcbRates.find(c => c[1] === "Heat gun")[2], "1/18", "pack sheet HCB-12: Heat gun Per 6 shows 1/18");
+  eq(hcbRates.find(c => c[1] === "Wood burning cream")[2], "1/18", "pack sheet HCB-12: Wood burning cream Per 6 shows 1/18");
+  ok(hcbRates.every(c => c[2] === "1/18" || !c[2].includes("/")), "pack sheet HCB-12: only the 1-per-18 lines carry a rate suffix");
   await page.pdf({ path: "/tmp/alooma-packsheet-hcb.pdf", preferCSSPageSize: true, printBackground: true });
   await checkGeometry("/tmp/alooma-packsheet-hcb.pdf", "pack sheet HCB-12");
 
-  /* New pack-sheet layout geometry (no-boxes probes): header line 1 is
-     the craft name alone; the subtitle carries Total kits / Order ID /
-     Packed by / Date on two lines (fix-round item 8: Date shares line 2
-     with Packed by at 8-underscore blanks, in-flow, never overlapping
-     the title), and no footer renders
-     without boxes. Page counts are owned by the
+  /* New pack-sheet layout geometry (no-boxes probes): header line 1 has
+     the craft name + Date on the title line (Date pinned top-right,
+     so its baseline sits ~18pt above the 30pt name's — the exact
+     top-alignment is proved on the throwaway page below), and the
+     subtitle carries Packed by and no footer renders without boxes. Page counts are owned by the
      matrix below — these probes only log theirs. */
   async function singlePack(name, kits, file) {
     await page.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);

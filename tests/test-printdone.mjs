@@ -242,6 +242,45 @@ try {
   eq(remote.history.length, 1, "history undo: entry kept (marked undone, not spliced)");
   eq(remote.history[0].undone, true, "history undo: entry marked undone");
   eq(remote.inventory["heat-gun"].qty, 100, "history undo: stock restored");
+
+  /* ---- 6b. Fix-round item 17: a reprint keeps the frozen 1/18 rate ---- */
+  await page.click('[data-tab="pack"]');
+  await sleep(300);
+  await pickPack("Hafrashat Challah", 6);
+  await page.click("#btn-pack-print");
+  await sleep(400);
+  eq(remote.history.length, 2, "6b: fresh HCB print recorded");
+  /* Change the live recipe: Heat gun per 18 -> 6. */
+  await page.click('[data-tab="settings"]');
+  await sleep(300);
+  await page.evaluate(() => document.querySelector('[data-recipe-row="hcb"] [data-recipe-edit]').click());
+  await sleep(300);
+  const hgPerBefore = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('[data-recipe-row="hcb"] [data-recipe-line]')];
+    const row = rows.find(r => r.querySelector("[data-line-item]").value === "heat-gun");
+    return row ? row.querySelector("[data-line-per]").value : null;
+  });
+  eq(hgPerBefore, "18", "6b: Heat gun line starts at per 18");
+  await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('[data-recipe-row="hcb"] [data-recipe-line]')];
+    const row = rows.find(r => r.querySelector("[data-line-item]").value === "heat-gun");
+    const inp = row.querySelector("[data-line-per]");
+    inp.value = "6";
+    inp.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await sleep(500);
+  eq(await page.evaluate(() => document.querySelector('[data-recipe-row="hcb"] [data-recipe-error]').textContent), "", "6b: per edit saves cleanly");
+  eq(remote.settings.recipes.find(r => r.id === "hcb").lines.find(l => l.item === "heat-gun").per, 6, "6b: recipe now per 6");
+  /* Reprint the fresh entry: the sheet keeps the frozen 1/18. */
+  await page.click('[data-tab="history"]');
+  await sleep(300);
+  await page.evaluate(() => { const b = document.querySelector(".history-entry .btn-reprint"); if (b) b.click(); });
+  await sleep(400);
+  const reCells = await page.evaluate(() => [...document.querySelectorAll("#print-area tbody tr")].map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent.trim())));
+  eq(reCells.find(c => c[1] === "Heat gun")[2], "1/18", "6b: reprint keeps frozen 1/18 after the recipe changed");
+  /* Toast-UNDO the fresh print so section 7's count holds. */
+  await toastUndo();
+  eq(remote.history.length, 1, "6b cleanup: fresh print undone out of History");
   eq(await page.$$eval(".history-entry .btn-reprint", els => els.length), 0, "reprint: undone entry offers no Reprint");
 
   /* ---- 7. Print all: Reprint works per craft ---- */
