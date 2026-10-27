@@ -1065,6 +1065,17 @@ async function tab(name) {
   await chk(async () => eq(await page.$eval("#error-banner", e => !e.hidden && e.textContent.includes("malformed")), true, "item14: malformed recipes rejected with an error"), "item14: malformed recipes rejected with an error");
   await chk(async () => eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "item14: malformed recipes open no sheet"), "item14: malformed recipes open no sheet");
   await chk(async () => eq(remoteData.history.length, histLenBeforeBad, "item14: malformed recipes changed nothing"), "item14: malformed recipes changed nothing");
+  /* Degenerate backup (empty inventory + null recipes, nothing usable):
+     toasts and changes nothing — never wipes real data. */
+  const qBeforeEmpty = await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]"));
+  const histLenBeforeEmpty = remoteData.history.length;
+  const putsBeforeEmpty = putCount;
+  await feedFile(JSON.stringify({ app: "alooma", version: 1, data: { inventory: {}, history: [], settings: { features: { boxes: false, bins: true }, boxes: [], boxRules: [], bins: {}, recipes: null, customItems: [] } }, packQueue: [{ craftId: "bm", kits: 6 }], names: { packedBy: "Gate", countedBy: "Gate" } }));
+  await chk(async () => eq(await page.$eval("#toast", e => e.textContent.includes("Nothing to import, backup is empty")), true, "degenerate: empty backup toasts"), "degenerate: empty backup toasts");
+  await chk(async () => eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "degenerate: empty backup opens no sheet"), "degenerate: empty backup opens no sheet");
+  await chk(async () => eq(remoteData.history.length, histLenBeforeEmpty, "degenerate: empty backup changed nothing"), "degenerate: empty backup changed nothing");
+  await chk(async () => eq(putCount, putsBeforeEmpty, "degenerate: empty backup saved nothing"), "degenerate: empty backup saved nothing");
+  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), qBeforeEmpty, "degenerate: queue unchanged"), "degenerate: queue unchanged");
 
   /* Disconnect: back to view-only, token gone from this device */
   await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());

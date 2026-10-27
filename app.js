@@ -2441,6 +2441,13 @@
       if (!data || typeof data.inventory !== "object" || !Array.isArray(data.history)) {
         showError("That file doesn't look like an Alooma backup (needs inventory + history) — import cancelled."); return;
       }
+      /* Degenerate backup: empty inventory + empty history + no usable
+         recipes — refuse with a toast instead of erroring on the null
+         recipes or, worse, confirm-replacing real data with nothing. */
+      var invEmpty = Object.keys(data.inventory).length === 0;
+      var histEmpty = data.history.length === 0;
+      var recsEmpty = !data.settings || data.settings.recipes === undefined || data.settings.recipes === null || (Array.isArray(data.settings.recipes) && data.settings.recipes.length === 0);
+      if (invEmpty && histEmpty && recsEmpty) { toast("Nothing to import, backup is empty"); return; }
       /* A malformed recipes block rejects the whole file — no partial
          import, nothing changed. */
       if (data.settings && data.settings.recipes !== undefined) {
