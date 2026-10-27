@@ -2,11 +2,11 @@
   "version": 1,
   "inventory": {
     "tree-mirror": {
-      "qty": 0,
+      "qty": 1440,
       "threshold": null
     },
     "colored-clay-tool-tray": {
-      "qty": 0,
+      "qty": 120,
       "threshold": null
     },
     "white-clay": {
@@ -14,47 +14,47 @@
       "threshold": null
     },
     "grass-pack-of-6": {
-      "qty": 0,
+      "qty": 228,
       "threshold": null
     },
     "double-sided-tape": {
-      "qty": 0,
+      "qty": 120,
       "threshold": null
     },
     "bm-name-labels": {
-      "qty": 0,
+      "qty": 2133,
       "threshold": null
     },
     "bm-placemat": {
-      "qty": 0,
+      "qty": 333,
       "threshold": null
     },
     "grass-template": {
-      "qty": 0,
+      "qty": 1690,
       "threshold": null
     },
     "bm-instructions": {
-      "qty": 0,
+      "qty": 925,
       "threshold": null
     },
     "tambourines": {
-      "qty": 0,
+      "qty": 460,
       "threshold": null
     },
     "tamb-embellishment-tray-large": {
-      "qty": 0,
+      "qty": 99,
       "threshold": null
     },
     "embellishment-containers": {
-      "qty": 0,
+      "qty": 6,
       "threshold": null
     },
     "wooden-mini-spoons": {
-      "qty": 0,
+      "qty": 700,
       "threshold": null
     },
     "wooden-picks": {
-      "qty": 0,
+      "qty": 2000,
       "threshold": null
     },
     "tamb-placemats": {
@@ -70,123 +70,123 @@
       "threshold": null
     },
     "jca-frame": {
-      "qty": 0,
+      "qty": 1440,
       "threshold": null
     },
     "clay-tray-a": {
-      "qty": 0,
+      "qty": 54,
       "threshold": null
     },
     "clay-tray-b": {
-      "qty": 0,
+      "qty": 112,
       "threshold": null
     },
     "jca-embellishment-tray": {
-      "qty": 0,
+      "qty": 276,
       "threshold": null
     },
     "bag-with-tools": {
-      "qty": 0,
+      "qty": 148,
       "threshold": null
     },
     "jca-placemats": {
-      "qty": 0,
+      "qty": 219,
       "threshold": null
     },
     "parchment-paper": {
-      "qty": 0,
+      "qty": 1100,
       "threshold": null
     },
     "jca-templates": {
-      "qty": 0,
+      "qty": 1495,
       "threshold": null
     },
     "jca-instructions": {
-      "qty": 0,
+      "qty": 483,
       "threshold": null
     },
     "wood-board": {
-      "qty": 0,
+      "qty": 1812,
       "threshold": null
     },
     "tray-set": {
-      "qty": 0,
+      "qty": 70,
       "threshold": null
     },
     "miniatures-bread-bag": {
-      "qty": 0,
+      "qty": 1443,
       "threshold": null
     },
     "wood-burning-cream": {
-      "qty": 0,
+      "qty": 272,
       "threshold": null
     },
     "hc-placemat": {
-      "qty": 0,
+      "qty": 63,
       "threshold": null
     },
     "hc-instructions": {
-      "qty": 0,
+      "qty": 895,
       "threshold": null
     },
     "heat-gun": {
-      "qty": 0,
+      "qty": 17,
       "threshold": null
     },
     "heart-jewelry-box": {
-      "qty": 0,
+      "qty": 750,
       "threshold": null
     },
     "cake-box": {
-      "qty": 0,
+      "qty": 268,
       "threshold": null
     },
     "circle-cardboard": {
-      "qty": 0,
+      "qty": 268,
       "threshold": null
     },
     "parchment-circle": {
-      "qty": 0,
+      "qty": 450,
       "threshold": null
     },
     "plastic-pet-bowl": {
-      "qty": 0,
+      "qty": 395,
       "threshold": null
     },
     "cream-circle-tray": {
-      "qty": 0,
+      "qty": 282,
       "threshold": null
     },
     "sprinkles-pack": {
-      "qty": 0,
+      "qty": 86,
       "threshold": null
     },
     "faux-cherries-bag": {
-      "qty": 0,
+      "qty": 675,
       "threshold": null
     },
     "glue-dots": {
-      "qty": 0,
+      "qty": 330,
       "threshold": null
     },
     "popsicle-stick": {
-      "qty": 0,
+      "qty": 1900,
       "threshold": null
     },
     "ck-placemat": {
-      "qty": 0,
+      "qty": 1434,
       "threshold": null
     },
     "printed-posters": {
-      "qty": 0,
+      "qty": 288,
       "threshold": null
     },
     "poster-stands": {
-      "qty": 0,
+      "qty": 2000,
       "threshold": null
     },
     "ck-name-labels": {
-      "qty": 0,
+      "qty": 3433,
       "threshold": null
     },
     "apron": {
@@ -194,23 +194,23 @@
       "threshold": null
     },
     "gloves": {
-      "qty": 0,
+      "qty": 7250,
       "threshold": null
     },
     "ck-instructions": {
-      "qty": 0,
+      "qty": 1428,
       "threshold": null
     },
     "mi-frames": {
-      "qty": 0,
+      "qty": 1580,
       "threshold": null
     },
     "white-block-pack": {
-      "qty": 0,
+      "qty": 124,
       "threshold": null
     },
     "miniatures-tray-1": {
-      "qty": 0,
+      "qty": 95,
       "threshold": null
     },
     "tools-supplies-tray-2": {
@@ -218,7 +218,7 @@
       "threshold": null
     },
     "scrapbook-paper-pack": {
-      "qty": 0,
+      "qty": 550,
       "threshold": null
     },
     "mi-name-label": {
@@ -226,31 +226,912 @@
       "threshold": null
     },
     "mi-placemats": {
-      "qty": 0,
+      "qty": 390,
       "threshold": null
     },
     "mi-instructions": {
-      "qty": 0,
+      "qty": 965,
       "threshold": null
     },
     "english-ay-printout": {
-      "qty": 0,
+      "qty": 34,
       "threshold": null
     },
     "scissors": {
-      "qty": 0,
+      "qty": 1152,
       "threshold": null
     },
     "tacky-glue": {
-      "qty": 0,
+      "qty": 1944,
       "threshold": null
     },
     "permanent-markers": {
-      "qty": 0,
+      "qty": 100,
       "threshold": null
     }
   },
-  "history": [],
+  "history": [
+    {
+      "id": "hmvr2p1icg3haa",
+      "ts": "2026-10-27T19:22:56.868Z",
+      "type": "count-fix",
+      "title": "Count fix Permanent Markers: 0 → 100",
+      "effects": [
+        {
+          "item": "permanent-markers",
+          "delta": 100
+        }
+      ],
+      "undone": false,
+      "item": "permanent-markers",
+      "counted": 100,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1ibu5cdx",
+      "ts": "2026-10-27T19:22:56.867Z",
+      "type": "count-fix",
+      "title": "Count fix Tacky Glue: 0 → 1944",
+      "effects": [
+        {
+          "item": "tacky-glue",
+          "delta": 1944
+        }
+      ],
+      "undone": false,
+      "item": "tacky-glue",
+      "counted": 1944,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1iaxgfax",
+      "ts": "2026-10-27T19:22:56.866Z",
+      "type": "count-fix",
+      "title": "Count fix Scissors: 0 → 1152",
+      "effects": [
+        {
+          "item": "scissors",
+          "delta": 1152
+        }
+      ],
+      "undone": false,
+      "item": "scissors",
+      "counted": 1152,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1i9fvjl8",
+      "ts": "2026-10-27T19:22:56.865Z",
+      "type": "count-fix",
+      "title": "Count fix AY - by request: 0 → 34",
+      "effects": [
+        {
+          "item": "english-ay-printout",
+          "delta": 34
+        }
+      ],
+      "undone": false,
+      "item": "english-ay-printout",
+      "counted": 34,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1i8m5kmi",
+      "ts": "2026-10-27T19:22:56.864Z",
+      "type": "count-fix",
+      "title": "Count fix MI Instructions: 0 → 965",
+      "effects": [
+        {
+          "item": "mi-instructions",
+          "delta": 965
+        }
+      ],
+      "undone": false,
+      "item": "mi-instructions",
+      "counted": 965,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1i706gvg",
+      "ts": "2026-10-27T19:22:56.863Z",
+      "type": "count-fix",
+      "title": "Count fix MI Placemats: 0 → 390",
+      "effects": [
+        {
+          "item": "mi-placemats",
+          "delta": 390
+        }
+      ],
+      "undone": false,
+      "item": "mi-placemats",
+      "counted": 390,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1i6wyfty",
+      "ts": "2026-10-27T19:22:56.862Z",
+      "type": "count-fix",
+      "title": "Count fix Scrapbook pack: 0 → 550",
+      "effects": [
+        {
+          "item": "scrapbook-paper-pack",
+          "delta": 550
+        }
+      ],
+      "undone": false,
+      "item": "scrapbook-paper-pack",
+      "counted": 550,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1i5xo9di",
+      "ts": "2026-10-27T19:22:56.861Z",
+      "type": "count-fix",
+      "title": "Count fix Miniatures tray #1: 0 → 95",
+      "effects": [
+        {
+          "item": "miniatures-tray-1",
+          "delta": 95
+        }
+      ],
+      "undone": false,
+      "item": "miniatures-tray-1",
+      "counted": 95,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1i4l6bga",
+      "ts": "2026-10-27T19:22:56.860Z",
+      "type": "count-fix",
+      "title": "Count fix White Block (pack of 6): 0 → 124",
+      "effects": [
+        {
+          "item": "white-block-pack",
+          "delta": 124
+        }
+      ],
+      "undone": false,
+      "item": "white-block-pack",
+      "counted": 124,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1i3thbc7",
+      "ts": "2026-10-27T19:22:56.859Z",
+      "type": "count-fix",
+      "title": "Count fix Frames: 0 → 1580",
+      "effects": [
+        {
+          "item": "mi-frames",
+          "delta": 1580
+        }
+      ],
+      "undone": false,
+      "item": "mi-frames",
+      "counted": 1580,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1i2mwwzp",
+      "ts": "2026-10-27T19:22:56.858Z",
+      "type": "count-fix",
+      "title": "Count fix CK Instructions: 0 → 1428",
+      "effects": [
+        {
+          "item": "ck-instructions",
+          "delta": 1428
+        }
+      ],
+      "undone": false,
+      "item": "ck-instructions",
+      "counted": 1428,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1i15fpz6",
+      "ts": "2026-10-27T19:22:56.857Z",
+      "type": "count-fix",
+      "title": "Count fix Gloves: 0 → 7250",
+      "effects": [
+        {
+          "item": "gloves",
+          "delta": 7250
+        }
+      ],
+      "undone": false,
+      "item": "gloves",
+      "counted": 7250,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1i0xr1k9",
+      "ts": "2026-10-27T19:22:56.856Z",
+      "type": "count-fix",
+      "title": "Count fix CK Name labels: 0 → 3433",
+      "effects": [
+        {
+          "item": "ck-name-labels",
+          "delta": 3433
+        }
+      ],
+      "undone": false,
+      "item": "ck-name-labels",
+      "counted": 3433,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hzprfdh",
+      "ts": "2026-10-27T19:22:56.855Z",
+      "type": "count-fix",
+      "title": "Count fix Poster stands (for quotes): 0 → 2000",
+      "effects": [
+        {
+          "item": "poster-stands",
+          "delta": 2000
+        }
+      ],
+      "undone": false,
+      "item": "poster-stands",
+      "counted": 2000,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hyqbv51",
+      "ts": "2026-10-27T19:22:56.854Z",
+      "type": "count-fix",
+      "title": "Count fix Printed Posters (set of 3): 0 → 288",
+      "effects": [
+        {
+          "item": "printed-posters",
+          "delta": 288
+        }
+      ],
+      "undone": false,
+      "item": "printed-posters",
+      "counted": 288,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hx8jut5",
+      "ts": "2026-10-27T19:22:56.853Z",
+      "type": "count-fix",
+      "title": "Count fix CK Placemat: 0 → 1434",
+      "effects": [
+        {
+          "item": "ck-placemat",
+          "delta": 1434
+        }
+      ],
+      "undone": false,
+      "item": "ck-placemat",
+      "counted": 1434,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hw6bko0",
+      "ts": "2026-10-27T19:22:56.852Z",
+      "type": "count-fix",
+      "title": "Count fix Popsicle stick: 0 → 1900",
+      "effects": [
+        {
+          "item": "popsicle-stick",
+          "delta": 1900
+        }
+      ],
+      "undone": false,
+      "item": "popsicle-stick",
+      "counted": 1900,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hvr4xul",
+      "ts": "2026-10-27T19:22:56.851Z",
+      "type": "count-fix",
+      "title": "Count fix Glue dots: 0 → 330",
+      "effects": [
+        {
+          "item": "glue-dots",
+          "delta": 330
+        }
+      ],
+      "undone": false,
+      "item": "glue-dots",
+      "counted": 330,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hu8a69z",
+      "ts": "2026-10-27T19:22:56.850Z",
+      "type": "count-fix",
+      "title": "Count fix Faux cherries bag: 0 → 675",
+      "effects": [
+        {
+          "item": "faux-cherries-bag",
+          "delta": 675
+        }
+      ],
+      "undone": false,
+      "item": "faux-cherries-bag",
+      "counted": 675,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1ht5fli9",
+      "ts": "2026-10-27T19:22:56.849Z",
+      "type": "count-fix",
+      "title": "Count fix Sprinkles (pack): 0 → 86",
+      "effects": [
+        {
+          "item": "sprinkles-pack",
+          "delta": 86
+        }
+      ],
+      "undone": false,
+      "item": "sprinkles-pack",
+      "counted": 86,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hsmqjkl",
+      "ts": "2026-10-27T19:22:56.848Z",
+      "type": "count-fix",
+      "title": "Count fix Cream circle tray: 0 → 282",
+      "effects": [
+        {
+          "item": "cream-circle-tray",
+          "delta": 282
+        }
+      ],
+      "undone": false,
+      "item": "cream-circle-tray",
+      "counted": 282,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hracaff",
+      "ts": "2026-10-27T19:22:56.847Z",
+      "type": "count-fix",
+      "title": "Count fix Plastic pet bowl: 0 → 395",
+      "effects": [
+        {
+          "item": "plastic-pet-bowl",
+          "delta": 395
+        }
+      ],
+      "undone": false,
+      "item": "plastic-pet-bowl",
+      "counted": 395,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hqhult4",
+      "ts": "2026-10-27T19:22:56.846Z",
+      "type": "count-fix",
+      "title": "Count fix Parchment (circle): 0 → 450",
+      "effects": [
+        {
+          "item": "parchment-circle",
+          "delta": 450
+        }
+      ],
+      "undone": false,
+      "item": "parchment-circle",
+      "counted": 450,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hphnc9e",
+      "ts": "2026-10-27T19:22:56.845Z",
+      "type": "count-fix",
+      "title": "Count fix Circle cardboard: 0 → 268",
+      "effects": [
+        {
+          "item": "circle-cardboard",
+          "delta": 268
+        }
+      ],
+      "undone": false,
+      "item": "circle-cardboard",
+      "counted": 268,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1ho3456y",
+      "ts": "2026-10-27T19:22:56.844Z",
+      "type": "count-fix",
+      "title": "Count fix Cake box: 0 → 268",
+      "effects": [
+        {
+          "item": "cake-box",
+          "delta": 268
+        }
+      ],
+      "undone": false,
+      "item": "cake-box",
+      "counted": 268,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hnzbal6",
+      "ts": "2026-10-27T19:22:56.843Z",
+      "type": "count-fix",
+      "title": "Count fix Heart Jewelry Box: 0 → 750",
+      "effects": [
+        {
+          "item": "heart-jewelry-box",
+          "delta": 750
+        }
+      ],
+      "undone": false,
+      "item": "heart-jewelry-box",
+      "counted": 750,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hmt1f6r",
+      "ts": "2026-10-27T19:22:56.842Z",
+      "type": "count-fix",
+      "title": "Count fix Heat gun: 0 → 17",
+      "effects": [
+        {
+          "item": "heat-gun",
+          "delta": 17
+        }
+      ],
+      "undone": false,
+      "item": "heat-gun",
+      "counted": 17,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hlpnom8",
+      "ts": "2026-10-27T19:22:56.841Z",
+      "type": "count-fix",
+      "title": "Count fix HC Instructions: 0 → 895",
+      "effects": [
+        {
+          "item": "hc-instructions",
+          "delta": 895
+        }
+      ],
+      "undone": false,
+      "item": "hc-instructions",
+      "counted": 895,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hkbznur",
+      "ts": "2026-10-27T19:22:56.840Z",
+      "type": "count-fix",
+      "title": "Count fix HC Placemat: 0 → 63",
+      "effects": [
+        {
+          "item": "hc-placemat",
+          "delta": 63
+        }
+      ],
+      "undone": false,
+      "item": "hc-placemat",
+      "counted": 63,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hjmu8fc",
+      "ts": "2026-10-27T19:22:56.839Z",
+      "type": "count-fix",
+      "title": "Count fix Wood burning cream: 0 → 272",
+      "effects": [
+        {
+          "item": "wood-burning-cream",
+          "delta": 272
+        }
+      ],
+      "undone": false,
+      "item": "wood-burning-cream",
+      "counted": 272,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hi0uocb",
+      "ts": "2026-10-27T19:22:56.838Z",
+      "type": "count-fix",
+      "title": "Count fix Miniatures bread bag: 0 → 1443",
+      "effects": [
+        {
+          "item": "miniatures-bread-bag",
+          "delta": 1443
+        }
+      ],
+      "undone": false,
+      "item": "miniatures-bread-bag",
+      "counted": 1443,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hhxznbn",
+      "ts": "2026-10-27T19:22:56.837Z",
+      "type": "count-fix",
+      "title": "Count fix Tray set (includes 2): 0 → 70",
+      "effects": [
+        {
+          "item": "tray-set",
+          "delta": 70
+        }
+      ],
+      "undone": false,
+      "item": "tray-set",
+      "counted": 70,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hglct14",
+      "ts": "2026-10-27T19:22:56.836Z",
+      "type": "count-fix",
+      "title": "Count fix Wood board: 0 → 1812",
+      "effects": [
+        {
+          "item": "wood-board",
+          "delta": 1812
+        }
+      ],
+      "undone": false,
+      "item": "wood-board",
+      "counted": 1812,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hffxpoa",
+      "ts": "2026-10-27T19:22:56.835Z",
+      "type": "count-fix",
+      "title": "Count fix JCA Instructions: 0 → 483",
+      "effects": [
+        {
+          "item": "jca-instructions",
+          "delta": 483
+        }
+      ],
+      "undone": false,
+      "item": "jca-instructions",
+      "counted": 483,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hecfoh7",
+      "ts": "2026-10-27T19:22:56.834Z",
+      "type": "count-fix",
+      "title": "Count fix Templates: 0 → 1495",
+      "effects": [
+        {
+          "item": "jca-templates",
+          "delta": 1495
+        }
+      ],
+      "undone": false,
+      "item": "jca-templates",
+      "counted": 1495,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hdcu0rq",
+      "ts": "2026-10-27T19:22:56.833Z",
+      "type": "count-fix",
+      "title": "Count fix 1/2 Parchment Paper: 0 → 1100",
+      "effects": [
+        {
+          "item": "parchment-paper",
+          "delta": 1100
+        }
+      ],
+      "undone": false,
+      "item": "parchment-paper",
+      "counted": 1100,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hc5rqx4",
+      "ts": "2026-10-27T19:22:56.832Z",
+      "type": "count-fix",
+      "title": "Count fix JCA Placemats: 0 → 219",
+      "effects": [
+        {
+          "item": "jca-placemats",
+          "delta": 219
+        }
+      ],
+      "undone": false,
+      "item": "jca-placemats",
+      "counted": 219,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1hblbi1j",
+      "ts": "2026-10-27T19:22:56.831Z",
+      "type": "count-fix",
+      "title": "Count fix Bag with Tools: 0 → 148",
+      "effects": [
+        {
+          "item": "bag-with-tools",
+          "delta": 148
+        }
+      ],
+      "undone": false,
+      "item": "bag-with-tools",
+      "counted": 148,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1haykcax",
+      "ts": "2026-10-27T19:22:56.830Z",
+      "type": "count-fix",
+      "title": "Count fix JCA Embellishment Tray: 0 → 276",
+      "effects": [
+        {
+          "item": "jca-embellishment-tray",
+          "delta": 276
+        }
+      ],
+      "undone": false,
+      "item": "jca-embellishment-tray",
+      "counted": 276,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1h94ubz9",
+      "ts": "2026-10-27T19:22:56.829Z",
+      "type": "count-fix",
+      "title": "Count fix Clay Tray B: 0 → 112",
+      "effects": [
+        {
+          "item": "clay-tray-b",
+          "delta": 112
+        }
+      ],
+      "undone": false,
+      "item": "clay-tray-b",
+      "counted": 112,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1h8xekdu",
+      "ts": "2026-10-27T19:22:56.828Z",
+      "type": "count-fix",
+      "title": "Count fix Clay Tray A: 0 → 54",
+      "effects": [
+        {
+          "item": "clay-tray-a",
+          "delta": 54
+        }
+      ],
+      "undone": false,
+      "item": "clay-tray-a",
+      "counted": 54,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1h7zic43",
+      "ts": "2026-10-27T19:22:56.827Z",
+      "type": "count-fix",
+      "title": "Count fix Frame: 0 → 1440",
+      "effects": [
+        {
+          "item": "jca-frame",
+          "delta": 1440
+        }
+      ],
+      "undone": false,
+      "item": "jca-frame",
+      "counted": 1440,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1h61w8b6",
+      "ts": "2026-10-27T19:22:56.826Z",
+      "type": "count-fix",
+      "title": "Count fix Wooden Picks: 0 → 2000",
+      "effects": [
+        {
+          "item": "wooden-picks",
+          "delta": 2000
+        }
+      ],
+      "undone": false,
+      "item": "wooden-picks",
+      "counted": 2000,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1h5f7aig",
+      "ts": "2026-10-27T19:22:56.825Z",
+      "type": "count-fix",
+      "title": "Count fix Wooden mini Spoons: 0 → 700",
+      "effects": [
+        {
+          "item": "wooden-mini-spoons",
+          "delta": 700
+        }
+      ],
+      "undone": false,
+      "item": "wooden-mini-spoons",
+      "counted": 700,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1h4czpr9",
+      "ts": "2026-10-27T19:22:56.824Z",
+      "type": "count-fix",
+      "title": "Count fix Tam Decor Stack: 0 → 6",
+      "effects": [
+        {
+          "item": "embellishment-containers",
+          "delta": 6
+        }
+      ],
+      "undone": false,
+      "item": "embellishment-containers",
+      "counted": 6,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1h3ezqzz",
+      "ts": "2026-10-27T19:22:56.823Z",
+      "type": "count-fix",
+      "title": "Count fix Tam Decor Tray: 0 → 99",
+      "effects": [
+        {
+          "item": "tamb-embellishment-tray-large",
+          "delta": 99
+        }
+      ],
+      "undone": false,
+      "item": "tamb-embellishment-tray-large",
+      "counted": 99,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1h2uybbr",
+      "ts": "2026-10-27T19:22:56.822Z",
+      "type": "count-fix",
+      "title": "Count fix Tambourines: 0 → 460",
+      "effects": [
+        {
+          "item": "tambourines",
+          "delta": 460
+        }
+      ],
+      "undone": false,
+      "item": "tambourines",
+      "counted": 460,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1h1o471x",
+      "ts": "2026-10-27T19:22:56.821Z",
+      "type": "count-fix",
+      "title": "Count fix BM Instructions: 0 → 925",
+      "effects": [
+        {
+          "item": "bm-instructions",
+          "delta": 925
+        }
+      ],
+      "undone": false,
+      "item": "bm-instructions",
+      "counted": 925,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1h0r74sv",
+      "ts": "2026-10-27T19:22:56.820Z",
+      "type": "count-fix",
+      "title": "Count fix Grass Template: 0 → 1690",
+      "effects": [
+        {
+          "item": "grass-template",
+          "delta": 1690
+        }
+      ],
+      "undone": false,
+      "item": "grass-template",
+      "counted": 1690,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1gz85i6h",
+      "ts": "2026-10-27T19:22:56.819Z",
+      "type": "count-fix",
+      "title": "Count fix BM Placemat: 0 → 333",
+      "effects": [
+        {
+          "item": "bm-placemat",
+          "delta": 333
+        }
+      ],
+      "undone": false,
+      "item": "bm-placemat",
+      "counted": 333,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1gyqnwld",
+      "ts": "2026-10-27T19:22:56.818Z",
+      "type": "count-fix",
+      "title": "Count fix BM Name Labels: 0 → 2133",
+      "effects": [
+        {
+          "item": "bm-name-labels",
+          "delta": 2133
+        }
+      ],
+      "undone": false,
+      "item": "bm-name-labels",
+      "counted": 2133,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1gxsr4s6",
+      "ts": "2026-10-27T19:22:56.817Z",
+      "type": "count-fix",
+      "title": "Count fix Double Sided tape: 0 → 120",
+      "effects": [
+        {
+          "item": "double-sided-tape",
+          "delta": 120
+        }
+      ],
+      "undone": false,
+      "item": "double-sided-tape",
+      "counted": 120,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1gw8h6ql",
+      "ts": "2026-10-27T19:22:56.816Z",
+      "type": "count-fix",
+      "title": "Count fix Grass (pack of 6): 0 → 228",
+      "effects": [
+        {
+          "item": "grass-pack-of-6",
+          "delta": 228
+        }
+      ],
+      "undone": false,
+      "item": "grass-pack-of-6",
+      "counted": 228,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1gvg2cr7",
+      "ts": "2026-10-27T19:22:56.815Z",
+      "type": "count-fix",
+      "title": "Count fix Clay Tray + 6 Picks: 0 → 120",
+      "effects": [
+        {
+          "item": "colored-clay-tool-tray",
+          "delta": 120
+        }
+      ],
+      "undone": false,
+      "item": "colored-clay-tool-tray",
+      "counted": 120,
+      "countedBy": "Mark (Notion count Oct 22)"
+    },
+    {
+      "id": "hmvr2p1gu7jpdw",
+      "ts": "2026-10-27T19:22:56.814Z",
+      "type": "count-fix",
+      "title": "Count fix Tree Mirror: 0 → 1440",
+      "effects": [
+        {
+          "item": "tree-mirror",
+          "delta": 1440
+        }
+      ],
+      "undone": false,
+      "item": "tree-mirror",
+      "counted": 1440,
+      "countedBy": "Mark (Notion count Oct 22)"
+    }
+  ],
   "settings": {
     "features": {
       "boxes": false,
