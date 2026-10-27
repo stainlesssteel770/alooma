@@ -2680,6 +2680,23 @@
     html += '<option value="__new__"' + (showNew ? " selected" : "") + ">Create new item…</option>";
     return html;
   }
+  /* Item-11 decision, part B6: "fits on label" check for the new-item
+     name. The 4x6 pack sheet prints item names at 12.5pt Arial in an Item
+     column ~117pt wide on a bins-on sheet (4in page minus 0.13in side
+     margins = 269pt usable; tick 30 + bin 54 + Per-6 38 + Total 34 leave
+     ~117pt after auto-layout shrink). Measure the typed name with the
+     same font; if it overflows, report about how many characters over
+     (width over / average char width). Advisory only — saving is never
+     blocked by this check. */
+  var labelCanvas = null;
+  function labelFitOver(name) {
+    if (!name) return 0;
+    if (!labelCanvas) labelCanvas = document.createElement("canvas").getContext("2d");
+    labelCanvas.font = "12.5pt Arial, Helvetica, sans-serif";
+    var wPt = labelCanvas.measureText(name).width * 72 / 96;
+    if (wPt <= 117) return 0;
+    return Math.max(1, Math.ceil((wPt - 117) / (wPt / name.length)));
+  }
   function renderRecipesSetting() {
     var list = $("recipes-list");
     if (!list) return;
@@ -2716,7 +2733,7 @@
           html += '<div class="recipe-new-item"><label>New item name <input type="text" data-new-item-name autocomplete="off"></label>' +
             '<label>Unit (optional) <input type="text" data-new-item-unit autocomplete="off"></label>' +
             '<button type="button" class="btn btn-primary" data-new-item-create>Create item</button>' +
-            '<button type="button" class="btn btn-quiet" data-new-item-cancel>Cancel</button></div>';
+            '<button type="button" class="btn btn-quiet" data-new-item-cancel>Cancel</button><p class="field-error" data-label-fit hidden></p></div>';
         }
         html += '<div class="btn-row"><button type="button" class="btn" data-add-line>Add line</button><button type="button" class="btn" data-add-pair>Add alternating pair</button></div>';
         html += '<p class="field-error" data-recipe-error></p>';
@@ -2885,6 +2902,17 @@
         applyRecipeEdit(id, function (r) { r.lines[lidx].per = p; }, "Recipe line updated");
         return;
       }
+    });
+    card.addEventListener("input", function (e) {
+      var t = e.target;
+      if (!t.hasAttribute("data-new-item-name")) return;
+      var warn = card.querySelector("[data-label-fit]");
+      if (!warn) return;
+      var over = labelFitOver(t.value.trim());
+      if (over > 0) {
+        warn.textContent = "Too long for the label, about " + over + (over === 1 ? " character" : " characters") + " over \u2014 try trimming it.";
+        warn.hidden = false;
+      } else warn.hidden = true;
     });
     $("recipe-add-btn").addEventListener("click", function () {
       var name = $("recipe-add-name").value.trim();

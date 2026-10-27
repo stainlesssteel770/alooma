@@ -368,6 +368,73 @@ try {
   const onePage = matrixResults.filter(r => r.pages === 1).sort((a, b) => rowCount(b.name) - rowCount(a.name));
   const longest = onePage.find(r => r.withBoxes) || onePage[0];
   if (longest) console.log("MATRIX longest 1-label craft: " + longest.name + " (" + rowCount(longest.name) + " rows) -> " + longest.file);
+  /* Item-11 decision, part B5: every current item name fits ONE line on
+     the 4x6 pack sheet. Render all 6 crafts at 6 kits with bins OFF and
+     ON (bins-on is the strict case — the Bin column narrows Item), group
+     each page's PDF text items into visual lines by y, and require every
+     item name to appear whole on a single line. A wrapped name fails the
+     run: per the decision, a wrap is reported, not silently accepted. */
+  async function openNamePage(binsOn) {
+    const pg = await browser.newPage();
+    await pg.evaluateOnNewDocument(() => {
+      localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
+    });
+    await pg.setRequestInterception(true);
+    const rm = JSON.parse(JSON.stringify(remote));
+    rm.history = [];
+    Object.keys(rm.inventory).forEach(k => { rm.inventory[k].qty = 10000; rm.inventory[k].threshold = null; });
+    rm.settings.features.boxes = false;
+    rm.settings.features.bins = binsOn;
+    rm.settings.boxRules = [];
+    pg.on("request", req => {
+      const url = req.url();
+      if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: CORS, body: "" });
+      if (url.includes("/contents/data.json")) return req.respond({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ sha: "sha-names", content: b64e(JSON.stringify(rm)) }) });
+      if (url.startsWith("https://api.github.com")) return req.respond({ status: 404, headers: CORS, body: "{}" });
+      req.continue();
+    });
+    await pg.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
+    await sleep(500);
+    return pg;
+  }
+  async function pdfLineTexts(file) {
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(file)) }).promise;
+    const lines = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+      const tc = await (await doc.getPage(i)).getTextContent();
+      const items = tc.items.filter(it => it.str.trim()).map(it => ({ s: it.str, x: it.transform[4], y: it.transform[5] }));
+      items.sort((a, b) => b.y - a.y);
+      const groups = [];
+      for (const it of items) {
+        const g = groups.find(g => Math.abs(g.y - it.y) <= 2);
+        if (g) g.items.push(it); else groups.push({ y: it.y, items: [it] });
+      }
+      for (const g of groups) {
+        g.items.sort((a, b) => a.x - b.x);
+        lines.push(g.items.map(it => it.s).join(" ").replace(/\s+/g, " ").trim());
+      }
+    }
+    return lines;
+  }
+  for (const binsOn of [false, true]) {
+    const pg = await openNamePage(binsOn);
+    for (const name of MATRIX_CRAFTS) {
+      await pg.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);
+      await pg.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
+      await sleep(300);
+      await pg.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
+      await sleep(300);
+      const file = "/tmp/alooma-names-" + name.toLowerCase().replace(/[^a-z]+/g, "-") + "-6-bins" + (binsOn ? "on" : "off") + ".pdf";
+      await pg.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
+      const lines = await pdfLineTexts(file);
+      const craft = Object.values(L.CRAFTS).find(c => c.name === name);
+      const names = craft.items.map(it => L.ITEMS[it.item]);
+      const wrapped = names.filter(nm => !lines.some(ln => ln.includes(nm)));
+      ok(wrapped.length === 0, "label names one line: " + name + "-6 bins-" + (binsOn ? "on" : "off") + " (all " + names.length + " names on one line)", wrapped.join(", "));
+    }
+    await pg.close();
+  }
+
 
   /* Fix-round items 8 + 10 proof, on a throwaway page that never calls
      page.pdf (this page is closed right after, so no emulated media

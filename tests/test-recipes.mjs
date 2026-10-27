@@ -533,6 +533,32 @@ try {
      Removing the line leaves the inventory row (no item delete in v1). */
   eq(addedB4 && addedB4.rows.some(r => r[0] === "Widget X (each)" && r[1] === "94"), true, "(b) unused custom item lands in Added items (stock kept)");
 
+  /* Label-fit warning (item-11 decision, part B6): as the new-item name
+     is typed, a too-long name warns "Too long for the label, about N
+     characters over", a fitting name shows none, and saving a too-long
+     name still works (the warning never blocks). Setting .value
+     programmatically fires no input event, so dispatch one after each
+     set — otherwise the warning never updates. The following (b5) block
+     fully resets the seed, so no cleanup is needed here. */
+  await resetSeed();
+  await goSettings(page);
+  await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
+  await sleep(300);
+  await page.select('[data-recipe-row="bm"] [data-line-item]', '__new__');
+  await sleep(300);
+  eq(await page.evaluate(() => !!document.querySelector('[data-new-item-name]')), true, "(label-fit) create-new-item form appears");
+  await page.evaluate(() => { const el = document.querySelector('[data-new-item-name]'); el.value = "Extraordinarily long test item name here"; el.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(300);
+  eq(await page.evaluate(() => { const w = document.querySelector('[data-label-fit]'); return !!w && !w.hidden && w.textContent.includes("Too long for the label"); }), true, "(label-fit) too-long name shows the label warning");
+  eq(await page.evaluate(() => { const w = document.querySelector('[data-label-fit]'); return !!w && /about \d+ character/.test(w.textContent); }), true, "(label-fit) warning names how many characters over");
+  await page.evaluate(() => { const el = document.querySelector('[data-new-item-name]'); el.value = "Widget Y"; el.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(300);
+  eq(await page.evaluate(() => { const w = document.querySelector('[data-label-fit]'); return !w || w.hidden; }), true, "(label-fit) fitting name shows no label warning");
+  await page.evaluate(() => { const el = document.querySelector('[data-new-item-name]'); el.value = "Extraordinarily long test item name here"; el.dispatchEvent(new Event("input", { bubbles: true })); });
+  await page.evaluate(() => document.querySelector('[data-new-item-create]').click());
+  await sleep(500);
+  eq(await waitPut(b => b && b.settings && b.settings.customItems && b.settings.customItems.some(it => it.id === "extraordinarily-long-test-item-name-here"), "long name saved"), true, "(label-fit) saving a too-long name still works");
+
   /* (b5) No one-label warning any more (layout task: the warning is
      removed — a long recipe simply flows) + line/pair add + dup
      validation + rename. */
