@@ -216,16 +216,15 @@ try {
 
   ok(!packTexts[0].includes("BOXES") && packTexts[packTexts.length - 1].includes("BOXES: Big Box, Small Box"), "pack sheet PDF: BOXES appears only on the last page, with the footer");
   {
-    /* Fix-round item 9, OPEN (not fixed): Chrome halves the collapsed
-       border at the fragment edge (last line h=1 vs 2 for the rest).
-       box-decoration-break: clone was tried at table level and at
-       cell level and fixed neither the line nor the repeats — it
-       BROKE the repeated thead on page 2 (runs 40372731228,
-       40376472384), so it was reverted. This assertion records what
-       the sheet does guarantee: every page-1 line is present and
-       visible. Pending Mark's call on the trade-off. */
+    /* Round 2 item 2 (fix-round item 9, now FIXED): the fragment-edge
+       line used to print at half height (h=1 vs 2 for the rest) because
+       the collapsed border was shared with the next page's first row.
+       Print tables now use separate borders, so every page-1 line is
+       full height. box-decoration-break: clone was tried earlier and
+       reverted (it fixed neither the line nor the repeats, and it
+       broke the repeated thead on page 2). */
     const hs = await page1TableLineHeights("/tmp/alooma-packsheet.pdf");
-    ok(hs.length >= 10 && hs.every(h => h >= 1), "pack sheet CAK-36: page-1 table lines all present (fragment-edge line at half height, item 9 open: " + hs.join(",") + ")");
+    ok(hs.length >= 10 && hs.every(h => h >= 2), "pack sheet CAK-36: page-1 table lines all full height (item 9 fixed: " + hs.join(",") + ")");
   }
 
   } catch (e) { fail++; console.log("FAIL (CAK-36): " + e.message); }
@@ -798,6 +797,115 @@ try {
   }
 
   } catch (e) { fail++; console.log("FAIL (subtitle): " + e.message); }
+
+  try {
+  /* Round 2 item 2: every page's bottom border prints full thickness.
+     A table's bottom border on a fragment page used to print at half
+     height (0.75pt vs 1.50pt on this parser's ruler; 0.72pt vs 1.44pt on
+     the reporter's ruler) — a collapsed-border fragment edge effect.
+     The window (1.44 ± 0.15) covers the full border on either ruler and
+     rejects the half border on either ruler. Measured from the PDF's
+     vector operators (pdfjs), not pixels: the table's bottom border on
+     a page is the lowest full-span group of horizontal filled rects. */
+  const OPSB = pdfjs.OPS;
+  const mulB = (m, n) => [m[0]*n[0] + m[2]*n[1], m[1]*n[0] + m[3]*n[1], m[0]*n[2] + m[2]*n[3], m[1]*n[2] + m[3]*n[3], m[0]*n[4] + m[2]*n[5] + m[4], m[1]*n[4] + m[3]*n[5] + m[5]];
+  const applyB = (m, x, y) => [m[0]*x + m[2]*y + m[4], m[1]*x + m[3]*y + m[5]];
+  async function bottomBorders(pdf) {
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(pdf)) }).promise;
+    const out = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      const opList = await page.getOperatorList();
+      let ctm = [1, 0, 0, 1, 0, 0];
+      const stack = [];
+      const bars = [];
+      for (let i = 0; i < opList.fnArray.length; i++) {
+        const fn = opList.fnArray[i];
+        const args = opList.argsArray[i];
+        if (fn === OPSB.transform) ctm = mulB(ctm, args);
+        else if (fn === OPSB.save) stack.push(ctm.slice());
+        else if (fn === OPSB.restore) { if (stack.length) ctm = stack.pop(); }
+        else if (fn === OPSB.constructPath) {
+          const ops = args[0], cargs = args[1];
+          let j = 0;
+          for (const op of ops) {
+            if (op === OPSB.rectangle) {
+              const [x, y, w, h] = cargs.slice(j, j + 4); j += 4;
+              const [x0, y0] = applyB(ctm, x, y);
+              const [x1, y1] = applyB(ctm, x + w, y + h);
+              const hh = Math.abs(y1 - y0), ww = Math.abs(x1 - x0);
+              if (hh <= 3 && ww >= 20) bars.push({ y: Math.min(y0, y1), x0: Math.min(x0, x1), x1: Math.max(x0, x1), t: hh });
+            } else if (op === OPSB.moveTo) j += 2;
+            else if (op === OPSB.lineTo) j += 2;
+            else if (op === OPSB.curveTo) j += 6;
+          }
+        }
+      }
+      const groups = new Map();
+      for (const b of bars) {
+        const key = Math.round(b.y * 10) / 10;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(b);
+      }
+      const ys = [...groups.keys()].sort((a, b) => a - b);
+      if (!ys.length) { out.push({ page: p, none: true }); continue; }
+      const g = groups.get(ys[0]);
+      out.push({ page: p, span: Math.max(...g.map(b => b.x1)) - Math.min(...g.map(b => b.x0)), ts: g.map(b => b.t) });
+    }
+    return out;
+  }
+  async function openBorderPage(binsOn) {
+    const pg = await browser.newPage();
+    await pg.evaluateOnNewDocument(() => {
+      localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
+    });
+    await pg.setRequestInterception(true);
+    const rm = JSON.parse(JSON.stringify(remote));
+    rm.history = [];
+    Object.keys(rm.inventory).forEach(k => { rm.inventory[k].qty = 100; rm.inventory[k].threshold = null; });
+    rm.settings.features.boxes = false;
+    rm.settings.features.bins = binsOn;
+    rm.settings.boxRules = [];
+    pg.on("request", req => {
+      const url = req.url();
+      if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" }, body: "" });
+      if (url.includes("/contents/data.json")) return req.respond({ status: 200, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" }, contentType: "application/json", body: JSON.stringify({ sha: "sha-border", content: b64e(JSON.stringify(rm)) }) });
+      if (url.startsWith("https://api.github.com")) return req.respond({ status: 404, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" }, body: "{}" });
+      req.continue();
+    });
+    await pg.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
+    await sleep(500);
+    return pg;
+  }
+  async function checkBorders(tag, file) {
+    const rows = await bottomBorders(file);
+    for (const r of rows) {
+      ok(!r.none && r.span >= 250 && r.ts.every(t => Math.abs(t - 1.44) <= 0.15),
+        "border: " + tag + " p" + r.page + " bottom border full" + (r.none ? " (NO BARS)" : " (span " + Math.round(r.span) + "pt, " + r.ts.map(t => t.toFixed(3)).join("/") + "pt)"));
+    }
+  }
+  for (const binsOn of [false, true]) {
+    const pg = await openBorderPage(binsOn);
+    await pg.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
+    await pg.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
+    await sleep(300);
+    await pg.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
+    await sleep(300);
+    const file = "/tmp/alooma-border-cak-6-bins" + (binsOn ? "on" : "off") + ".pdf";
+    await pg.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
+    await pg.close();
+    await checkBorders("cak-6-bins" + (binsOn ? "on" : "off"), file);
+    const pg2 = await openBorderPage(binsOn);
+    await pg2.evaluate(() => { document.querySelector("#btn-print-count").click(); });
+    await sleep(400);
+    const file2 = "/tmp/alooma-border-count-bins" + (binsOn ? "on" : "off") + ".pdf";
+    await pg2.pdf({ path: file2, preferCSSPageSize: true, printBackground: true });
+    await pg2.close();
+    await checkBorders("count-bins" + (binsOn ? "on" : "off"), file2);
+  }
+
+  } catch (e) { fail++; console.log("FAIL (borders): " + e.message); }
+
   console.log(fail ? "PRINT CHECKS FAILED (" + fail + ")" : "all print checks passed");
 } finally {
   await browser.close();

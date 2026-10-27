@@ -80,6 +80,3 @@ Fine-grained tokens → Generate. Repository access: only `alooma`. Permissions 
 Contents: **Read and write**. Paste it into the site under Settings on each device
 you want to edit from.
 
-## Known issues
-
-- **Cakery page-1 bottom line prints faint (accepted cosmetic limitation, 2026-10-27).** On the 4×6 pack sheet, the bottom border of Cakery's first page prints at about half height (~0.8pt instead of 1.5pt solid) — a table-fragment edge effect. Accepted for launch; recheck on the first physical thermal print. If it prints faint, the revisit plan is to draw that line as its own element instead of a table border. No change for now.
