@@ -361,6 +361,7 @@ try {
   }
 
   /* (b1) Viewers: no Settings tab, Recipes card is editor-only. */
+  try {
   const vctx = await newContext();
   const vpage = await vctx.newPage();
   vpage.on("dialog", d => d.accept());
@@ -373,7 +374,9 @@ try {
   eq(await vpage.evaluate(() => document.querySelector("#recipes-card").classList.contains("editor-only")), true, "(b) viewer: Recipes card is editor-only");
   await vctx.close();
 
+  } catch (e) { fail++; console.log("FAIL (b1): " + e.message); }
   /* (b2) Code validation + Add craft. */
+  try {
   await resetSeed();
   await goSettings(page);
   eq(await page.evaluate(() => !!document.querySelector("#recipes-card")), true, "(b) editor: Recipes card present");
@@ -399,7 +402,9 @@ try {
   const alphaRow = await page.evaluate(() => { const r = document.querySelector('[data-recipe-row="alpha-craft"]'); return r ? r.textContent : ""; });
   eq(alphaRow.includes("Alpha Craft") && alphaRow.includes("ABC"), true, "(b) new craft listed with uppercased code");
 
+  } catch (e) { fail++; console.log("FAIL (b2): " + e.message); }
   /* (b3) Hide/unhide + a queued line for the hidden craft still completes. */
+  try {
   await resetSeed();
   await pick("Blooming Mirrors", 6);
   await page.evaluate(() => document.querySelector("#btn-pack-queue").click());
@@ -471,10 +476,12 @@ try {
   eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors"))), true, "(b) unhidden craft back in picker");
   await hctx.close();
 
+  } catch (e) { fail++; console.log("FAIL (b3): " + e.message); }
   /* (b4) New item at 0 and packable. Fix-round item 4: the item must
      appear in the Inventory TAB and History must refresh live, no
      reload — the old code threw in renderInventory (no row for the new
      item), aborting renderAll before History. */
+  try {
   const errs4 = [];
   page.on("pageerror", e => errs4.push(e.message));
   await resetSeed();
@@ -559,9 +566,11 @@ try {
   await sleep(500);
   eq(await waitPut(b => b && b.settings && b.settings.customItems && b.settings.customItems.some(it => it.id === "extraordinarily-long-test-item-name-here"), "long name saved"), true, "(label-fit) saving a too-long name still works");
 
+  } catch (e) { fail++; console.log("FAIL (b4): " + e.message); }
   /* (b5) No one-label warning any more (layout task: the warning is
      removed — a long recipe simply flows) + line/pair add + dup
      validation + rename. */
+  try {
   const tenLines = ["tree-mirror", "scissors", "heat-gun", "wood-burning-cream", "clay-tray-a", "clay-tray-b", "cake-box", "tambourines", "white-clay", "english-ay-printout"].map(id => ({ item: id, qty: 6, per: 6 }));
   remote.settings = { features: { boxes: false, bins: false, bulkTab: true }, boxes: [], boxRules: [], bins: {},
     recipes: L.builtInRecipes().concat([
@@ -582,8 +591,12 @@ try {
   eq(await page.evaluate(() => !!document.querySelector('[data-recipe-row="nine-line"] [data-recipe-warning]')), false, "(b) editor never warns at exactly the max (9 lines)");
   await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-edit]').click());
   await sleep(300);
-  const lineCount = async () => await page.evaluate(() => document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]').length);
-  const bmLines0 = await lineCount();
+  } catch (e) { fail++; console.log("FAIL (b5): " + e.message); }
+  /* Crash-proofing hoist: lineCount/bmLines0 are used by later units (item 16), so they live outside the unit try blocks (same values, same timing, only wider scope). */
+  let lineCount, bmLines0;
+  try {
+  lineCount = async () => await page.evaluate(() => document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]').length);
+  bmLines0 = await lineCount();
   const puts0 = putCount;
   await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-add-line]').click());
   await sleep(500);
@@ -631,6 +644,8 @@ try {
   await sleep(400);
   eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent), "", "(b) fixing the duplicate clears the error");
   eq(putCount, puts1 + 1, "(b) fixed edit saves");
+  } catch (e) { fail++; console.log("FAIL (item 15): " + e.message); }
+  try {
   const puts2 = putCount;
   await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-add-pair]').click());
   await sleep(500);
@@ -647,11 +662,14 @@ try {
   eq(await lineCount(), bmLines0 + 2, "(b) Undo restores the removed row");
   eq(await page.evaluate(() => !!document.querySelector('[data-recipe-row="bm"] [data-line-item2]')), true, "(b) Undo restores the pair row itself");
   eq(putCount, puts3 + 2, "(b) Undo restore saves");
+  eq(await page.evaluate(() => { const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')]; const last = rows[rows.length - 1]; return { hint: last.textContent.includes("per 6"), hasPer: !!last.querySelector("[data-line-per]") }; }), { hint: true, hasPer: false }, "(b) restored pair row shows static per-6 hint and has no Per input");
   await page.evaluate(() => { const inp = document.querySelector('[data-recipe-row="bm"] [data-recipe-name]'); inp.value = "Blooming Mirrors X"; inp.dispatchEvent(new Event("change", { bubbles: true })); });
   await sleep(500);
   eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors X"))), true, "(b) rename shows in the picker");
 
+  } catch (e) { fail++; console.log("FAIL (item 16): " + e.message); }
   /* Fix-round batch (a) item 5: duplicate names blocked. */
+  try {
   const puts4 = putCount;
   await page.evaluate(() => { document.querySelector("#recipe-add-name").value = "blooming mirrors x"; document.querySelector("#recipe-add-code").value = "ZZ"; document.querySelector("#recipe-add-btn").click(); });
   await sleep(400);
@@ -676,9 +694,12 @@ try {
   eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent.includes("already exists")), true, "(b) duplicate item name blocked even when its slug differs (AY - Special Request)");
   eq(putCount, puts4, "(b) blocked item saves nothing (restore above was already a no-change no-op)");
 
+  } catch (e) { fail++; console.log("FAIL (item 5): " + e.message); }
   /* Fix-round batch (a) item 6: recipe qty/per capped at 999. */
+  try {
   const puts5 = putCount;
-  const setLastQty = async (v) => { await page.evaluate((x) => { const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')]; const i = rows[rows.length - 1].querySelector("[data-line-qty]"); i.value = x; i.dispatchEvent(new Event("change", { bubbles: true })); }, v); await sleep(400); };
+  const setLastQty = async (v) => { await page.evaluate((x) => { const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')].filter(r => r.querySelector("[data-line-per]")); const row = rows[rows.length - 1]; if (!row) return; const i = row.querySelector("[data-line-qty]"); i.value = x; i.dispatchEvent(new Event("change", { bubbles: true })); }, v); await sleep(400); };
+  eq(await page.evaluate(() => [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')].some(r => r.querySelector("[data-line-per]"))), true, "(b) per-cap block: a row with a Per input exists");
   await setLastQty("1000");
   eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent.includes("999")), true, "(b) recipe qty over 999 blocked");
   eq(putCount, puts5, "(b) blocked qty saves nothing");
@@ -688,12 +709,14 @@ try {
   await setLastQty("6");
   eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent), "", "(b) valid qty clears the error");
   eq(putCount, puts5 + 1, "(b) valid qty saves");
-  await page.evaluate(() => { const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')]; const i = rows[rows.length - 1].querySelector("[data-line-per]"); i.value = "0"; i.dispatchEvent(new Event("change", { bubbles: true })); });
+  await page.evaluate(() => { const rows = [...document.querySelectorAll('[data-recipe-row="bm"] [data-recipe-line]')].filter(r => r.querySelector("[data-line-per]")); const row = rows[rows.length - 1]; if (!row) return; const i = row.querySelector("[data-line-per]"); i.value = "0"; i.dispatchEvent(new Event("change", { bubbles: true })); });
   await sleep(400);
   eq(await page.evaluate(() => document.querySelector('[data-recipe-row="bm"] [data-recipe-error]').textContent !== ""), true, "(b) per 0 blocked");
   eq(putCount, puts5 + 1, "(b) blocked per saves nothing");
 
+  } catch (e) { fail++; console.log("FAIL (item 6): " + e.message); }
   /* (b6) Rename keeps old history titles. */
+  try {
   await resetSeed();
   rows = await (async () => { await pick("Blooming Mirrors", 6); await page.evaluate(() => document.querySelector("#btn-pack-hand").click()); await sleep(300); return null; })();
   await page.evaluate(() => document.querySelector("#btn-check-all").click());
@@ -712,7 +735,9 @@ try {
   eq(remote.history[0] && remote.history[0].title, "Hand packed Blooming Mirrors — 6 kits (BM-6)", "(b) old history title unchanged after rename");
   eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].some(b => b.textContent.includes("Blooming Mirrors Renamed"))), true, "(b) renamed craft shows new name in picker");
 
+  } catch (e) { fail++; console.log("FAIL (b6): " + e.message); }
   /* Fix-round batch (a) item 6: delivery skips non-whole / huge counts. */
+  try {
   await resetSeed();
   await page.evaluate(() => { document.querySelector('[data-tab="inventory"]').click(); });
   await sleep(300);
@@ -804,6 +829,7 @@ try {
   const clayItems = (await (await clayDoc.getPage(1)).getTextContent()).items.filter(it => it.str.includes("Clay Tray"));
   eq(clayItems.length, 1, "(d) Clay name is one unbroken line on the BM label");
   eq(clayItems[0] && clayItems[0].str, "Clay Tray + 6 Picks", "(d) BM label shows the renamed Clay item");
+  } catch (e) { fail++; console.log("FAIL (item 6 delivery): " + e.message); }
 
   console.log(fail ? "RECIPE TESTS FAILED (" + fail + ")" : "all recipe tests passed (" + pass + " checks)");
 } finally {
