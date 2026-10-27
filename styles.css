@@ -135,7 +135,13 @@ tr.checked-row td .row-name { text-decoration: line-through; }
 
 /* inventory */
 .search-box { width: 100%; height: 50px; border: 1.5px solid var(--line); border-radius: var(--radius); padding: 0 14px; font-size: 16.5px; margin: 4px 0 6px; background: var(--surface); }
-.inv-filters { display: flex; gap: 8px; margin: 2px 0 8px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+/* Round 2 item 3: the filter chips wrap instead of scrolling sideways.
+   The old nowrap + overflow-x auto row parked "By bin" (last chip) off
+   the right edge on phones, reachable only by a sideways swipe. Chips
+   keep their natural width (flex: none below) and wrap to a 2nd row
+   when they don't fit; overflow-x visible means any future overflow
+   shows as a layout failure instead of a hidden scroller. */
+.inv-filters { display: flex; gap: 8px; margin: 2px 0 8px; flex-wrap: wrap; overflow-x: visible; padding-bottom: 4px; }
 .inv-filters .chip-btn { flex: none; white-space: nowrap; }
 .inv-filters .chip-btn[aria-pressed="true"] { background: #E8EEF8; color: #1B4382; border: 2px solid #2457A6; }
 .inv-actions { align-items: flex-start; }

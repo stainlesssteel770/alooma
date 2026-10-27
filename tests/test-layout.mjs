@@ -103,9 +103,11 @@ try {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) return;
       if (r.left < -1 || r.right > W + 1) {
-        /* Content inside a sideways-scrolling row (the v2 B2 filter chips)
-           is SUPPOSED to extend past the edge — it is clipped by its
-           scroller, which must itself be in bounds. The page-level
+        /* Content inside a sideways-scrolling row is SUPPOSED to extend
+           past the edge — it is clipped by its scroller, which must
+           itself be in bounds. (The inventory filter chips used to be
+           such a row; round 2 item 3 made them wrap instead, so this
+           exemption no longer applies to them.) The page-level
            scrollWidth check above still catches real sideways scroll. */
         let sc = el.parentElement, clipped = false;
         while (sc && sc !== document.body) {
@@ -166,7 +168,9 @@ try {
     await page.evaluate(() => window.scrollTo(0, 0)); await sleep(100);
     const voTop = await page.evaluate(() => { const el = document.querySelector(".inv-item"); return el ? Math.round(el.getBoundingClientRect().top + window.scrollY) : -1; });
     console.log("v3 D6 view-only first row at", width, "=", voTop);
-    ok(voTop > 0 && voTop <= 300, "v3 D6: view-only first row at/above 300 at " + width + " (saw " + voTop + ")");
+    /* Round 2 item 3: the chip row wraps to 2 rows with bins on (+56px),
+       so the view-only first-row bound moves 300 -> 356. */
+    ok(voTop > 0 && voTop <= 356, "v3 D6: view-only first row at/above 356 at " + width + " (saw " + voTop + ")");
     await clickEl("#btn-print-menu"); await sleep(200);
     await check(width + " view-only: print menu open");
     await page.evaluate(() => document.body.click()); await sleep(150);
@@ -255,7 +259,9 @@ try {
        v3 E2 then added the Reorder button row above the list (user-approved
        in the v3 brief), which costs its ~58px: bound is 340 + 58, and the
        measured value is reported in every batch report. */
-    ok(invTop > 0 && invTop <= 398, "v2 B2 + v3 E2: first inventory row at/above 398 at " + width + "px (saw " + invTop + ")");
+    /* Round 2 item 3: the chip row wraps to 2 rows with bins on (+56px),
+       so the editor first-row bound moves 398 -> 454. */
+    ok(invTop > 0 && invTop <= 454, "v2 B2 + v3 E2: first inventory row at/above 454 at " + width + "px (saw " + invTop + ")");
     /* v3 D2 + D6: the editor action row is exactly 48 and Print is back in it */
     const actH = await page.evaluate(() => Math.round(document.querySelector(".inv-actions").getBoundingClientRect().height));
     ok(actH === 48, "v3 D2: inventory action row is 48px at " + width + " (saw " + actH + ")");
@@ -279,6 +285,39 @@ try {
     await tab("settings");
     await check(width + " settings: boxes editor + rules");
     await page.evaluate(() => localStorage.removeItem("alooma.editor.v1"));
+  }
+
+  /* Round 2 item 3: inventory filter chips with bins ON must all fit
+     without sideways scroll at phone widths. The old row was nowrap +
+     overflow-x auto, so "By bin" (last chip) parked off the right edge
+     and needed a sideways swipe to reach. Wrapping to 2 rows is fine.
+     This asserts chip rects directly (no scroller exemption): every
+     chip's rect must sit inside the viewport, and the row itself must
+     not scroll (scrollWidth must equal clientWidth). Runs view-only,
+     the widest case: the viewer Print button also sits in this row. */
+  for (const [cw, ch] of [[360, 740], [375, 667], [390, 664], [390, 844], [1366, 900]]) {
+    await page.setViewport({ width: cw, height: ch });
+    await page.goto("http://127.0.0.1:8911/index.html", { waitUntil: "networkidle0", timeout: 30000 });
+    await sleep(400);
+    await tab("inventory");
+    await sleep(200);
+    const chips = await page.evaluate(() => {
+      const btns = [...document.querySelectorAll(".inv-filters .chip-btn")].filter(b => !b.hidden && getComputedStyle(b).display !== "none");
+      const row = document.querySelector(".inv-filters");
+      return {
+        labels: btns.map(b => b.textContent.trim()),
+        rects: btns.map(b => { const r = b.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right) }; }),
+        rowScroll: row ? row.scrollWidth - row.clientWidth : -1,
+        pageScroll: document.documentElement.scrollWidth - window.innerWidth
+      };
+    });
+    ok(chips.labels.includes("By bin"), "item 3: By bin chip present with bins on at " + cw + "x" + ch + " (" + chips.labels.join(" | ") + ")");
+    for (let i = 0; i < chips.rects.length; i++) {
+      const r = chips.rects[i];
+      ok(r.left >= -1 && r.right <= cw + 1, "item 3: chip " + (i + 1) + " (" + chips.labels[i] + ") inside viewport at " + cw + "x" + ch + " (left " + r.left + ", right " + r.right + ")");
+    }
+    ok(chips.rowScroll === 0, "item 3: filter row does not scroll at " + cw + "x" + ch + " (scroll overflow " + chips.rowScroll + "px)");
+    ok(chips.pageScroll <= 1, "item 3: no page sideways scroll at " + cw + "x" + ch + " (overflow " + chips.pageScroll + "px)");
   }
 
   /* Desktop sanity at 1280: tabs + the print menu where the button sits right */
