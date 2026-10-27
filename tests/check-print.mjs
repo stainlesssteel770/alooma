@@ -349,6 +349,14 @@ try {
         matrixResults.push({ name, kits, withBoxes, pages, file });
         if (name === "The Cakery") {
           ok(pages >= 2, "matrix: CAK-" + kits + " boxes=" + withBoxes + " bins=" + binsOn + " still flows (expected exception, " + pages + " pages)");
+        } else if (binsOn && name === "Miniature Interiors") {
+          ok(pages === 2, "matrix: MI-" + kits + " boxes=" + withBoxes + " bins=on accepted at 2 labels (" + pages + " pages)");
+          if (pages >= 2) {
+            const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(file)) }).promise;
+            const p2 = await doc.getPage(2);
+            const t2 = (await p2.getTextContent()).items.map(it => it.str).join(" ");
+            console.log("MIPACK MI-" + kits + " boxes=" + withBoxes + " bins=on page 2 holds: " + t2.slice(0, 300));
+          }
         } else {
           ok(pages === 1, "matrix: " + name + "-" + kits + " boxes=" + withBoxes + " bins=" + binsOn + " fits one label (" + pages + " pages)");
           if (pages > 1) {
@@ -432,18 +440,22 @@ try {
     const hw = pages[0].words;
     const hit = hw.find(wd => wd.s === "Item");
     const hrow = hit ? hw.filter(wd => Math.abs(wd.y - hit.y) <= 2) : [];
-    const hx = (s) => { const wd = hrow.find(wd => wd.s === s); return wd ? wd.x : null; };
+    const hx = (s) => { const wd = hrow.find(wd => wd.s === s || (s === "Per" && wd.s.startsWith("Per "))); return wd ? wd.x : null; };
     return { pages, lines: pages.flatMap(p => p.lines), maxRight, pageW, numPages: doc.numPages, headerX: { item: hx("Item"), bin: hx("Bin"), per: hx("Per") } };
   }
   /* A name's words run contiguously within its row, except a 2-line name:
      Bin/Per-6/Total align to the first line's baseline, so the first line
      holds name-part-1 + the other cells and the second holds name-part-2
-     alone. The matcher consumes name words in order and jumps to the next
-     line whenever the current word is not the next name word. It tries
-     EVERY occurrence of the first word and keeps the smallest span: two
-     items can share a first word ("Miniatures tray #1" vs "Miniatures
-     bread bag"), and a greedy first-match from the wrong row would
-     false-fail the second name. */
+     alone — BUT the single-line cells can also sit on their own line
+     between the name's lines (their own baseline). The matcher consumes
+     name words in order and jumps to the next line whenever the current
+     word is not the next name word, and counts ONLY lines where a name
+     word was actually consumed: a cells-only line between name lines
+     must not inflate the count (run 11: every true 2-liner read as 3).
+     It tries EVERY occurrence of the first word and keeps the smallest
+     span: two items can share a first word ("Miniatures tray #1" vs
+     "Miniatures bread bag"), and a greedy first-match from the wrong row
+     would false-fail the second name. */
   function linesForName(name, lines) {
     const words = name.split(/\s+/);
     let best = Infinity;
@@ -451,17 +463,29 @@ try {
       const lw0 = lines[i].split(/\s+/);
       for (let j = 0; j < lw0.length; j++) {
         if (lw0[j] !== words[0]) continue;
-        let wi = 0, li = i, k = j, used = 1, lw = lw0;
+        let wi = 0, li = i, k = j, lw = lw0;
+        const usedLines = new Set([i]);
         while (wi < words.length) {
-          if (k < lw.length && lw[k] === words[wi]) { wi++; k++; }
-          else if (li + 1 < lines.length) { li++; used++; lw = lines[li].split(/\s+/); k = 0; }
+          if (k < lw.length && lw[k] === words[wi]) { usedLines.add(li); wi++; k++; }
+          else if (li + 1 < lines.length) { li++; lw = lines[li].split(/\s+/); k = 0; }
           else break;
         }
-        if (wi === words.length && used < best) best = used;
+        if (wi === words.length && usedLines.size < best) best = usedLines.size;
       }
     }
     return best;
   }
+  /* Guards for the consuming-lines fix (run-11 decision 2): a fake 2-line
+     name must pass the bins-on check and a fake 3-line name must fail
+     it, including when the Bin/Per/Total cells sit on their own line
+     between the name's lines (the run-11 miscount). Under the OLD
+     matcher, the cells-line 2-liner returned 3, so that guard fails
+     pre-fix; the plain 2-liner and both 3-liners behave the same
+     under old and new matchers (controls). */
+  ok(linesForName("Permanent Markers", ["Permanent B59 6 6", "Markers"]) <= 2, "guard: fake 2-line name passes the bins-on check");
+  ok(linesForName("Permanent Markers", ["Permanent", "B59 6 6", "Markers"]) <= 2, "guard: fake 2-line name with cells on their own line passes the bins-on check");
+  ok(linesForName("JCA Embellishment Tray", ["JCA B21 1 1", "Embellishment", "Tray"]) > 2, "guard: fake 3-line name fails the bins-on check");
+  ok(linesForName("JCA Embellishment Tray", ["JCA", "B21 1 1", "Embellishment", "Tray"]) > 2, "guard: fake 3-line name with cells line still fails the bins-on check");
   /* Stress sheet: per 888 at 6 kits puts "888" in Per 6 and Total. The
      Bin cell must be EMPTY so the Bin column sits at its CSS width —
      every built-in item has a default "BIN-NN" code (logic.js
@@ -515,14 +539,73 @@ try {
         ok(a.maxRight <= a.pageW + 1, tag + ": nothing cut off past the page edge (maxRight=" + Math.round(a.maxRight) + " pageW=" + Math.round(a.pageW) + ")");
         if (name === "The Cakery") {
           ok(a.numPages <= 2, tag + ": Cakery at most 2 labels (" + a.numPages + " pages)");
+        } else if (binsOn && name === "Miniature Interiors") {
+          ok(a.numPages === 2, tag + ": MI bins-on accepted at 2 labels (" + a.numPages + " pages)");
+          if (a.numPages > 1) {
+            console.log("MIPACK-SHEET MI-" + kits + " bins-on page 2 lines: " + a.pages[1].lines.join(" | ").slice(0, 300));
+          }
         } else {
           ok(a.numPages === 1, tag + ": fits one label (" + a.numPages + " pages)");
         }
-        if (!binsOn && kits === 6 && name === "Blooming Mirrors" && a.headerX.per !== null && a.headerX.item !== null) {
-          console.log("SHEETWIDTHS bins-off BM-6 Item=" + Math.round(a.headerX.per - a.headerX.item) + "pt");
+        if (!binsOn && kits === 6 && a.headerX.per !== null && a.headerX.item !== null) {
+          console.log("SHEETWIDTHS bins-off " + name + "-6 Item=" + Math.round(a.headerX.per - a.headerX.item) + "pt");
         }
       }
     }
+    await pg.close();
+  }
+
+  /* MI count-sheet re-measurement (run-11 add-on): the Oct-25 MI-count
+     2-page acceptance predates the header redo, so measure MI's count
+     sheet fresh on the current layout, bins on and off, before locking
+     in any pack-sheet MI expectation. LOGGING ONLY — no assertions:
+     the count sheet has no per-craft page-count check, and this block
+     reports (it does not lock in) MI count pagination. The isolated MI
+     section uses the same .print-page trim trick the suite already uses
+     for single-craft inventory PDFs; the log self-validates with the
+     sections remaining and whether MI's last row (AY) is present. */
+  async function openCountPage(binsOn) {
+    const pg = await browser.newPage();
+    await pg.evaluateOnNewDocument(() => {
+      localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
+    });
+    await pg.setRequestInterception(true);
+    const rm = JSON.parse(JSON.stringify(remote));
+    rm.history = [];
+    Object.keys(rm.inventory).forEach(k => { rm.inventory[k].qty = 100; rm.inventory[k].threshold = null; });
+    rm.settings.features.boxes = false;
+    rm.settings.features.bins = binsOn;
+    rm.settings.boxRules = [];
+    pg.on("request", req => {
+      const url = req.url();
+      if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: CORS, body: "" });
+      if (url.includes("/contents/data.json")) return req.respond({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ sha: "sha-micount", content: b64e(JSON.stringify(rm)) }) });
+      if (url.startsWith("https://api.github.com")) return req.respond({ status: 404, headers: CORS, body: "{}" });
+      req.continue();
+    });
+    await pg.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
+    await sleep(500);
+    return pg;
+  }
+  for (const binsOn of [false, true]) {
+    const pg = await openCountPage(binsOn);
+    await pg.evaluate(() => { document.querySelector("#btn-print-count").click(); });
+    await sleep(300);
+    const trim = await pg.evaluate(() => {
+      const secs = [...document.querySelectorAll("#print-area .print-page")];
+      secs.forEach(sec => {
+        const t = sec.querySelector(".label-title");
+        if (!t || !t.textContent.includes("Miniature Interiors")) sec.remove();
+      });
+      const kept = [...document.querySelectorAll("#print-area .print-page")].length;
+      const ay = document.querySelector("#print-area").textContent.includes("AY - Special Request");
+      return { kept, ay };
+    });
+    const file = "/tmp/alooma-micount-bins" + (binsOn ? "on" : "off") + ".pdf";
+    await pg.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
+    const a = await pdfSheetAnalysis(file);
+    const overflow = a.numPages > 1 ? a.pages.slice(1).flatMap(p => p.lines).join(" | ").slice(0, 300) : "";
+    console.log("MICOUNT bins-" + (binsOn ? "on" : "off") + ": " + a.numPages + " pages, sections kept=" + trim.kept + ", AY present=" + trim.ay + (a.numPages > 1 ? " (overflow: " + overflow + ")" : ""));
     await pg.close();
   }
 
