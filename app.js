@@ -2682,9 +2682,10 @@
   }
   /* Item-11 decision, part B6: "fits on label" check for the new-item
      name. The 4x6 pack sheet prints item names at 12.5pt Arial in an Item
-     column ~117pt wide on a bins-on sheet (4in page minus 0.13in side
-     margins = 269pt usable; tick 30 + bin 54 + Per-6 38 + Total 34 leave
-     ~117pt after auto-layout shrink). Measure the typed name with the
+     column. The threshold is the real measured bins-off Item CONTENT
+     width — 137pt, the minimum of the baseline bins-off sheets (HCB
+     137pt, CAK 145pt, from header x-positions in the PDFs minus cell
+     padding/borders). Measure the typed name with the
      same font; if it overflows, report about how many characters over
      (width over / average char width). Advisory only — saving is never
      blocked by this check. */
@@ -2694,7 +2695,7 @@
     if (!labelCanvas) labelCanvas = document.createElement("canvas").getContext("2d");
     labelCanvas.font = "12.5pt Arial, Helvetica, sans-serif";
     var wPt = labelCanvas.measureText(name).width * 72 / 96;
-    if (wPt <= 117) return 0;
+    if (wPt <= 137) return 0;
     return Math.max(1, Math.ceil((wPt - 117) / (wPt / name.length)));
   }
   function renderRecipesSetting() {

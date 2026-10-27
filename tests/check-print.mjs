@@ -291,11 +291,12 @@ try {
      main page's CAK-36 assertions above. */
   const MATRIX_CRAFTS = ["Blooming Mirrors", "Tambourines", "Judaic Clay-Art", "Hafrashat Challah", "The Cakery", "Miniature Interiors"];
   const MATRIX_KITS = [6, 36];
-  function matrixRemote(withBoxes) {
+  function matrixRemote(withBoxes, binsOn) {
     const rm = JSON.parse(JSON.stringify(remote));
     rm.history = [];
     Object.keys(rm.inventory).forEach(k => { rm.inventory[k].qty = 10000; rm.inventory[k].threshold = null; });
     rm.settings.features.boxes = withBoxes;
+    rm.settings.features.bins = binsOn;
     if (withBoxes) {
       rm.settings.boxes = ["Box A", "Box B", "Box C"];
       rm.settings.boxRules = [];
@@ -306,13 +307,13 @@ try {
     } else rm.settings.boxRules = [];
     return rm;
   }
-  async function openMatrixPage(withBoxes) {
+  async function openMatrixPage(withBoxes, binsOn) {
     const pg = await browser.newPage();
     await pg.evaluateOnNewDocument(() => {
       localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
     });
     await pg.setRequestInterception(true);
-    const rm = matrixRemote(withBoxes);
+    const rm = matrixRemote(withBoxes, binsOn);
     pg.on("request", req => {
       const url = req.url();
       if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: CORS, body: "" });
@@ -337,28 +338,30 @@ try {
   }
   const matrixResults = [];
   for (const withBoxes of [false, true]) {
-    const pg = await openMatrixPage(withBoxes);
+    for (const binsOn of [false, true]) {
+    const pg = await openMatrixPage(withBoxes, binsOn);
     for (const name of MATRIX_CRAFTS) {
       for (const kits of MATRIX_KITS) {
-        const slug = name.toLowerCase().replace(/[^a-z]+/g, "-") + "-" + kits + (withBoxes ? "-boxes" : "-noboxes");
+        const slug = name.toLowerCase().replace(/[^a-z]+/g, "-") + "-" + kits + (withBoxes ? "-boxes" : "-noboxes") + (binsOn ? "-binson" : "-binsoff");
         const file = "/tmp/alooma-matrix-" + slug + ".pdf";
         const pages = await matrixPrint(pg, name, kits, file);
-        console.log("MATRIX " + name + " " + kits + " boxes=" + withBoxes + " -> " + pages + " pages");
+        console.log("MATRIX " + name + " " + kits + " boxes=" + withBoxes + " bins=" + binsOn + " -> " + pages + " pages");
         matrixResults.push({ name, kits, withBoxes, pages, file });
         if (name === "The Cakery") {
-          ok(pages >= 2, "matrix: CAK-" + kits + " boxes=" + withBoxes + " still flows (expected exception, " + pages + " pages)");
+          ok(pages >= 2, "matrix: CAK-" + kits + " boxes=" + withBoxes + " bins=" + binsOn + " still flows (expected exception, " + pages + " pages)");
         } else {
-          ok(pages === 1, "matrix: " + name + "-" + kits + " boxes=" + withBoxes + " fits one label (" + pages + " pages)");
+          ok(pages === 1, "matrix: " + name + "-" + kits + " boxes=" + withBoxes + " bins=" + binsOn + " fits one label (" + pages + " pages)");
           if (pages > 1) {
             const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(file)) }).promise;
             const p2 = await doc.getPage(2);
             const t2 = (await p2.getTextContent()).items.map(it => it.str).join(" ");
-            console.log("MATRIX SPILL " + name + "-" + kits + " boxes=" + withBoxes + " page 2 holds: " + t2.slice(0, 300));
+            console.log("MATRIX SPILL " + name + "-" + kits + " boxes=" + withBoxes + " bins=" + binsOn + " page 2 holds: " + t2.slice(0, 300));
           }
         }
       }
     }
     await pg.close();
+    }
   }
   /* Longest 1-label craft, for the report PNG: most rows among the
      1-page sheets (boxes case preferred — the fuller sheet). The PDF
@@ -368,13 +371,14 @@ try {
   const onePage = matrixResults.filter(r => r.pages === 1).sort((a, b) => rowCount(b.name) - rowCount(a.name));
   const longest = onePage.find(r => r.withBoxes) || onePage[0];
   if (longest) console.log("MATRIX longest 1-label craft: " + longest.name + " (" + rowCount(longest.name) + " rows) -> " + longest.file);
-  /* Item-11 decision, part B5: every current item name fits ONE line on
-     the 4x6 pack sheet. Render all 6 crafts at 6 kits with bins OFF and
-     ON (bins-on is the strict case — the Bin column narrows Item), group
-     each page's PDF text items into visual lines by y, and require every
-     item name to appear whole on a single line. A wrapped name fails the
-     run: per the decision, a wrap is reported, not silently accepted. */
-  async function openNamePage(binsOn) {
+  /* Bins-on sheet fix (item-11 follow-up): the Bin column is sized to
+     "888" (styles.css td.bin 21pt), so Item gains ~19pt. The sheet check
+     now asserts: bins-off 1 line, bins-on at most 2 lines (never 3+),
+     nothing cut off (no text past the page edge), and page counts
+     (non-Cakery 1 label, Cakery at most 2) at 6 AND 36 kits, bins on and
+     off. A stress craft (per 888, kits 6) puts "888" in every number
+     cell and measures the real Bin/Item column widths from the PDF. */
+  async function openSheetPage(binsOn, recipes, customItems) {
     const pg = await browser.newPage();
     await pg.evaluateOnNewDocument(() => {
       localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
@@ -386,10 +390,15 @@ try {
     rm.settings.features.boxes = false;
     rm.settings.features.bins = binsOn;
     rm.settings.boxRules = [];
+    if (recipes) rm.settings.recipes = recipes;
+    if (customItems) {
+      rm.settings.customItems = customItems;
+      customItems.forEach(ci => { rm.inventory[ci.id] = { qty: 10000, threshold: null }; });
+    }
     pg.on("request", req => {
       const url = req.url();
       if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: CORS, body: "" });
-      if (url.includes("/contents/data.json")) return req.respond({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ sha: "sha-names", content: b64e(JSON.stringify(rm)) }) });
+      if (url.includes("/contents/data.json")) return req.respond({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ sha: "sha-sheet", content: b64e(JSON.stringify(rm)) }) });
       if (url.startsWith("https://api.github.com")) return req.respond({ status: 404, headers: CORS, body: "{}" });
       req.continue();
     });
@@ -397,44 +406,125 @@ try {
     await sleep(500);
     return pg;
   }
-  async function pdfLineTexts(file) {
+  async function pdfSheetAnalysis(file) {
     const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(file)) }).promise;
-    const lines = [];
+    const pages = [];
+    let maxRight = 0, pageW = 288;
     for (let i = 1; i <= doc.numPages; i++) {
-      const tc = await (await doc.getPage(i)).getTextContent();
-      const items = tc.items.filter(it => it.str.trim()).map(it => ({ s: it.str, x: it.transform[4], y: it.transform[5] }));
-      items.sort((a, b) => b.y - a.y);
+      const pg = await doc.getPage(i);
+      pageW = pg.getViewport({ scale: 1 }).width;
+      const tc = await pg.getTextContent();
+      const words = tc.items.filter(it => it.str.trim()).map(it => ({ s: it.str, x: it.transform[4], y: it.transform[5], w: it.width }));
+      for (const wd of words) maxRight = Math.max(maxRight, wd.x + wd.w);
+      words.sort((a, b) => b.y - a.y);
       const groups = [];
-      for (const it of items) {
+      for (const it of words) {
         const g = groups.find(g => Math.abs(g.y - it.y) <= 2);
         if (g) g.items.push(it); else groups.push({ y: it.y, items: [it] });
       }
+      const lines = [];
       for (const g of groups) {
         g.items.sort((a, b) => a.x - b.x);
         lines.push(g.items.map(it => it.s).join(" ").replace(/\s+/g, " ").trim());
       }
+      pages.push({ lines, words });
     }
-    return lines;
+    const hw = pages[0].words;
+    const hit = hw.find(wd => wd.s === "Item");
+    const hrow = hit ? hw.filter(wd => Math.abs(wd.y - hit.y) <= 2) : [];
+    const hx = (s) => { const wd = hrow.find(wd => wd.s === s); return wd ? wd.x : null; };
+    return { pages, lines: pages.flatMap(p => p.lines), maxRight, pageW, numPages: doc.numPages, headerX: { item: hx("Item"), bin: hx("Bin"), per: hx("Per") } };
+  }
+  /* A name's words run contiguously within its row, except a 2-line name:
+     Bin/Per-6/Total align to the first line's baseline, so the first line
+     holds name-part-1 + the other cells and the second holds name-part-2
+     alone. The matcher consumes name words in order and jumps to the next
+     line whenever the current word is not the next name word. It tries
+     EVERY occurrence of the first word and keeps the smallest span: two
+     items can share a first word ("Miniatures tray #1" vs "Miniatures
+     bread bag"), and a greedy first-match from the wrong row would
+     false-fail the second name. */
+  function linesForName(name, lines) {
+    const words = name.split(/\s+/);
+    let best = Infinity;
+    for (let i = 0; i < lines.length; i++) {
+      const lw0 = lines[i].split(/\s+/);
+      for (let j = 0; j < lw0.length; j++) {
+        if (lw0[j] !== words[0]) continue;
+        let wi = 0, li = i, k = j, used = 1, lw = lw0;
+        while (wi < words.length) {
+          if (k < lw.length && lw[k] === words[wi]) { wi++; k++; }
+          else if (li + 1 < lines.length) { li++; used++; lw = lines[li].split(/\s+/); k = 0; }
+          else break;
+        }
+        if (wi === words.length && used < best) best = used;
+      }
+    }
+    return best;
+  }
+  /* Stress sheet: per 888 at 6 kits puts "888" in Per 6 and Total. The
+     Bin cell must be EMPTY so the Bin column sits at its CSS width —
+     every built-in item has a default "BIN-NN" code (logic.js
+     defaultBins), which would make the column content-driven (~50pt)
+     and hide the CSS change, so the stress line uses a test-only custom
+     item (no default code). The Bin width assertion fails on the old
+     40pt column (~53pt total) and passes on the 888-sized one (~34pt). */
+  {
+    const stressRecipes = L.builtInRecipes().concat([{ id: "stress888", code: "STR", name: "Stress 888", hidden: false, lines: [{ item: "stress-item-888", qty: 888, per: 6 }] }]);
+    const pg = await openSheetPage(true, stressRecipes, [{ id: "stress-item-888", name: "Stress Item", unit: "" }]);
+    await pg.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Stress 888")).click());
+    await pg.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
+    await sleep(300);
+    await pg.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
+    await sleep(300);
+    const file = "/tmp/alooma-sheet-stress888.pdf";
+    await pg.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
+    const a = await pdfSheetAnalysis(file);
+    ok(a.lines.some(ln => (ln.match(/888/g) || []).length >= 2), "stress sheet: Per 6 and Total both show 888");
+    const binW = (a.headerX.per !== null && a.headerX.bin !== null) ? Math.round(a.headerX.per - a.headerX.bin) : null;
+    const itemW = (a.headerX.bin !== null && a.headerX.item !== null) ? Math.round(a.headerX.bin - a.headerX.item) : null;
+    console.log("STRESSWIDTHS bins-on Bin=" + binW + "pt Item=" + itemW + "pt");
+    ok(binW !== null && binW < 48, "stress sheet: Bin column under 48pt total (888-sized, was ~53pt at 40pt) (Bin=" + binW + "pt)");
+    await pg.close();
   }
   for (const binsOn of [false, true]) {
-    const pg = await openNamePage(binsOn);
+    const pg = await openSheetPage(binsOn);
     for (const name of MATRIX_CRAFTS) {
-      await pg.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);
-      await pg.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
-      await sleep(300);
-      await pg.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
-      await sleep(300);
-      const file = "/tmp/alooma-names-" + name.toLowerCase().replace(/[^a-z]+/g, "-") + "-6-bins" + (binsOn ? "on" : "off") + ".pdf";
-      await pg.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
-      const lines = await pdfLineTexts(file);
-      const craft = Object.values(L.CRAFTS).find(c => c.name === name);
-      const names = craft.items.map(it => L.ITEMS[it.item]);
-      const wrapped = names.filter(nm => !lines.some(ln => ln.includes(nm)));
-      ok(wrapped.length === 0, "label names one line: " + name + "-6 bins-" + (binsOn ? "on" : "off") + " (all " + names.length + " names on one line)" + (wrapped.length ? " \u2014 wraps: " + wrapped.join(", ") : ""));
+      for (const kits of MATRIX_KITS) {
+        await pg.evaluate(n => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes(n)).click(), name);
+        await pg.evaluate(k => { document.querySelector(`.kits-chip[data-for="pack"][data-kits="${k}"]`).click(); }, kits);
+        await sleep(300);
+        await pg.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
+        await sleep(300);
+        const file = "/tmp/alooma-sheet-" + name.toLowerCase().replace(/[^a-z]+/g, "-") + "-" + kits + "-bins" + (binsOn ? "on" : "off") + ".pdf";
+        await pg.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
+        const a = await pdfSheetAnalysis(file);
+        const craft = Object.values(L.CRAFTS).find(c => c.name === name);
+        /* Names from computePack rows, not recipe lines: the JCA clay-tray
+           pair line expands to "Clay Tray A" + "Clay Tray B" rows on the
+           sheet, and the raw line has no .item (L.ITEMS[undefined]). */
+        const names = L.computePack(craft.id, kits).map(r => L.ITEMS[r.item]).filter(Boolean);
+        const tag = "sheet names: " + name + "-" + kits + " bins-" + (binsOn ? "on" : "off");
+        if (!binsOn) {
+          const wrapped = names.filter(nm => !a.lines.some(ln => ln.includes(nm)));
+          ok(wrapped.length === 0, tag + " (all " + names.length + " names on one line)" + (wrapped.length ? " \u2014 wraps: " + wrapped.join(", ") : ""));
+        } else {
+          const over2 = names.map(nm => ({ nm, n: linesForName(nm, a.lines) })).filter(x => x.n > 2).map(x => x.nm + " (" + x.n + " lines)");
+          ok(over2.length === 0, tag + " (all " + names.length + " names at most 2 lines)" + (over2.length ? " \u2014 over 2 lines: " + over2.join(", ") : ""));
+        }
+        ok(a.maxRight <= a.pageW + 1, tag + ": nothing cut off past the page edge (maxRight=" + Math.round(a.maxRight) + " pageW=" + Math.round(a.pageW) + ")");
+        if (name === "The Cakery") {
+          ok(a.numPages <= 2, tag + ": Cakery at most 2 labels (" + a.numPages + " pages)");
+        } else {
+          ok(a.numPages === 1, tag + ": fits one label (" + a.numPages + " pages)");
+        }
+        if (!binsOn && kits === 6 && name === "Blooming Mirrors" && a.headerX.per !== null && a.headerX.item !== null) {
+          console.log("SHEETWIDTHS bins-off BM-6 Item=" + Math.round(a.headerX.per - a.headerX.item) + "pt");
+        }
+      }
     }
     await pg.close();
   }
-
 
   /* Fix-round items 8 + 10 proof, on a throwaway page that never calls
      page.pdf (this page is closed right after, so no emulated media
@@ -444,7 +534,7 @@ try {
      footer draws no border of its own (the table border is the single
      line above BOXES). */
   {
-    const pg = await openMatrixPage(true);
+    const pg = await openMatrixPage(true, false);
     await pg.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Tambourines")).click());
     await pg.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="36"]').click(); });
     await sleep(300);

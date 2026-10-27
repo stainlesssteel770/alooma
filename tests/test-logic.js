@@ -114,7 +114,7 @@ eq(mig.boxes, ["Small box", "Box B", "Box C"], "old A/B/C settings migrate to a 
 eq(L.boxRuleFor(mig, "cak", 12), ["Small box", "Box C"], "rules migrate from letters to names");
 const allBins = L.defaultBins();
 eq(Object.keys(allBins).length, 62, "a placeholder bin for every item");
-eq(allBins["tree-mirror"], "BIN-01", "first inventory item is BIN-01");
+eq(allBins["tree-mirror"], "B01", "first inventory item is B01");
 eq(L.binFor({ bins: {} }, "scissors"), allBins["scissors"], "binFor falls back to the placeholder");
 eq(L.binFor({ bins: { scissors: "BIN-99" } }, "scissors"), "BIN-99", "binFor uses the set bin");
 

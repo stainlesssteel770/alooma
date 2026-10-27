@@ -433,7 +433,15 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   #print-area td.counted-cell { width: 0.65in; }
   #print-area td.qty.regular { padding-left: 3pt; padding-right: 3pt; }
   #print-area td.tick, #print-area th.tick { width: 16pt; text-align: center; }
-  #print-area td.bin { font-weight: 700; white-space: nowrap; width: 40pt; }
+  /* Bins-on sheet fix: the Bin column is sized to "888", the widest
+     3-digit value at 12.5pt Arial bold (measured 20.86pt; the "Bin"
+     header at 20.14pt does not set the width), plus normal cell
+     padding — 21pt content width, down from 40pt, freeing ~19pt to the
+     Item column. No font size or row-height change. Bin codes longer
+     than this still display: auto layout grows the column past the CSS
+     width rather than clipping. Shared with count sheets, where it only
+     widens Item. */
+  #print-area td.bin { font-weight: 700; white-space: nowrap; width: 21pt; }
   #print-area .tick-box { display: inline-block; width: 10pt; height: 10pt; border: 1.5pt solid #000; }
   #print-area tr.low td { font-weight: 700; }
   #print-area tr.low td:first-child { border-left: 5pt solid #000; }

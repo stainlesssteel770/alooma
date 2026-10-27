@@ -391,6 +391,12 @@ try {
      so no prompt can interrupt the tour. */
   for (const binsOn of [false, true]) {
     remoteData.settings.features.bins = binsOn;
+    /* Bins-on sheet fix: seed a 3-digit On-hand count (888) so the
+       counts-visible assertion proves Need/On-hand cells hold 888
+       without clipping. Need stays small at 6 kits, but its 40px column
+       holds 888 at 16.5px bold by arithmetic (3 digits ~27px + padding).
+       Item-12 does not use scissors. */
+    remoteData.inventory["scissors"] = { qty: 888, threshold: 250 };
     for (const [w, h] of [[360, 740], [375, 667], [390, 664], [390, 844]]) {
       await page.setViewport({ width: w, height: h });
       await page.goto("http://127.0.0.1:8911/index.html", { waitUntil: "networkidle0", timeout: 30000 });

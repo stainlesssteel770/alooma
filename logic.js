@@ -487,14 +487,14 @@
     return typeof boxName === "string" ? boxName : "Box " + boxName;
   }
 
-  /* Bin locations (Batch C2): placeholders BIN-01, BIN-02... in inventory
+  /* Bin locations (Batch C2): placeholders B01, B02... in inventory
      order until an item's bin is set in Inventory. */
   function defaultBins() {
     var map = {}, n = 0;
     inventoryGroups().forEach(function (g) {
       g.items.forEach(function (id) {
         n++;
-        map[id] = "BIN-" + (n < 10 ? "0" : "") + n;
+        map[id] = "B" + (n < 10 ? "0" : "") + n;
       });
     });
     return map;
