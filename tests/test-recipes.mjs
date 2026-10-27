@@ -244,7 +244,11 @@ try {
   eq(qtyOf(rows, "Heat gun"), "1", "browser: defaults HCB-6 heat gun 1");
   rows = await (async () => { await pick("Judaic Clay-Art", 6); return printSheet(); })();
   eq(qtyOf(rows, "Clay Tray A"), "1", "browser: defaults JCA-6 tray A 1");
-  eq(qtyOf(rows, "Clay Tray B"), "0", "browser: defaults JCA-6 tray B 0");
+  /* Round 2 item 4: the JCA-6 sheet hides 0/0 rows, so Tray B (the pair's
+     unused tray at 6 kits) is absent from the sheet — qtyOf returns null,
+     not "0". The pack data still computes Tray B as 0; only the sheet
+     hides it. */
+  eq(qtyOf(rows, "Clay Tray B"), null, "browser: defaults JCA-6 tray B hidden on sheet (0/0 row)");
   eq(qtyOf(rows, "JCA Instructions"), "2", "browser: defaults JCA-6 instructions 2");
 
   /* ---- Section B: first real save carries the migrated recipes ---- */
