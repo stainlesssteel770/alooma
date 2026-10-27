@@ -540,7 +540,14 @@ try {
         /* Names from computePack rows, not recipe lines: the JCA clay-tray
            pair line expands to "Clay Tray A" + "Clay Tray B" rows on the
            sheet, and the raw line has no .item (L.ITEMS[undefined]). */
-        const names = L.computePack(craft.id, kits).map(r => L.ITEMS[r.item]).filter(Boolean);
+        /* Round 2 item 4: the pack sheet hides 0/0 rows, so the expected
+           names are the computePack rows minus rows whose 6-kit rate and
+           current qty are both 0 (the JCA pair's unused tray at 6 kits).
+           Same rule the sheet builder applies; every other row still
+           expects its name on the sheet. */
+        const per6map = {};
+        L.computePack(craft.id, 6).forEach(r => { per6map[r.item] = r.qty; });
+        const names = L.computePack(craft.id, kits).filter(r => per6map[r.item] !== 0 || r.qty !== 0).map(r => L.ITEMS[r.item]).filter(Boolean);
         const tag = "sheet names: " + name + "-" + kits + " bins-" + (binsOn ? "on" : "off");
         if (!binsOn) {
           const wrapped = names.filter(nm => !a.lines.some(ln => ln.includes(nm)));
@@ -905,6 +912,70 @@ try {
   }
 
   } catch (e) { fail++; console.log("FAIL (borders): " + e.message); }
+
+
+  try {
+  /* Round 2 item 4: the PACK sheet hides rows that are 0/0 (Per 6 = 0
+     and Total = 0) — the JCA alternating pair shows Clay Tray B as 0/0
+     at 6 kits (only Tray A is used) but 1/1 at 12 kits. The filter lives
+     in the pack-sheet builder only: computePack, the inventory list,
+     the hand-pack checklist and the COUNT sheet all still show the row. */
+  async function openZeroPage() {
+    const pg = await browser.newPage();
+    await pg.evaluateOnNewDocument(() => {
+      localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
+    });
+    await pg.setRequestInterception(true);
+    const rm = JSON.parse(JSON.stringify(remote));
+    rm.history = [];
+    Object.keys(rm.inventory).forEach(k => { rm.inventory[k].qty = 100; rm.inventory[k].threshold = null; });
+    rm.settings.features.boxes = false;
+    rm.settings.features.bins = false;
+    rm.settings.boxRules = [];
+    pg.on("request", req => {
+      const url = req.url();
+      if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" }, body: "" });
+      if (url.includes("/contents/data.json")) return req.respond({ status: 200, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" }, contentType: "application/json", body: JSON.stringify({ sha: "sha-zero", content: b64e(JSON.stringify(rm)) }) });
+      if (url.startsWith("https://api.github.com")) return req.respond({ status: 404, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" }, body: "{}" });
+      req.continue();
+    });
+    await pg.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
+    await sleep(500);
+    return pg;
+  }
+  async function pdfText(pdf) {
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(pdf)) }).promise;
+    let out = "";
+    for (let p = 1; p <= doc.numPages; p++) {
+      const tc = await (await doc.getPage(p)).getTextContent();
+      out += tc.items.map(it => it.str).join(" ") + "\n";
+    }
+    return out;
+  }
+  for (const kits of [6, 12]) {
+    const pg = await openZeroPage();
+    await pg.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Judaic")).click());
+    await pg.evaluate(k => { document.querySelector('.kits-chip[data-for="pack"][data-kits="' + k + '"]').click(); }, kits);
+    await sleep(300);
+    await pg.evaluate(() => { document.querySelector("#btn-pack-print").click(); });
+    await sleep(300);
+    const file = "/tmp/alooma-zero-jca-" + kits + ".pdf";
+    await pg.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
+    await pg.close();
+    const text = await pdfText(file);
+    ok(text.includes("Clay Tray A"), "zero-rows: JCA " + kits + " pack sheet shows Clay Tray A");
+    if (kits === 6) ok(!text.includes("Clay Tray B"), "zero-rows: JCA 6 pack sheet hides Clay Tray B (0/0)");
+    else ok(text.includes("Clay Tray B"), "zero-rows: JCA 12 pack sheet shows Clay Tray B");
+  }
+  const pgc = await openZeroPage();
+  await pgc.evaluate(() => { document.querySelector("#btn-print-count").click(); });
+  await sleep(400);
+  await pgc.pdf({ path: "/tmp/alooma-zero-count.pdf", preferCSSPageSize: true, printBackground: true });
+  await pgc.close();
+  const countText = await pdfText("/tmp/alooma-zero-count.pdf");
+  ok(countText.includes("Clay Tray B"), "zero-rows: count sheet still shows Clay Tray B");
+
+  } catch (e) { fail++; console.log("FAIL (zero-rows): " + e.message); }
 
   console.log(fail ? "PRINT CHECKS FAILED (" + fail + ")" : "all print checks passed");
 } finally {

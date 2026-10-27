@@ -1877,6 +1877,12 @@
     var perRate = {};
     L.computePack(craftId, 6).forEach(function (r) { per6[r.item] = r.qty; perRate[r.item] = r.per; });
     if (opts.pack) opts.pack.forEach(function (r) { if (r.per6 !== undefined) per6[r.item] = r.per6; if (r.per !== undefined) perRate[r.item] = r.per; });
+    /* Round 2 item 4: the pack sheet hides 0/0 rows (Per 6 = 0 and
+       Total = 0) — the JCA pair's unused tray at 6 kits. Sheet only:
+       computePack, the inventory list, the hand-pack checklist and the
+       count sheet all still show the row. Unknown rows (no per6 entry)
+       are kept, never hidden. */
+    sheetPack = sheetPack.filter(function (r) { return per6[r.item] !== 0 || r.qty !== 0; });
     var rows = sheetPack.map(function (r) {
       return '<tr><td class="tick"><span class="tick-box"></span></td><td>' + esc(r.name) + "</td>" +
         (binsOn ? '<td class="bin">' + esc(L.binFor(settings(), r.item)) + "</td>" : "") +
