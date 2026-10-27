@@ -375,45 +375,61 @@ try {
     await page.click("#btn-print-menu"); await sleep(150);
   }
 
-  /* Fix-round item 11: phone checklist names on one line, by layout
-     only (no font change). Every craft at 6 kits, bins off AND on,
-     at the two phone gate sizes (360x740, 375x667). Line count from
-     distinct Range tops over each .row-name span — the bin tag is a
-     separate span below the name and must not count. The seed flip +
-     reload is view-only-safe (the mock serves the current seed on GET);
-     picking a craft never saves, so no prompt can interrupt the tour. */
+  /* Phone checklist rule (Mark's 2026-10-26 item-11 decision, part A):
+     ANY item name may wrap to at most 2 lines on the phone checklist
+     (360x740, 375x667, 390x664, 390x844) — never 3+ — and the Need /
+     On-hand counts stay fully visible and readable next to every name.
+     The loop reads the WHOLE catalog from the live picker buttons
+     (built-ins + any customs present) and measures every row, so future
+     items are tested automatically with no hard-coded name list. No layout
+     squeeze, no renames. Line count from distinct Range tops over each
+     .row-name span — the bin tag is a separate span below the name and
+     must not count. The checklist shows only in Hand-pack mode
+     (renderPackActions: #pack-order hidden unless packMode === "hand"),
+     so the block taps Hand first; the seed flip + reload is view-only-safe
+     (the mock serves the current seed on GET); picking a craft never saves,
+     so no prompt can interrupt the tour. */
   for (const binsOn of [false, true]) {
     remoteData.settings.features.bins = binsOn;
-    for (const [w, h] of [[360, 740], [375, 667]]) {
+    for (const [w, h] of [[360, 740], [375, 667], [390, 664], [390, 844]]) {
       await page.setViewport({ width: w, height: h });
       await page.goto("http://127.0.0.1:8911/index.html", { waitUntil: "networkidle0", timeout: 30000 });
       await sleep(400);
       await tab("pack");
       /* The page's own buttons are the craft list — test-layout never
          imports L, so the old Node-side L.CRAFTS loop crashed here.
-         Buttons are exactly what a packer can pick; the seed has no
-         hidden crafts, so coverage is identical. Guard the count so
-         an empty list can never pass vacuously. */
+         Buttons are exactly what a packer can pick. Guard at least six
+         so an empty list can never pass vacuously — but NOT exactly six:
+         a custom craft adds a button, and the loop must measure it too. */
       const craftNames = await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn .craft-text")].map(e => e.childNodes[0].textContent.trim()));
-      ok(craftNames.length === 6, "item11 " + w + " bins-" + (binsOn ? "on" : "off") + ": six craft buttons on the pack picker", craftNames.join(", "));
+      ok(craftNames.length >= 6, "item11 " + w + " bins-" + (binsOn ? "on" : "off") + ": at least six craft buttons on the pack picker", craftNames.join(", "));
       for (const craftName of craftNames) {
         await pickCraft("#pack-crafts", craftName);
         await page.evaluate(() => { document.querySelector('.kits-chip[data-for="pack"][data-kits="6"]').click(); });
         await sleep(250);
-        /* The checklist shows only in Hand-pack mode (renderPackActions:
-           #pack-order stays hidden unless packMode === "hand"). Runs 6-7
-           measured a hidden table (zero boxes) because this block never
-           tapped Hand. Tap it — a plain button, works view-only, 6 kits
-           needs no large confirm — then measure the real packer checklist. */
+        /* Tap Hand — the checklist shows only in Hand-pack mode. A plain
+           button, works view-only, 6 kits needs no large confirm. */
         await page.evaluate(() => { document.querySelector("#btn-pack-hand").click(); });
         await sleep(250);
         ok((await page.evaluate(() => !document.querySelector("#pack-order").hidden)) === true, "item11 " + w + " bins-" + (binsOn ? "on" : "off") + " " + craftName + ": hand-pack checklist visible");
-        const bad = await page.evaluate(() => [...document.querySelectorAll("#pack-table tbody .row-name")].map(el => {
-          const r = document.createRange(); r.selectNodeContents(el);
-          const lines = [...new Set([...r.getClientRects()].map(x => Math.round(x.top)))].length;
-          return lines === 1 ? null : el.textContent.trim();
-        }).filter(Boolean));
-        ok(bad.length === 0, "item11 " + w + " bins-" + (binsOn ? "on" : "off") + " " + craftName + ": every checklist name on one line", bad.join(", "));
+        const res = await page.evaluate(() => {
+          const table = document.querySelector("#pack-table");
+          const tRect = table ? table.getBoundingClientRect() : null;
+          const rows = [...document.querySelectorAll("#pack-table tbody tr")].map(row => {
+            const nameEl = row.querySelector(".row-name");
+            const r = document.createRange(); r.selectNodeContents(nameEl);
+            const lines = [...new Set([...r.getClientRects()].map(x => Math.round(x.top)))].length;
+            const cells = row.querySelectorAll("td");
+            const over = (c) => { if (!c || !tRect) return true; const cr = c.getBoundingClientRect(); return cr.left < tRect.left - 1 || cr.right > tRect.right + 1; };
+            return { name: nameEl.textContent.trim(), lines, countOver: over(cells[2]) || over(cells[3]) };
+          });
+          return { rows, tableRight: tRect ? tRect.right : 0, vw: window.innerWidth };
+        });
+        const over2 = res.rows.filter(x => x.lines < 1 || x.lines > 2).map(x => x.name + " (" + x.lines + " lines)");
+        ok(over2.length === 0, "item11 " + w + " bins-" + (binsOn ? "on" : "off") + " " + craftName + ": every checklist name at most 2 lines", over2.join(", "));
+        const countBad = res.rows.filter(x => x.countOver).map(x => x.name + " (" + x.lines + " lines)");
+        ok(countBad.length === 0, "item11 " + w + " bins-" + (binsOn ? "on" : "off") + " " + craftName + ": Need/On-hand counts fully visible next to every name", countBad.join(", "));
+        ok(res.tableRight <= res.vw + 1, "item11 " + w + " bins-" + (binsOn ? "on" : "off") + " " + craftName + ": checklist table fits the viewport width", "tableRight=" + Math.round(res.tableRight) + " vw=" + res.vw);
       }
     }
   }
