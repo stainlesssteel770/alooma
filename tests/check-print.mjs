@@ -430,7 +430,7 @@ try {
       const craft = Object.values(L.CRAFTS).find(c => c.name === name);
       const names = craft.items.map(it => L.ITEMS[it.item]);
       const wrapped = names.filter(nm => !lines.some(ln => ln.includes(nm)));
-      ok(wrapped.length === 0, "label names one line: " + name + "-6 bins-" + (binsOn ? "on" : "off") + " (all " + names.length + " names on one line)", wrapped.join(", "));
+      ok(wrapped.length === 0, "label names one line: " + name + "-6 bins-" + (binsOn ? "on" : "off") + " (all " + names.length + " names on one line)" + (wrapped.length ? " \u2014 wraps: " + wrapped.join(", ") : ""));
     }
     await pg.close();
   }
