@@ -774,6 +774,25 @@ async function tab(name) {
   await page.click("#btn-close-reorder");
   await sleep(150);
 
+  /* Install support: manifest + icons make the site installable in
+     Chrome on Android (read-only checks; no state touched) */
+  await chk(async () => eq(await page.$eval('link[rel="manifest"]', e => e.getAttribute("href")), "manifest.json", "install: manifest linked"), "install: manifest linked");
+  await chk(async () => eq(await page.$eval('meta[name="theme-color"]', e => e.getAttribute("content")), "#2457A6", "install: theme color set"), "install: theme color set");
+  await chk(async () => eq(await page.$eval('link[rel="apple-touch-icon"]', e => e.getAttribute("href")), "icon-192.png", "install: apple touch icon linked"), "install: apple touch icon linked");
+  /* Every read below lives inside chk: a missing manifest or icon must
+     record failures, never crash the suite (the first control run died
+     on the bare fetch of a 404 manifest). */
+  let manifest = null;
+  await chk(async () => { manifest = await page.evaluate(() => fetch("manifest.json").then(r => r.json())); }, "install: manifest parses as JSON");
+  await chk(async () => eq(manifest && manifest.name, "Alooma", "install: manifest name"), "install: manifest name");
+  await chk(async () => eq(manifest && manifest.short_name, "Alooma", "install: manifest short_name"), "install: manifest short_name");
+  await chk(async () => eq(manifest && manifest.display, "standalone", "install: manifest display standalone"), "install: manifest display standalone");
+  await chk(async () => eq(!!(manifest && manifest.start_url) && !!(manifest && manifest.scope), true, "install: manifest start_url + scope present"), "install: manifest start_url + scope present");
+  await chk(async () => { const sizes = (manifest && manifest.icons || []).map(i => i.sizes); eq(sizes.includes("192x192") && sizes.includes("512x512"), true, "install: manifest lists 192 + 512 icons"); }, "install: manifest lists 192 + 512 icons");
+  const pngSize = (buf) => (buf[0] === 0x89 && buf[1] === 0x50) ? { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) } : null;
+  await chk(async () => { const s = pngSize(fs.readFileSync(path.join(ROOT, "icon-192.png"))); eq(s && s.w === 192 && s.h === 192, true, "install: icon-192.png is a 192x192 PNG"); }, "install: icon-192.png is a 192x192 PNG");
+  await chk(async () => { const s = pngSize(fs.readFileSync(path.join(ROOT, "icon-512.png"))); eq(s && s.w === 512 && s.h === 512, true, "install: icon-512.png is a 512x512 PNG"); }, "install: icon-512.png is a 512x512 PNG");
+
   /* ---------- Batch C: default boxes + bin locations ---------- */
   const waitRemote = async (fn, label) => { for (let i = 0; i < 40; i++) { if (fn()) return; await sleep(150); } throw new Error("timeout waiting: " + label); };
   const waitDom = async (fn, label) => { for (let i = 0; i < 40; i++) { if (await page.evaluate(fn)) return; await sleep(150); } throw new Error("timeout waiting: " + label); };

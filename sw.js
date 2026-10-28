@@ -10,7 +10,7 @@
    and the version bump makes the live check decisive — activate still
    deletes any cache that isn't current. */
 var CACHE = "alooma-shell-v2";
-var SHELL = ["./", "index.html", "app.js", "logic.js", "styles.css"];
+var SHELL = ["./", "index.html", "app.js", "logic.js", "styles.css", "manifest.json", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", function (e) {
   e.waitUntil(
     caches.open(CACHE).then(function (c) { return c.addAll(SHELL); })
