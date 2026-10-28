@@ -1,6 +1,7 @@
 {
   "name": "Alooma",
   "short_name": "Alooma",
+  "id": "/alooma/",
   "description": "Warehouse packing helper",
   "start_url": ".",
   "scope": ".",
