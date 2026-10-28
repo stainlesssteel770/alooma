@@ -199,7 +199,7 @@
     </div>
     <div id="reorder-panel" class="count-entry" hidden>
       <h3>Reorder list</h3>
-      <p class="hint">Everything at or under its low-stock warning level. The order quantity starts at 2 × warning level − on hand — change any number before printing.</p>
+      <p class="hint">Everything at or under its low-stock warning level. The order quantity starts at your Reorder quantity setting, or 2 × warning level − on hand when it is unset — change any number before printing.</p>
       <div id="reorder-list"></div>
       <div class="btn-row">
         <button id="btn-print-reorder" class="btn btn-primary">Print reorder list</button>
@@ -298,6 +298,16 @@
       <h3>Bin locations</h3>
       <p class="hint">Each item's shelf bin — shown on the pack list, the packing sheet and the count sheet, and used by the "By bin" sort. Off by default. To set one: Inventory → tap the item → Bin.</p>
       <label class="toggle-row editor-only"><input type="checkbox" id="set-bins-on"> Show bin locations</label>
+    </div>
+
+    <div class="card">
+      <h3>Reorder</h3>
+      <p class="hint">When an item is at or under its low-stock warning level it appears on the Inventory tab's Reorder list. The quantity below is the default order amount for every low item — change any number on the list before printing.</p>
+      <label class="editor-only">Reorder quantity
+        <input type="number" id="set-reorder-qty" min="1" step="1" placeholder="Unset — use 2 × warning level − on hand" inputmode="numeric" aria-label="Default reorder quantity">
+      </label>
+      <label class="toggle-row editor-only"><input type="checkbox" id="set-hide-reorder-qtys"> Hide quantities on the printed reorder list</label>
+      <p class="hint">With quantities hidden, the printed list shows only the craft name and the items to reorder — no on-hand, warning-level, or order numbers.</p>
     </div>
 
     <div class="card">

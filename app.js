@@ -399,7 +399,7 @@
       var at = a.threshold != null ? a.threshold : null, bt = b.threshold != null ? b.threshold : null;
       if (at !== bt) fields[id] = { threshold: bt };
     });
-    ["features", "boxes", "boxRules", "bins", "recipes", "customItems"].forEach(function (k) {
+    ["features", "boxes", "boxRules", "bins", "recipes", "customItems", "reorderQty", "hideReorderQtys"].forEach(function (k) {
       if (JSON.stringify((from.settings || {})[k]) !== JSON.stringify((to.settings || {})[k])) setKeys[k] = clone((to.settings || {})[k]);
     });
     var empty = !Object.keys(deltas).length && !Object.keys(sets).length && !Object.keys(fields).length &&
@@ -2019,11 +2019,17 @@
   /* ---------- v3 E2: reorder list ---------- */
   function reorderItems() {
     var out = [];
+    /* Reorder quantity setting: a valid positive integer replaces the
+       2 × warning level − on hand default for every low item. Unset,
+       null, or invalid values fall back to the formula, so old data
+       (no key at all) behaves exactly as before. */
+    var rq = settings().reorderQty;
+    var fixed = (typeof rq === "number" && Number.isInteger(rq) && rq > 0) ? rq : null;
     L.inventoryGroups().forEach(function (g) {
       g.items.forEach(function (itemId) {
         var rec = state.data.inventory[itemId];
         if (rec && rec.threshold !== null && rec.threshold !== undefined && rec.qty <= rec.threshold) {
-          out.push({ item: itemId, name: L.ITEMS[itemId], group: g.name, qty: rec.qty, level: rec.threshold, order: Math.max(0, rec.threshold * 2 - rec.qty) });
+          out.push({ item: itemId, name: L.ITEMS[itemId], group: g.name, qty: rec.qty, level: rec.threshold, order: fixed !== null ? fixed : Math.max(0, rec.threshold * 2 - rec.qty) });
         }
       });
     });
@@ -2061,14 +2067,19 @@
       if (!groups[r.group]) { groups[r.group] = []; order.push(r.group); }
       groups[r.group].push(r);
     });
+    /* Reorder print option (separate from the quantity setting): with
+       quantities hidden the printed list is just the group name and the
+       item names — no on-hand, warning-level, or order numbers. */
+    var hideQtys = !!settings().hideReorderQtys;
     var date = printDate();
     var html = order.map(function (g) {
       var rows = groups[g].map(function (r) {
+        if (hideQtys) return "<tr><td>" + esc(r.name) + "</td></tr>";
         return "<tr><td>" + esc(r.name) + '</td><td class="qty">' + r.qty + '</td><td class="qty regular">' + r.level + '</td><td class="qty">' + (qtys[r.item] != null ? qtys[r.item] : r.order) + "</td></tr>";
       }).join("");
       return '<section class="print-page"><table><thead>' +
-        '<tr class="p-title"><th colspan="4"><div class="label-title">' + esc(g) + '</div><div class="label-sub">Reorder list · ' + date + "</div></th></tr>" +
-        "<tr><th>Item</th><th class='qty'>On hand</th><th class='qty'>Warning level</th><th class='qty'>Order qty</th></tr></thead>" +
+        '<tr class="p-title"><th colspan="' + (hideQtys ? 1 : 4) + '"><div class="label-title">' + esc(g) + '</div><div class="label-sub">Reorder list · ' + date + "</div></th></tr>" +
+        (hideQtys ? "<tr><th>Item</th></tr>" : "<tr><th>Item</th><th class='qty'>On hand</th><th class='qty'>Warning level</th><th class='qty'>Order qty</th></tr>") + "</thead>" +
         "<tbody>" + rows + "</tbody></table></section>";
     }).join("");
     printHtml(html);
@@ -2640,6 +2651,18 @@
     $("set-bins-on").checked = !!settings().features.bins;
   }
 
+  /* ---------- Settings: reorder quantity + hide-quantities print ---------- */
+  /* Two separate saved settings: reorderQty (a number, or null when
+     unset) and hideReorderQtys (a boolean, default false). Neither lives
+     in defaultSettings — like features.bulkTab, unset means the old
+     behavior (formula default, quantities shown). */
+  function renderReorderSettings() {
+    var q = $("set-reorder-qty");
+    if (q) q.value = (settings().reorderQty !== null && settings().reorderQty !== undefined) ? String(settings().reorderQty) : "";
+    var h = $("set-hide-reorder-qtys");
+    if (h) h.checked = !!settings().hideReorderQtys;
+  }
+
   /* ---------- Settings: Bulk tab toggle (brief A2, default OFF) ---------- */
   function renderBulkTabSetting() {
     $("set-bulk-on").checked = !!(settings().features && settings().features.bulkTab);
@@ -3007,6 +3030,7 @@
     renderBoxSettings();
     renderBinSettings();
     renderBulkTabSetting();
+    renderReorderSettings();
     renderNamesSetting();
     renderRecipesSetting();
     renderPack();
@@ -3144,6 +3168,28 @@
       if (!settings().features) settings().features = {};
       settings().features.bulkTab = $("set-bulk-on").checked;
       saveData("Bulk tab " + (settings().features.bulkTab ? "on" : "off")).then(function () { renderAll(); });
+    });
+    $("set-reorder-qty").addEventListener("change", function () {
+      if (!requireEditor()) { renderReorderSettings(); return; }
+      var raw = $("set-reorder-qty").value.trim();
+      if (raw === "") {
+        settings().reorderQty = null;
+        saveData("Reorder quantity cleared").then(function () { renderAll(); });
+        return;
+      }
+      var v = Number(raw);
+      if (!Number.isInteger(v) || v < 1) {
+        toast("Reorder quantity must be a whole number of 1 or more.");
+        renderReorderSettings();
+        return;
+      }
+      settings().reorderQty = v;
+      saveData("Reorder quantity " + v).then(function () { renderAll(); });
+    });
+    $("set-hide-reorder-qtys").addEventListener("change", function () {
+      if (!requireEditor()) { renderReorderSettings(); return; }
+      settings().hideReorderQtys = $("set-hide-reorder-qtys").checked;
+      saveData("Printed reorder list quantities " + (settings().hideReorderQtys ? "hidden" : "shown")).then(function () { renderAll(); });
     });
     /* Names save per device on change only (see renderNamesSetting) — no
        server save, and no editor gate: the fields are editor-only in the

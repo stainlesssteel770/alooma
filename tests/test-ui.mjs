@@ -726,6 +726,54 @@ async function tab(name) {
   await chk(async () => eq(await page.$eval("#btn-reorder", e => e.textContent), "Reorder · 1", "v3 E2: and it is back on the list"), "v3 E2: and it is back on the list");
   await closePanel("#delivery-entry", "#btn-cancel-delivery");
 
+  /* Reorder settings: the quantity setting beats the formula, and the
+     hide-quantities print option lists names only (cleanup restores the
+     old behavior so later sections are unaffected) */
+  await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
+  await sleep(250);
+  await chk(async () => eq(await page.$eval("#set-reorder-qty", e => e.value), "", "reorder settings: quantity input empty when unset"), "reorder settings: quantity input empty when unset");
+  await chk(async () => eq(await page.$eval("#set-hide-reorder-qtys", e => e.checked), false, "reorder settings: hide-quantities unchecked by default"), "reorder settings: hide-quantities unchecked by default");
+  await page.evaluate(() => { const i = document.querySelector("#set-reorder-qty"); i.value = "1000"; i.dispatchEvent(new Event("change", { bubbles: true })); });
+  await sleep(700);
+  await chk(async () => eq(remoteData.settings.reorderQty, 1000, "reorder settings: quantity 1000 saved"), "reorder settings: quantity 1000 saved");
+  await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
+  await sleep(250);
+  await page.click("#btn-reorder");
+  await sleep(250);
+  await chk(async () => eq(await page.$eval('#reorder-list input[data-item="scissors"]', e => e.value), "1000", "reorder settings: panel default is the setting, not the formula (was 255)"), "reorder settings: panel default is the setting, not the formula (was 255)");
+  await page.click("#btn-close-reorder");
+  await sleep(150);
+  await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
+  await sleep(250);
+  await page.click("#set-hide-reorder-qtys");
+  await sleep(700);
+  await chk(async () => eq(remoteData.settings.hideReorderQtys, true, "reorder settings: hide-quantities saved"), "reorder settings: hide-quantities saved");
+  await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
+  await sleep(250);
+  await page.click("#btn-reorder");
+  await sleep(250);
+  await page.click("#btn-print-reorder");
+  await sleep(250);
+  const reorderPrintNoQty = await page.$eval("#print-area", e => e.innerHTML);
+  await chk(async () => eq(reorderPrintNoQty.includes("Reorder list ·") && reorderPrintNoQty.includes("Shared items") && reorderPrintNoQty.includes("<td>Scissors</td>"), true, "reorder settings: names-only print keeps group + item"), "reorder settings: names-only print keeps group + item");
+  await chk(async () => eq(reorderPrintNoQty.includes("Order qty") || reorderPrintNoQty.includes("On hand") || reorderPrintNoQty.includes("Warning level") || reorderPrintNoQty.includes('class="qty"'), false, "reorder settings: names-only print has no quantity columns"), "reorder settings: names-only print has no quantity columns");
+  await page.click("#btn-close-reorder");
+  await sleep(150);
+  await page.evaluate(() => document.querySelector('[data-tab="settings"]').click());
+  await sleep(250);
+  await page.click("#set-hide-reorder-qtys");
+  await page.evaluate(() => { const i = document.querySelector("#set-reorder-qty"); i.value = ""; i.dispatchEvent(new Event("change", { bubbles: true })); });
+  await sleep(700);
+  await chk(async () => eq(remoteData.settings.hideReorderQtys, false, "reorder settings cleanup: hide off again"), "reorder settings cleanup: hide off again");
+  await chk(async () => eq(remoteData.settings.reorderQty, null, "reorder settings cleanup: quantity cleared"), "reorder settings cleanup: quantity cleared");
+  await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
+  await sleep(250);
+  await page.click("#btn-reorder");
+  await sleep(250);
+  await chk(async () => eq(await page.$eval('#reorder-list input[data-item="scissors"]', e => e.value), "255", "reorder settings cleanup: formula default restored"), "reorder settings cleanup: formula default restored");
+  await page.click("#btn-close-reorder");
+  await sleep(150);
+
   /* ---------- Batch C: default boxes + bin locations ---------- */
   const waitRemote = async (fn, label) => { for (let i = 0; i < 40; i++) { if (fn()) return; await sleep(150); } throw new Error("timeout waiting: " + label); };
   const waitDom = async (fn, label) => { for (let i = 0; i < 40; i++) { if (await page.evaluate(fn)) return; await sleep(150); } throw new Error("timeout waiting: " + label); };
