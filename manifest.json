@@ -1,10 +1,10 @@
 {
   "name": "Alooma",
   "short_name": "Alooma",
-  "id": "/alooma/",
   "description": "Warehouse packing helper",
   "start_url": ".",
   "scope": ".",
+  "id": "https://stainlesssteel770.github.io/alooma/",
   "display": "standalone",
   "background_color": "#2457A6",
   "theme_color": "#2457A6",
