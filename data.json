@@ -38,35 +38,35 @@
       "threshold": null
     },
     "tambourines": {
-      "qty": 460,
+      "qty": 448,
       "threshold": 1000
     },
     "tamb-embellishment-tray-large": {
-      "qty": 99,
+      "qty": 97,
       "threshold": null
     },
     "embellishment-containers": {
-      "qty": 6,
+      "qty": 4,
       "threshold": null
     },
     "wooden-mini-spoons": {
-      "qty": 700,
+      "qty": 688,
       "threshold": null
     },
     "wooden-picks": {
-      "qty": 2000,
+      "qty": 1988,
       "threshold": null
     },
     "tamb-placemats": {
-      "qty": 0,
+      "qty": -12,
       "threshold": null
     },
     "jerusalem-printouts": {
-      "qty": 0,
+      "qty": -12,
       "threshold": null
     },
     "tamb-instructions": {
-      "qty": 0,
+      "qty": -12,
       "threshold": null
     },
     "jca-frame": {
@@ -238,11 +238,11 @@
       "threshold": null
     },
     "scissors": {
-      "qty": 1152,
+      "qty": 1146,
       "threshold": null
     },
     "tacky-glue": {
-      "qty": 1944,
+      "qty": 1932,
       "threshold": null
     },
     "permanent-markers": {
@@ -251,6 +251,129 @@
     }
   },
   "history": [
+    {
+      "id": "hmvsmn0x15t37g",
+      "ts": "2026-10-28T21:29:01.285Z",
+      "type": "packed",
+      "title": "Packed Tambourines — 12 kits (TAM-12)",
+      "effects": [
+        {
+          "item": "tambourines",
+          "delta": -12
+        },
+        {
+          "item": "tamb-embellishment-tray-large",
+          "delta": -2
+        },
+        {
+          "item": "embellishment-containers",
+          "delta": -2
+        },
+        {
+          "item": "wooden-mini-spoons",
+          "delta": -12
+        },
+        {
+          "item": "wooden-picks",
+          "delta": -12
+        },
+        {
+          "item": "scissors",
+          "delta": -6
+        },
+        {
+          "item": "tacky-glue",
+          "delta": -12
+        },
+        {
+          "item": "tamb-placemats",
+          "delta": -12
+        },
+        {
+          "item": "jerusalem-printouts",
+          "delta": -12
+        },
+        {
+          "item": "tamb-instructions",
+          "delta": -12
+        }
+      ],
+      "undone": false,
+      "craftId": "tam",
+      "kits": 12,
+      "recipe": [
+        {
+          "item": "tambourines",
+          "name": "Tambourines",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "tamb-embellishment-tray-large",
+          "name": "Tam Decor Tray",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "embellishment-containers",
+          "name": "Tam Decor Stack",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "wooden-mini-spoons",
+          "name": "Wooden mini Spoons",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "wooden-picks",
+          "name": "Wooden Picks",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "scissors",
+          "name": "Scissors",
+          "qty": 6,
+          "per6": 3,
+          "per": 6
+        },
+        {
+          "item": "tacky-glue",
+          "name": "Tacky Glue",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "tamb-placemats",
+          "name": "Tamb Placemats",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jerusalem-printouts",
+          "name": "Jerusalem Printouts",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "tamb-instructions",
+          "name": "Tam Instructions",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        }
+      ]
+    },
     {
       "id": "hmvsmkejrwc0eu",
       "ts": "2026-10-28T21:26:58.983Z",
