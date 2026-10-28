@@ -3,15 +3,15 @@
   "inventory": {
     "tree-mirror": {
       "qty": 1440,
-      "threshold": null
+      "threshold": 1000
     },
     "colored-clay-tool-tray": {
       "qty": 120,
-      "threshold": null
+      "threshold": 1000
     },
     "white-clay": {
       "qty": 0,
-      "threshold": null
+      "threshold": 1000
     },
     "grass-pack-of-6": {
       "qty": 228,
@@ -19,7 +19,7 @@
     },
     "double-sided-tape": {
       "qty": 120,
-      "threshold": null
+      "threshold": 1000
     },
     "bm-name-labels": {
       "qty": 2133,
@@ -39,7 +39,7 @@
     },
     "tambourines": {
       "qty": 460,
-      "threshold": null
+      "threshold": 1000
     },
     "tamb-embellishment-tray-large": {
       "qty": 99,
@@ -71,7 +71,7 @@
     },
     "jca-frame": {
       "qty": 1440,
-      "threshold": null
+      "threshold": 1000
     },
     "clay-tray-a": {
       "qty": 54,
@@ -107,19 +107,19 @@
     },
     "wood-board": {
       "qty": 1812,
-      "threshold": null
+      "threshold": 1000
     },
     "tray-set": {
       "qty": 70,
-      "threshold": null
+      "threshold": 1000
     },
     "miniatures-bread-bag": {
       "qty": 1443,
-      "threshold": null
+      "threshold": 1000
     },
     "wood-burning-cream": {
       "qty": 272,
-      "threshold": null
+      "threshold": 1000
     },
     "hc-placemat": {
       "qty": 63,
@@ -135,7 +135,7 @@
     },
     "heart-jewelry-box": {
       "qty": 750,
-      "threshold": null
+      "threshold": 1000
     },
     "cake-box": {
       "qty": 268,
@@ -155,15 +155,15 @@
     },
     "cream-circle-tray": {
       "qty": 282,
-      "threshold": null
+      "threshold": 1000
     },
     "sprinkles-pack": {
       "qty": 86,
-      "threshold": null
+      "threshold": 1000
     },
     "faux-cherries-bag": {
       "qty": 675,
-      "threshold": null
+      "threshold": 1000
     },
     "glue-dots": {
       "qty": 330,
@@ -191,11 +191,11 @@
     },
     "apron": {
       "qty": 0,
-      "threshold": null
+      "threshold": 1000
     },
     "gloves": {
       "qty": 7250,
-      "threshold": null
+      "threshold": 1000
     },
     "ck-instructions": {
       "qty": 1428,
@@ -203,23 +203,23 @@
     },
     "mi-frames": {
       "qty": 1580,
-      "threshold": null
+      "threshold": 1000
     },
     "white-block-pack": {
       "qty": 124,
-      "threshold": null
+      "threshold": 1000
     },
     "miniatures-tray-1": {
       "qty": 95,
-      "threshold": null
+      "threshold": 1000
     },
     "tools-supplies-tray-2": {
-      "qty": 0,
-      "threshold": null
+      "qty": 34,
+      "threshold": 1000
     },
     "scrapbook-paper-pack": {
       "qty": 550,
-      "threshold": null
+      "threshold": 1000
     },
     "mi-name-label": {
       "qty": 0,
@@ -234,7 +234,7 @@
       "threshold": null
     },
     "english-ay-printout": {
-      "qty": 34,
+      "qty": 0,
       "threshold": null
     },
     "scissors": {
