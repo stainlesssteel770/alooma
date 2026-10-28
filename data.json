@@ -15,7 +15,7 @@
     },
     "grass-pack-of-6": {
       "qty": 228,
-      "threshold": null
+      "threshold": 1000
     },
     "double-sided-tape": {
       "qty": 120,
