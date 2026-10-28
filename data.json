@@ -1533,6 +1533,8 @@
         ]
       }
     ],
-    "customItems": []
+    "customItems": [],
+    "reorderQty": 1000,
+    "hideReorderQtys": true
   }
 }
