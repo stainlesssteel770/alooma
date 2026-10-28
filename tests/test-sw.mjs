@@ -19,15 +19,18 @@ function ok(v, name) { if (v) { passes++; } else { failures++; console.log("FAIL
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const EXE = process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium";
 
-/* Temp shell dir: copy only the 5 shell files, so mutating app.js here
-   never touches the repo. */
+/* Temp shell dir: copy the full shell the service worker caches
+   (sw.js SHELL includes manifest.json + icons since install support),
+   so mutating app.js here never touches the repo. A missing shell file
+   makes install fail outright (addAll rejects) and serviceWorker.ready
+   hangs until the protocol timeout — that was the 2026-10-27 CI red. */
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "alooma-sw-"));
-for (const f of ["index.html", "app.js", "logic.js", "styles.css", "sw.js"])
+for (const f of ["index.html", "app.js", "logic.js", "styles.css", "sw.js", "manifest.json", "icon-192.png", "icon-512.png"])
   fs.copyFileSync(path.join(ROOT, f), path.join(TMP, f));
 
 const remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
 const b64e = s => Buffer.from(s, "utf8").toString("base64");
-const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png" };
 const server = http.createServer((req, res) => {
   const rel = decodeURIComponent(req.url.split("?")[0]);
   const file = path.join(TMP, rel === "/" ? "index.html" : rel.replace(/^\/+/, ""));
