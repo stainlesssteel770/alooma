@@ -786,6 +786,7 @@ async function tab(name) {
   await chk(async () => { manifest = await page.evaluate(() => fetch("manifest.json").then(r => r.json())); }, "install: manifest parses as JSON");
   await chk(async () => eq(manifest && manifest.name, "Alooma", "install: manifest name"), "install: manifest name");
   await chk(async () => eq(manifest && manifest.short_name, "Alooma", "install: manifest short_name"), "install: manifest short_name");
+  await chk(async () => eq(manifest && manifest.id, "https://stainlesssteel770.github.io/alooma/", "install: manifest id is the full Pages URL"), "install: manifest id is the full Pages URL");
   await chk(async () => eq(manifest && manifest.display, "standalone", "install: manifest display standalone"), "install: manifest display standalone");
   await chk(async () => eq(!!(manifest && manifest.start_url) && !!(manifest && manifest.scope), true, "install: manifest start_url + scope present"), "install: manifest start_url + scope present");
   await chk(async () => { const sizes = (manifest && manifest.icons || []).map(i => i.sizes); eq(sizes.includes("192x192") && sizes.includes("512x512"), true, "install: manifest lists 192 + 512 icons"); }, "install: manifest lists 192 + 512 icons");
