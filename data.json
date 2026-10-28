@@ -2,39 +2,39 @@
   "version": 1,
   "inventory": {
     "tree-mirror": {
-      "qty": 1422,
+      "qty": 1440,
       "threshold": 1000
     },
     "colored-clay-tool-tray": {
-      "qty": 117,
+      "qty": 120,
       "threshold": 1000
     },
     "white-clay": {
-      "qty": -18,
+      "qty": 0,
       "threshold": 1000
     },
     "grass-pack-of-6": {
-      "qty": 225,
+      "qty": 228,
       "threshold": 1000
     },
     "double-sided-tape": {
-      "qty": 114,
+      "qty": 120,
       "threshold": 1000
     },
     "bm-name-labels": {
-      "qty": 2115,
+      "qty": 2133,
       "threshold": null
     },
     "bm-placemat": {
-      "qty": 315,
+      "qty": 333,
       "threshold": null
     },
     "grass-template": {
-      "qty": 1672,
+      "qty": 1690,
       "threshold": null
     },
     "bm-instructions": {
-      "qty": 907,
+      "qty": 925,
       "threshold": null
     },
     "tambourines": {
@@ -238,164 +238,19 @@
       "threshold": null
     },
     "scissors": {
-      "qty": 1143,
+      "qty": 1152,
       "threshold": null
     },
     "tacky-glue": {
-      "qty": 1935,
+      "qty": 1944,
       "threshold": null
     },
     "permanent-markers": {
-      "qty": 97,
+      "qty": 100,
       "threshold": null
     }
   },
   "history": [
-    {
-      "id": "hmvrkamn7834g2",
-      "ts": "2026-10-28T03:35:37.507Z",
-      "type": "packed",
-      "title": "Packed Blooming Mirrors — 18 kits (BM-18)",
-      "effects": [
-        {
-          "item": "tree-mirror",
-          "delta": -18
-        },
-        {
-          "item": "colored-clay-tool-tray",
-          "delta": -3
-        },
-        {
-          "item": "white-clay",
-          "delta": -18
-        },
-        {
-          "item": "grass-pack-of-6",
-          "delta": -3
-        },
-        {
-          "item": "double-sided-tape",
-          "delta": -6
-        },
-        {
-          "item": "tacky-glue",
-          "delta": -9
-        },
-        {
-          "item": "scissors",
-          "delta": -9
-        },
-        {
-          "item": "bm-name-labels",
-          "delta": -18
-        },
-        {
-          "item": "permanent-markers",
-          "delta": -3
-        },
-        {
-          "item": "bm-placemat",
-          "delta": -18
-        },
-        {
-          "item": "grass-template",
-          "delta": -18
-        },
-        {
-          "item": "bm-instructions",
-          "delta": -18
-        }
-      ],
-      "undone": false,
-      "craftId": "bm",
-      "kits": 18,
-      "recipe": [
-        {
-          "item": "tree-mirror",
-          "name": "Tree Mirror",
-          "qty": 18,
-          "per6": 6,
-          "per": 6
-        },
-        {
-          "item": "colored-clay-tool-tray",
-          "name": "Clay Tray + 6 Picks",
-          "qty": 3,
-          "per6": 1,
-          "per": 6
-        },
-        {
-          "item": "white-clay",
-          "name": "White Clay",
-          "qty": 18,
-          "per6": 6,
-          "per": 6
-        },
-        {
-          "item": "grass-pack-of-6",
-          "name": "Grass (pack of 6)",
-          "qty": 3,
-          "per6": 1,
-          "per": 6
-        },
-        {
-          "item": "double-sided-tape",
-          "name": "Double Sided tape",
-          "qty": 6,
-          "per6": 2,
-          "per": 6
-        },
-        {
-          "item": "tacky-glue",
-          "name": "Tacky Glue",
-          "qty": 9,
-          "per6": 3,
-          "per": 6
-        },
-        {
-          "item": "scissors",
-          "name": "Scissors",
-          "qty": 9,
-          "per6": 3,
-          "per": 6
-        },
-        {
-          "item": "bm-name-labels",
-          "name": "BM Name Labels",
-          "qty": 18,
-          "per6": 6,
-          "per": 6
-        },
-        {
-          "item": "permanent-markers",
-          "name": "Permanent Markers",
-          "qty": 3,
-          "per6": 1,
-          "per": 6
-        },
-        {
-          "item": "bm-placemat",
-          "name": "BM Placemat",
-          "qty": 18,
-          "per6": 6,
-          "per": 6
-        },
-        {
-          "item": "grass-template",
-          "name": "Grass Template",
-          "qty": 18,
-          "per6": 6,
-          "per": 6
-        },
-        {
-          "item": "bm-instructions",
-          "name": "BM Instructions",
-          "qty": 18,
-          "per6": 6,
-          "per": 6
-        }
-      ]
-    },
     {
       "id": "hmvr2p1icg3haa",
       "ts": "2026-10-27T19:22:56.868Z",
