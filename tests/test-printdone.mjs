@@ -21,7 +21,7 @@ function ok(v, name) { if (v) { passes++; } else { failures++; console.log("FAIL
 function eq(a, b, name) { if (a === b) { passes++; } else { failures++; console.log("FAIL " + name + "\n  expected " + JSON.stringify(b) + "\n  got      " + JSON.stringify(a)); } }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const EXE = process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium";
-const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 remote.history = [];
 Object.keys(remote.inventory).forEach(k => { remote.inventory[k].qty = 100; remote.inventory[k].threshold = null; });
 remote.settings = { features: { boxes: false, bins: false, bulkTab: true } };
