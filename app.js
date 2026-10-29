@@ -3101,7 +3101,7 @@
   }
   function init() {
     loadPackQueue();
-    loadHandTicks(); /* Fix 1: after the queue, so orphaned tick entries prune against live uids */
+    /* Bisect (b): loadHandTicks removed */
     try {
       var saved = localStorage.getItem(LS_KEY);
       if (saved) state.editor = JSON.parse(saved);
