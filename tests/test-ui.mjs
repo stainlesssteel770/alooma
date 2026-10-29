@@ -375,7 +375,9 @@ async function tab(name) {
   await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), true, "fix2: re-pick clears completed view"), "fix2: re-pick clears completed view");
   await chk(async () => eq(await page.$eval("#pack-order .list-tools", e => !e.hidden), true, "fix2: re-pick shows Check all"), "fix2: re-pick shows Check all");
   await chk(async () => eq(await page.$$eval("#pack-table tbody input[type=checkbox]", els => els.every(e => !e.checked && !e.disabled)), true, "fix2: re-pick checklist unticked and enabled"), "fix2: re-pick checklist unticked and enabled");
-  /* Complete again to test the Start another order flow */
+  /* Re-complete to test the Start another order flow */
+  await page.click("#btn-pack-hand");
+  await sleep(200);
   await page.click("#btn-check-all");
   await sleep(150);
   await page.click("#sheet-primary"); /* Mark all */
