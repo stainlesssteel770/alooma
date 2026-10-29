@@ -763,9 +763,7 @@
       if (!raw) return;
       var arr = JSON.parse(raw);
       if (!Array.isArray(arr)) return;
-      packQueue = arr.filter(function (ln) { return ln && L.craftById(ln.craftId) && L.validKits(ln.kits); })
-        .map(function (ln) { return { craftId: ln.craftId, kits: ln.kits, uid: ln.uid || newUid("q") }; });
-      persistPackQueue(); /* stick migrated uids */
+      packQueue = arr.filter(function (ln) { return ln && L.craftById(ln.craftId) && L.validKits(ln.kits); });
     } catch (e) { packQueue = []; }
   }
   function endQueueWalk() { queueHandIdx = -1; queueHandTotal = 0; }
