@@ -40,7 +40,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
    uses the app for real), so reset it to a known blank state: the suites
    assert exact quantities and feature-off defaults and must not depend on
    whatever state his real usage left in the file. */
-let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 Object.keys(remoteData.inventory).forEach(k => { remoteData.inventory[k] = { qty: 0, threshold: null }; });
 remoteData.history = [];
 remoteData.settings = { features: { bulkTab: true } };
@@ -341,6 +341,50 @@ async function tab(name) {
   await chk(async () => eq(remoteData.inventory["scissors"].qty, 200, "undo pack restored scissors"), "undo pack restored scissors");
   await chk(async () => eq(remoteData.inventory["heart-jewelry-box"].qty, 0, "undo pack restored heart boxes"), "undo pack restored heart boxes");
   await chk(async () => eq(remoteData.history.find(h => h.type === "hand-packed").undone, true, "entry marked undone"), "entry marked undone");
+  /* Fix 2: completing a hand-pack keeps the list on screen as completed */
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(200);
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat")).click());
+  await page.click('.kits-chip[data-for="pack"][data-kits="6"]');
+  await sleep(200);
+  await page.click("#btn-pack-hand");
+  await sleep(200);
+  await page.click("#btn-check-all");
+  await sleep(150);
+  await page.click("#sheet-primary"); /* Mark all */
+  await sleep(150);
+  await page.click("#btn-complete-pack");
+  await sleep(250);
+  await page.click("#sheet-primary"); /* Subtract (anyway — stock is 0 here) */
+  await sleep(600);
+  await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), false, "fix2: completed banner shows"), "fix2: completed banner shows");
+  await chk(async () => eq(await page.$eval("#pack-completed-text", e => e.textContent), "HCB-6", "fix2: banner names the SKU"), "fix2: banner names the SKU");
+  await chk(async () => eq(await page.$$eval("#pack-table tbody input[type=checkbox]", els => els.every(e => e.checked && e.disabled)), true, "fix2: all rows ticked and locked"), "fix2: all rows ticked and locked");
+  await chk(async () => eq(await page.$eval("#pack-order .action-bar", e => e.hidden), true, "fix2: complete button hidden after complete"), "fix2: complete button hidden after complete");
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
+  await sleep(300);
+  await chk(async () => eq(await page.$eval("#sheet-backdrop", e => !e.hidden && document.querySelector("#sheet-title").textContent === "Unsaved changes"), false, "fix2: no unsaved warning after completed work"), "fix2: no unsaved warning after completed work");
+  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
+  await sleep(300);
+  await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), false, "fix2: completed view still on screen"), "fix2: completed view still on screen");
+  await page.click("#btn-pack-again");
+  await sleep(300);
+  await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), true, "fix2: Start another order clears the completed view"), "fix2: Start another order clears the completed view");
+  await chk(async () => eq(await page.$eval("#pack-sku", e => e.textContent), "—", "fix2: picker reset for the next order"), "fix2: picker reset for the next order");
+  /* Undo the HCB-6 pack so later tests see the inventory they expect */
+  await tab("history");
+  await page.evaluate(() => { const b = document.querySelector(".history-entry .btn-undo"); if (b) b.click(); });
+  await sleep(250);
+  await page.click("#sheet-primary");
+  await sleep(600);
+  await chk(async () => eq(remoteData.inventory["wood-board"].qty, 0, "fix2: undo restores stock"), "fix2: undo restores stock");
+  /* Fix 2 cleanup: remove the undone history entry entirely so later tests
+     see the history as it was before this block (no extra undone entry). */
+  remoteData.history = remoteData.history.filter(h => !(h.type === "hand-packed" && h.undone));
+
+
+
+
   /* Hand pack on the Packing tab = the checklist: pick HCB-18, tap Hand pack,
      check everything off, Complete. Heat gun 1 (tier: up to 18 = 1), board 18. */
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
@@ -1205,49 +1249,6 @@ async function tab(name) {
 
   console.log(pass + " passed, " + fail + " failed; mock-repo PUTs: " + putCount);
   if (failList.length) console.log("FAILURES:\n - " + failList.join("\n - "));
-
-  /* Fix 2: completing a hand-pack keeps the list on screen as completed */
-  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
-  await sleep(200);
-  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat")).click());
-  await page.click('.kits-chip[data-for="pack"][data-kits="6"]');
-  await sleep(200);
-  await page.click("#btn-pack-hand");
-  await sleep(200);
-  await page.click("#btn-check-all");
-  await sleep(150);
-  await page.click("#sheet-primary"); /* Mark all */
-  await sleep(150);
-  await page.click("#btn-complete-pack");
-  await sleep(250);
-  await page.click("#sheet-primary"); /* Subtract (anyway — stock is 0 here) */
-  await sleep(600);
-  await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), false, "fix2: completed banner shows"), "fix2: completed banner shows");
-  await chk(async () => eq(await page.$eval("#pack-completed-text", e => e.textContent), "HCB-6", "fix2: banner names the SKU"), "fix2: banner names the SKU");
-  await chk(async () => eq(await page.$$eval("#pack-table tbody input[type=checkbox]", els => els.every(e => e.checked && e.disabled)), true, "fix2: all rows ticked and locked"), "fix2: all rows ticked and locked");
-  await chk(async () => eq(await page.$eval("#pack-order .action-bar", e => e.hidden), true, "fix2: complete button hidden after complete"), "fix2: complete button hidden after complete");
-  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
-  await sleep(300);
-  await chk(async () => eq(await page.$eval("#sheet-backdrop", e => !e.hidden && document.querySelector("#sheet-title").textContent === "Unsaved changes"), false, "fix2: no unsaved warning after completed work"), "fix2: no unsaved warning after completed work");
-  await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
-  await sleep(300);
-  await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), false, "fix2: completed view still on screen"), "fix2: completed view still on screen");
-  await page.click("#btn-pack-again");
-  await sleep(300);
-  await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), true, "fix2: Start another order clears the completed view"), "fix2: Start another order clears the completed view");
-  await chk(async () => eq(await page.$eval("#pack-sku", e => e.textContent), "—", "fix2: picker reset for the next order"), "fix2: picker reset for the next order");
-  /* Undo the HCB-6 pack so later tests see the inventory they expect */
-  await tab("history");
-  await page.evaluate(() => { const b = document.querySelector(".history-entry .btn-undo"); if (b) b.click(); });
-  await sleep(250);
-  await page.click("#sheet-primary");
-  await sleep(600);
-  await chk(async () => eq(remoteData.inventory["wood-board"].qty, 0, "fix2: undo restores stock"), "fix2: undo restores stock");
-
-
-
-
-
 } finally {
   await browser.close();
   server.close();
