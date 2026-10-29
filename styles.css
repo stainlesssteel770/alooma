@@ -444,6 +444,14 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   #print-area .label-title { font-size: 30pt; font-weight: 800; margin: 0; line-height: 1.1; }
   #print-area .label-sub { font-size: 13.5pt; font-weight: 700; margin: 2pt 0 0; }
   #print-area td.qty, #print-area th.qty { text-align: center; font-weight: 700; white-space: nowrap; }
+  /* Fix 3: the reorder sheet's number columns are sized to their numbers,
+     not their headers — headers wrap, side padding trims to 3pt — so the
+     Item column gets the width back and long names ("Clay Tray + 6 Picks",
+     "Double Sided tape") take 2 lines max. "888" (widest 3-digit at
+     12.5pt bold ≈ 21pt) sets the column; 4-digit values still display
+     (auto layout grows past the CSS width). No font change. */
+  #print-area table.reorder-sheet td.qty, #print-area table.reorder-sheet th.qty { width: 21pt; padding-left: 3pt; padding-right: 3pt; }
+  #print-area table.reorder-sheet th.qty { white-space: normal; }
   #print-area td.qty.regular { font-weight: 400; }
   /* Count-fit (item 9 follow-up): the count table's extra columns steal
      width from Item under auto layout, so long names wrap to an extra

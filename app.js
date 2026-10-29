@@ -2149,7 +2149,7 @@
         if (hideQtys) return "<tr><td>" + esc(r.name) + "</td></tr>";
         return "<tr><td>" + esc(r.name) + '</td><td class="qty">' + r.qty + '</td><td class="qty regular">' + r.level + '</td><td class="qty">' + (qtys[r.item] != null ? qtys[r.item] : r.order) + "</td></tr>";
       }).join("");
-      return '<section class="print-page"><table><thead>' +
+      return '<section class="print-page"><table class="reorder-sheet"><thead>' +
         '<tr class="p-title"><th colspan="' + (hideQtys ? 1 : 4) + '"><div class="label-title">' + esc(g) + '</div><div class="label-sub">Reorder list · ' + date + "</div></th></tr>" +
         (hideQtys ? "<tr><th>Item</th></tr>" : "<tr><th>Item</th><th class='qty'>On hand</th><th class='qty'>Warning level</th><th class='qty'>Order qty</th></tr>") + "</thead>" +
         "<tbody>" + rows + "</tbody></table></section>";

@@ -977,6 +977,57 @@ try {
 
   } catch (e) { fail++; console.log("FAIL (zero-rows): " + e.message); }
 
+  try {
+  /* Fix 3: the reorder sheet's number columns are sized to their numbers,
+     not their headers — the Item column gets the width back and the
+     longest names take 2 lines max (were 3). "888" sets the column. */
+  const LONG_IDS = ["colored-clay-tool-tray", "jerusalem-printouts", "jca-embellishment-tray", "tray-set", "printed-posters", "white-block-pack"];
+  const LONG_WORDS = ["Picks", "Jerusalem", "Embellishment", "includes", "Posters", "White Block"];
+  const pg3 = await browser.newPage();
+  await pg3.evaluateOnNewDocument(() => {
+    localStorage.setItem("alooma.editor.v1", JSON.stringify({ token: "t", owner: "test", repo: "test", login: "tester" }));
+  });
+  await pg3.setRequestInterception(true);
+  const rm3 = JSON.parse(JSON.stringify(remote));
+  rm3.history = [];
+  Object.keys(rm3.inventory).forEach(k => { rm3.inventory[k].qty = 10000; rm3.inventory[k].threshold = null; });
+  LONG_IDS.forEach(id => { rm3.inventory[id] = { qty: 3, threshold: 100 }; });
+  rm3.settings.features.boxes = false;
+  rm3.settings.features.bins = false;
+  rm3.settings.boxRules = [];
+  pg3.on("request", req => {
+    const url = req.url();
+    if (url.startsWith("https://api.github.com") && req.method() === "OPTIONS") return req.respond({ status: 204, headers: CORS, body: "" });
+    if (url.includes("/contents/data.json")) return req.respond({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ sha: "sha-r3", content: b64e(JSON.stringify(rm3)) }) });
+    if (url.startsWith("https://api.github.com")) return req.respond({ status: 404, headers: CORS, body: "" });
+    req.continue();
+  });
+  await pg3.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: "networkidle0", timeout: 30000 });
+  await sleep(500);
+  await pg3.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
+  await sleep(400);
+  await pg3.evaluate(() => document.querySelector("#btn-reorder").click());
+  await sleep(400);
+  await pg3.evaluate(() => document.querySelector("#btn-print-reorder").click());
+  await sleep(500);
+  const file3 = "/tmp/alooma-fix3-reorder.pdf";
+  await pg3.pdf({ path: file3, preferCSSPageSize: true, printBackground: true });
+  await pg3.close();
+  const doc3 = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(file3)) }).promise;
+  const items3 = [];
+  for (let p = 1; p <= doc3.numPages; p++) {
+    const tc = await (await doc3.getPage(p)).getTextContent();
+    tc.items.forEach(it => { if (it.str.trim()) items3.push({ s: it.str, x: it.transform[4], y: it.transform[5], w: it.width }); });
+  }
+  LONG_WORDS.forEach((word, i) => {
+    const ys = new Set(items3.filter(it => it.s.includes(word)).map(it => Math.round(it.y)));
+    ok(ys.size >= 1 && ys.size <= 2, "fix3: '" + word + "' takes " + ys.size + " line(s), max 2");
+  });
+  const nums = items3.filter(it => /^\d+$/.test(it.s.trim()) && it.x > 150);
+  ok(nums.length > 0 && nums.every(it => it.w <= 34), "fix3: number columns sized to their numbers (all <= 34pt wide, n=" + nums.length + ")");
+
+  } catch (e) { fail++; console.log("FAIL (fix3): " + e.message); }
+
   console.log(fail ? "PRINT CHECKS FAILED (" + fail + ")" : "all print checks passed");
 } finally {
   await browser.close();
