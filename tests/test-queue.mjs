@@ -939,6 +939,58 @@ try {
   eq(done5.texts.includes("Hand pack all"), true, "polish5: Hand pack all visible after Done");
   eq(done5.anyChecked, false, "polish5: no craft stays picked after Done");
 
+  /* ---- Fix 1: hand-pack ticks are durable per order ---- */
+  resetRemote();
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); localStorage.removeItem("alooma.handticks.v1"); });
+  await reloadApp();
+  await queueFirst("Hafrashat Challah", 6);
+  await addLine("Hafrashat Challah", 6);
+  const qids = await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]").map(l => l.uid));
+  eq(qids.length, 2, "fix1: two queue lines stored");
+  eq(new Set(qids).size, 2, "fix1: two identical lines get distinct uids");
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  await page.click("#btn-queue-hand");
+  await sleep(400);
+  /* two identical lines raise the duplicate-craft sheet — confirm it was intentional */
+  async function acceptDupSheet() {
+    const t = await page.$eval("#sheet-backdrop", e => !e.hidden ? document.querySelector("#sheet-title").textContent : "").catch(() => "");
+    if (t === "Multiple of the same craft detected") { await page.click("#sheet-primary"); await sleep(400); }
+  }
+  await acceptDupSheet();
+  const ticked = await page.evaluate(() => {
+    const boxes = [...document.querySelectorAll("#pack-table tbody input[type=checkbox]")];
+    if (boxes.length < 2) return -1;
+    boxes[0].click(); boxes[1].click();
+    return boxes.filter(b => b.checked).length;
+  });
+  await sleep(300);
+  eq(ticked, 2, "fix1: 2 boxes ticked");
+  const ht1 = await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.handticks.v1") || "{}"));
+  eq(Object.keys(ht1), [qids[0]], "fix1: ticks stored under the first line's uid");
+  eq(ht1[qids[0]].length, 2, "fix1: 2 ticked item ids stored");
+  await reloadApp();
+  const qidsAfter = await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]").map(l => l.uid));
+  eq(qidsAfter, qids, "fix1: queue uids survive reload");
+  await page.click("#btn-queue-hand");
+  await sleep(400);
+  await acceptDupSheet();
+  eq(await page.evaluate(() => [...document.querySelectorAll("#pack-table tbody input[type=checkbox]")].filter(b => b.checked).length), 2, "fix1: the same 2 ticks come back after reload");
+  eq(remoteData.inventory["wood-board"].qty, 100, "fix1: stock unchanged by ticking + reload");
+  await page.click("#btn-check-all");
+  await sleep(250);
+  await sheetPrimary(); /* "Mark all" confirm */
+  await sleep(250);
+  await page.click("#btn-complete-pack");
+  await sleep(300);
+  await sheetPrimary(); /* subtract confirm */
+  await sleep(500);
+  const ht2 = await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.handticks.v1") || "{}"));
+  eq(ht2[qids[0]], undefined, "fix1: completed line's ticks cleared");
+  eq(await page.evaluate(() => [...document.querySelectorAll("#pack-table tbody input[type=checkbox]")].filter(b => b.checked).length), 0, "fix1: second identical order starts unticked");
+  eq(remoteData.history.length, 1, "fix1: exactly 1 history entry after reload + complete");
+  eq(remoteData.history[0].type, "hand-packed", "fix1: the entry is hand-packed");
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();
