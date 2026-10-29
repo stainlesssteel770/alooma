@@ -391,8 +391,13 @@ async function tab(name) {
   await sleep(300);
   await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), true, "fix2: Start another order clears the completed view"), "fix2: Start another order clears the completed view");
   await chk(async () => eq(await page.$eval("#pack-sku", e => e.textContent), "—", "fix2: picker reset for the next order"), "fix2: picker reset for the next order");
-  /* Undo the HCB-6 pack so later tests see the inventory they expect */
+  /* Undo BOTH HCB-6 packs (the first Complete and the re-complete) so later
+     tests see the inventory they expect */
   await tab("history");
+  await page.evaluate(() => { const b = document.querySelector(".history-entry .btn-undo"); if (b) b.click(); });
+  await sleep(250);
+  await page.click("#sheet-primary");
+  await sleep(600);
   await page.evaluate(() => { const b = document.querySelector(".history-entry .btn-undo"); if (b) b.click(); });
   await sleep(250);
   await page.click("#sheet-primary");
