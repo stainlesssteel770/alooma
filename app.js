@@ -933,7 +933,7 @@
       if (onHand < r.qty) shortages.push({ name: r.name, have: onHand, need: r.qty, short: r.qty - onHand });
       var tr = document.createElement("tr");
       tr.innerHTML =
-        '<td><input type="checkbox" data-idx="' + idx + '" data-item="' + r.item + '" aria-label="Packed: ' + esc(r.name) + '"></td>' +
+        '<td><input type="checkbox" data-idx="' + idx + '" aria-label="Packed: ' + esc(r.name) + '"></td>' +
         '<td><span class="row-name">' + esc(r.name) + "</span>" + (binsOn ? ' <span class="row-bin">' + esc(L.binFor(settings(), r.item)) + "</span>" : "") + "</td>" +
         '<td class="num">' + r.qty + "</td>" +
         '<td class="num' + (onHand < r.qty ? " short" : "") + '">' + onHand + "</td>";
@@ -948,7 +948,7 @@
       });
       tbody.appendChild(tr);
     });
-    applyHandTicks(); /* Fix 1: restore this order's durable ticks */
+    /* Bisect (d): applyHandTicks removed */ /* Fix 1: restore this order's durable ticks */
     if (shortages.length) {
       /* v3 E1: the toggle carries the total; expanding lists every short
          item on its own line — have / need / short — biggest shortage first */
