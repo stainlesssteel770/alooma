@@ -32,7 +32,7 @@ function ok(cond, label) { if (cond) console.log("ok   " + label); else { fail++
    group gets the brief's LOW cases on its first four items, including
    the fix-round item 3 at-threshold case (qty == level is LOW) */
 const L = require(path.join(ROOT, "logic.js"));
-const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 remote.history = [];
 Object.keys(remote.inventory).forEach(k => { remote.inventory[k].qty = 100; remote.inventory[k].threshold = null; });
 const groups = L.inventoryGroups();
