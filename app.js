@@ -678,6 +678,7 @@
     $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
   }
   var packMode = null; /* null until the packer taps Hand pack; "hand" shows the checklist */
+  var packCompleted = null; /* Fix 2: {craftId, kits} after a single hand-pack completes — the list stays on screen as completed until a new order starts */
   var queueMode = false; /* Packing's Queue mode: pick lines, Add, Print all / Hand pack all */
   var packKitsManual = false; /* kits entered by typing instead of chips */
   var bulkLines = []; /* [{craftId, kits}] queued on the Bulk import tab, in-memory only */
@@ -905,7 +906,7 @@
        with the choice highlighted, and the action row below is the only
        thing that appears once both are chosen. */
     var selKey = state.packCraft + ":" + kits;
-    if (selKey !== packSelKey) { packSelKey = selKey; packBoxOverride = null; packMode = null; clearHandTicks(singleHandUid); singleHandUid = null; $("pack-boxes-edit").hidden = true; }
+    if (selKey !== packSelKey) { packSelKey = selKey; packBoxOverride = null; packMode = null; packCompleted = null; /* Fix 2: a new selection starts a new order */ clearHandTicks(singleHandUid); singleHandUid = null; $("pack-boxes-edit").hidden = true; }
     var tbody = $("pack-table").querySelector("tbody");
     tbody.innerHTML = "";
     if (!valid) {
@@ -938,12 +939,14 @@
         '<td class="num">' + r.qty + "</td>" +
         '<td class="num' + (onHand < r.qty ? " short" : "") + '">' + onHand + "</td>";
       var cb = tr.querySelector("input");
+      if (packCompleted) { cb.checked = true; cb.disabled = true; tr.classList.add("checked-row"); } /* Fix 2: completed list shows ticked */
       cb.addEventListener("change", function () {
         tr.classList.toggle("checked-row", cb.checked);
         updatePackProgress();
         saveHandTicks(); /* Fix 1: ticks persist per order */
       });
       tr.addEventListener("click", function (ev) {
+        if (packCompleted) return; /* Fix 2: completed rows don't toggle */
         if (ev.target !== cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event("change")); }
       });
       tbody.appendChild(tr);
@@ -994,6 +997,7 @@
       primary: "Subtract from inventory",
       onConfirm: function () {
         clearHandTicks(singleHandUid); singleHandUid = null; /* Fix 1 */
+        packCompleted = { craftId: craft.id, kits: cur.kits }; /* Fix 2: the list stays on screen as completed */
         var by = storedBy(PACKBY_LS);
         var extra = { craftId: craft.id, kits: cur.kits };
         if (by) extra.packedBy = by;
@@ -1228,6 +1232,13 @@
      import tab records orders that were already packed by hand: queue any mix
      of crafts and kit amounts, then record them all in one save. */
   function renderPackActions() {
+    /* Fix 2: completed mode — banner + Start another order, no action buttons.
+       Lives here (not after the rows) so every renderPack path resets it. */
+    var done = !!packCompleted;
+    $("pack-completed").hidden = !done;
+    if (done) $("pack-completed-text").textContent = L.sku(packCompleted.craftId, packCompleted.kits);
+    var ab = $("pack-order").querySelector(".action-bar"); if (ab) ab.hidden = done;
+    var lt = $("pack-checklist").querySelector(".list-tools"); if (lt) lt.hidden = done;
     /* Batch C item 12: strict parse — parseInt("6.5") is 6, which wrongly
        showed the action buttons for a decimal kits value. */
     var kits = strictKits($("pack-kits").value);
@@ -2318,7 +2329,9 @@
      pick (craft/kits chosen, not yet added), a walk in progress, a bulk
      list, an open inventory/history edit, or a dirty setting. */
   function hasUnsaved() {
-    return !!state.packCraft || $("pack-kits").value !== "" ||
+    /* Fix 2: a completed pack is saved work — leaving it raises no warning */
+    var packDirty = (!!state.packCraft || $("pack-kits").value !== "") && !packCompleted;
+    return packDirty ||
       queueHandIdx >= 0 || bulkLines.length > 0 ||
       hasUnsavedInvHist() || settingsDirty();
   }
@@ -3354,6 +3367,13 @@
     });
     $("btn-pack-print").addEventListener("click", function () { gateLarge("pack", printSingle); });
     $("btn-pack-hand").addEventListener("click", function () { var cur = currentPack(); if (!cur || !cur.pack.length) return; gateLarge("pack", function () { packMode = "hand"; singleHandUid = newUid("s"); renderPack(); }); });
+    /* Fix 2: the completed view's way out — back to a clean picker */
+    $("btn-pack-again").addEventListener("click", function () {
+      packCompleted = null;
+      state.packCraft = null; $("pack-kits").value = ""; packMode = null; packKitsTouched = false; packKitsManual = false;
+      renderPack();
+      var top = $("pack-crafts"); if (top) top.scrollIntoView({ block: "start" });
+    });
     $("bulk-kits").addEventListener("focus", function () { bulkPrevKits = $("bulk-kits").value; });
     $("bulk-kits").addEventListener("input", function () {
       renderBulk();

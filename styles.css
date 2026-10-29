@@ -44,6 +44,10 @@ body.load-failed main > section { display: none !important; }
 h2 { margin: 2px 0 6px; font-size: 20px; }
 h3 { margin: 16px 0 8px; font-size: 17px; }
 .hint { color: var(--muted); font-size: 16px; margin: 4px 0 12px; line-height: 1.5; }
+/* Fix 2: the completed-pack banner — clearly marked, big tap target kept */
+#pack-completed { margin: 12px 0; padding: 12px 14px; border: 2px solid #1A7336; border-radius: var(--radius); background: #EDF7F0; }
+.completed-note { font-size: 17px; font-weight: 700; color: #1A7336; margin: 0 0 10px; }
+#btn-pack-again { min-height: 52px; font-size: 17px; }
 
 /* crafts */
 .craft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-bottom: 16px; }
