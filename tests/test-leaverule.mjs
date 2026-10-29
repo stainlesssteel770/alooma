@@ -220,11 +220,9 @@ try {
   await page.click("#sheet-primary"); /* Subtract from inventory */
   await sleep(600);
   await clickTab("history");
-  /* The hand-pack left its pick behind, so leaving Pack prompted — Discard
-     it now; the pick is done with and History must be clean for the edit. */
-  eq(await promptOpen(), true, "hand-pack pick prompts on the way to History");
-  await discard();
-  eq(await currentTab(), "history", "Discard switches to History after the hand-pack");
+  /* Fix 2: a completed hand-pack is saved work, so leaving Pack does not prompt. */
+  eq(await promptOpen(), false, "fix2: completed hand-pack does not prompt on the way to History");
+  eq(await currentTab(), "history", "switches to History with no prompt after a completed hand-pack");
   await page.evaluate(() => document.querySelector(".history-entry .btn-edit").click());
   await sleep(300);
   const editBefore = await page.evaluate(() => ({ title: document.querySelector("#sheet-title").textContent, val: document.querySelector("#sheet-input").value }));
