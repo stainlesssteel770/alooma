@@ -211,10 +211,9 @@ try {
   /* ---- 6. History-tab Undo still MARKS undone (does not splice) ---- */
   await page.click('[data-tab="history"]');
   await sleep(300);
-  /* The hand-pack left its pick behind, so leaving Pack prompted — Discard
-     it; the pick is done with and History must be clean for the undo. */
-  eq(await sheetOpen(), true, "hand-pack pick prompts on the way to History");
-  await sheetCancel();
+  /* Fix 2: completed hand-pack does not prompt on leave — the completed
+     view stays on screen, no unsaved-changes warning. */
+  eq(await sheetOpen(), false, "fix2: completed hand-pack does not prompt on leave");
   await sleep(300);
   /* Fix-round item 13: the hand entry offers NO Reprint (only printed
      entries do), so print a fresh entry for the Reprint assertions. */

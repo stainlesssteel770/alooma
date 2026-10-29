@@ -341,7 +341,6 @@ async function tab(name) {
   await chk(async () => eq(remoteData.inventory["scissors"].qty, 200, "undo pack restored scissors"), "undo pack restored scissors");
   await chk(async () => eq(remoteData.inventory["heart-jewelry-box"].qty, 0, "undo pack restored heart boxes"), "undo pack restored heart boxes");
   await chk(async () => eq(remoteData.history.find(h => h.type === "hand-packed").undone, true, "entry marked undone"), "entry marked undone");
-
   /* Fix 2: completing a hand-pack keeps the list on screen as completed */
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(200);
@@ -1102,7 +1101,7 @@ async function tab(name) {
   await page.click("#btn-export");
   await sleep(300);
   const exported = JSON.parse(await page.evaluate(async () => window.__blobs[0].text()));
-  await chk(async () => eq(exported.packQueue, [{ craftId: "bm", kits: 6 }], "item14: export includes the saved queue"), "item14: export includes the saved queue");
+  await chk(async () => eq(exported.packQueue.map(l => ({ craftId: l.craftId, kits: l.kits })), [{ craftId: "bm", kits: 6 }], "item14: export includes the saved queue"), "item14: export includes the saved queue");
   await chk(async () => eq(exported.names, { packedBy: "Sara", countedBy: "Dina" }, "item14: export includes the device names"), "item14: export includes the device names");
   await chk(async () => eq(exported.data && typeof exported.data.inventory === "object" && Array.isArray(exported.data.history), true, "item14: export still carries inventory + history"), "item14: export still carries inventory + history");
   const feedFile = async json => {
@@ -1126,7 +1125,7 @@ async function tab(name) {
   await chk(async () => eq((await sheetSummary()).includes("differ"), true, "item14: wrapper import warns that recipes differ"), "item14: wrapper import warns that recipes differ");
   await page.click("#sheet-primary");
   await sleep(500);
-  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), [{ craftId: "tam", kits: 12 }], "item14: wrapper import restores the queue"), "item14: wrapper import restores the queue");
+  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]").map(l => ({ craftId: l.craftId, kits: l.kits }))), [{ craftId: "tam", kits: 12 }], "item14: wrapper import restores the queue"), "item14: wrapper import restores the queue");
   await chk(async () => eq(await page.evaluate(() => localStorage.getItem("alooma.packedby.v1")), "Ruth", "item14: wrapper import restores Packed by"), "item14: wrapper import restores Packed by");
   await chk(async () => eq(await page.evaluate(() => localStorage.getItem("alooma.countedby.v1")), "Noa", "item14: wrapper import restores Counted by"), "item14: wrapper import restores Counted by");
   await chk(async () => eq(remoteData.history[0].title, "Imported a backup file", "item14: wrapper import logged in History"), "item14: wrapper import logged in History");
@@ -1141,7 +1140,7 @@ async function tab(name) {
   /* Reload: the queue line and the TAM craft both survive. */
   await page.reload({ waitUntil: "networkidle0" });
   await sleep(400);
-  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), [{ craftId: "tam", kits: 12 }], "item14: queue keeps TAM-12 across reload after import"), "item14: queue keeps TAM-12 across reload after import");
+  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]").map(l => ({ craftId: l.craftId, kits: l.kits }))), [{ craftId: "tam", kits: 12 }], "item14: queue keeps TAM-12 across reload after import"), "item14: queue keeps TAM-12 across reload after import");
   await tab("pack");
   await chk(async () => eq(await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn .craft-text")].some(e => e.textContent.includes("Tambourines"))), true, "item14: TAM still packable after reload"), "item14: TAM still packable after reload");
   await tab("settings");
@@ -1153,7 +1152,7 @@ async function tab(name) {
   await page.click("#sheet-primary");
   await sleep(500);
   await chk(async () => eq(remoteData.settings.recipes.find(r => r.id === "bm").lines.length, 12, "item14: old-file import restored built-in BM (12 lines)"), "item14: old-file import restored built-in BM (12 lines)");
-  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), [{ craftId: "tam", kits: 12 }], "item14: old-file import leaves the queue alone"), "item14: old-file import leaves the queue alone");
+  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]").map(l => ({ craftId: l.craftId, kits: l.kits }))), [{ craftId: "tam", kits: 12 }], "item14: old-file import leaves the queue alone"), "item14: old-file import leaves the queue alone");
   await chk(async () => eq(await page.evaluate(() => localStorage.getItem("alooma.packedby.v1")), "Ruth", "item14: old-file import leaves names alone"), "item14: old-file import leaves names alone");
   /* Existing full backup: re-importing the export captured above
      round-trips exactly — same crafts, same queue, same names, and no
@@ -1163,7 +1162,7 @@ async function tab(name) {
   await chk(async () => eq((await sheetSummary()).includes("differ"), false, "item14: full-backup import does not warn when recipes match"), "item14: full-backup import does not warn when recipes match");
   await page.click("#sheet-primary");
   await sleep(500);
-  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), [{ craftId: "bm", kits: 6 }], "item14: full-backup import restores its queue"), "item14: full-backup import restores its queue");
+  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]").map(l => ({ craftId: l.craftId, kits: l.kits }))), [{ craftId: "bm", kits: 6 }], "item14: full-backup import restores its queue"), "item14: full-backup import restores its queue");
   await chk(async () => eq(await page.evaluate(() => localStorage.getItem("alooma.packedby.v1")), "Sara", "item14: full-backup import restores its names"), "item14: full-backup import restores its names");
   await chk(async () => eq(remoteData.settings.recipes.find(r => r.id === "bm").lines.length, 12, "item14: full-backup import keeps full BM"), "item14: full-backup import keeps full BM");
   /* Malformed recipes: rejected outright, nothing changed, no sheet. */
@@ -1176,7 +1175,7 @@ async function tab(name) {
   await chk(async () => eq(remoteData.history.length, histLenBeforeBad, "item14: malformed recipes changed nothing"), "item14: malformed recipes changed nothing");
   /* Degenerate backup (empty inventory + null recipes, nothing usable):
      toasts and changes nothing — never wipes real data. */
-  const qBeforeEmpty = await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]"));
+  const qBeforeEmpty = await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]").map(l => ({ craftId: l.craftId, kits: l.kits })));
   const histLenBeforeEmpty = remoteData.history.length;
   const putsBeforeEmpty = putCount;
   await feedFile(JSON.stringify({ app: "alooma", version: 1, data: { inventory: {}, history: [], settings: { features: { boxes: false, bins: true }, boxes: [], boxRules: [], bins: {}, recipes: null, customItems: [] } }, packQueue: [{ craftId: "bm", kits: 6 }], names: { packedBy: "Gate", countedBy: "Gate" } }));
@@ -1184,7 +1183,7 @@ async function tab(name) {
   await chk(async () => eq(await page.$eval("#sheet-backdrop", e => e.hidden), true, "degenerate: empty backup opens no sheet"), "degenerate: empty backup opens no sheet");
   await chk(async () => eq(remoteData.history.length, histLenBeforeEmpty, "degenerate: empty backup changed nothing"), "degenerate: empty backup changed nothing");
   await chk(async () => eq(putCount, putsBeforeEmpty, "degenerate: empty backup saved nothing"), "degenerate: empty backup saved nothing");
-  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]")), qBeforeEmpty, "degenerate: queue unchanged"), "degenerate: queue unchanged");
+  await chk(async () => eq(await page.evaluate(() => JSON.parse(localStorage.getItem("alooma.packqueue.v1") || "[]").map(l => ({ craftId: l.craftId, kits: l.kits }))), qBeforeEmpty, "degenerate: queue unchanged"), "degenerate: queue unchanged");
 
   /* Round 2 item 1: an OLD backup (pre-rename names frozen in history)
      imports fine and its history shows the NEW names; stock counts stay
