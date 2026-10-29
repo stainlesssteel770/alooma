@@ -25,7 +25,7 @@ const b64e = s => Buffer.from(s, "utf8").toString("base64");
 const b64d = s => Buffer.from(s, "base64").toString("utf8");
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
 
-let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 for (const k of Object.keys(remoteData.inventory)) remoteData.inventory[k].qty = 240;
 remoteData.inventory["scissors"].qty = 1218;
 remoteData.inventory["tree-mirror"] = { qty: 36, threshold: 40 };

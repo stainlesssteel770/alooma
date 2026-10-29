@@ -877,6 +877,7 @@
     renderQueue();
     craftButtons("pack-crafts", state.packCraft, function (id) {
       if (queueHandIdx >= 0) endQueueWalk(); /* picking a different craft mid-walk ends the walk; queued lines stay */
+      if (packCompleted) { packCompleted = null; packSelKey = null; } /* Fix 2: re-pick after Complete starts a new order */
       state.packCraft = id;
       /* Polish item 5: a pick with a saved queue enters Queue mode, so
          the row shows exactly Add + Done — never the single-actions
@@ -3182,6 +3183,7 @@
     $("pack-kits").addEventListener("input", function () {
       if (queueHandIdx >= 0) endQueueWalk();
       packKitsTouched = true;
+      if (packCompleted) { packCompleted = null; packSelKey = null; } /* Fix 2: re-type after Complete starts a new order */
       renderPack();
     });
     $("pack-kits").addEventListener("blur", function () { blurLarge("pack"); });
@@ -3201,7 +3203,7 @@
       chip.addEventListener("click", function () {
         var target = chip.getAttribute("data-for");
         $(target + "-kits").value = chip.getAttribute("data-kits");
-        if (target === "pack") { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; renderPack(); } else renderBulk();
+        if (target === "pack") { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; if (packCompleted) { packCompleted = null; packSelKey = null; } renderPack(); } else renderBulk();
       });
     });
     /* Brief 5a: "+" swaps the chips for a manual number box; "Chips" swaps back. */

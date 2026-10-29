@@ -34,7 +34,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const L = require(path.join(ROOT, "logic.js"));
 const CRAFTS = Object.values(L.CRAFTS);
-const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 remote.history = [];
 Object.keys(remote.inventory).forEach(k => { remote.inventory[k] = { qty: 100, threshold: null }; });
 remote.settings.features.boxes = false;

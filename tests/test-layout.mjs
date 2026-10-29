@@ -29,7 +29,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* Seeded "repo": stock + both Batch C features on + a box rule + history,
    so the widest content renders during the tour */
-let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 /* The repo's data.json is the user's LIVE data — reset to a known blank
    state before applying the seeds below */
 Object.keys(remoteData.inventory).forEach(k => { remoteData.inventory[k] = { qty: 0, threshold: null }; });

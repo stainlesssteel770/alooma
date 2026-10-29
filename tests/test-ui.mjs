@@ -40,7 +40,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
    uses the app for real), so reset it to a known blank state: the suites
    assert exact quantities and feature-off defaults and must not depend on
    whatever state his real usage left in the file. */
-let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 Object.keys(remoteData.inventory).forEach(k => { remoteData.inventory[k] = { qty: 0, threshold: null }; });
 remoteData.history = [];
 remoteData.settings = { features: { bulkTab: true } };
@@ -367,6 +367,24 @@ async function tab(name) {
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
   await sleep(300);
   await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), false, "fix2: completed view still on screen"), "fix2: completed view still on screen");
+  /* Fix 2 app bug: re-picking the SAME craft+kits after Complete must start
+     a new order, not stay stuck on the completed view. */
+  await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Hafrashat")).click());
+  await page.click('.kits-chip[data-for="pack"][data-kits="6"]');
+  await sleep(300);
+  await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), true, "fix2: re-pick clears completed view"), "fix2: re-pick clears completed view");
+  await chk(async () => eq(await page.$eval("#pack-order .list-tools", e => !e.hidden), true, "fix2: re-pick shows Check all"), "fix2: re-pick shows Check all");
+  await chk(async () => eq(await page.$$eval("#pack-table tbody input[type=checkbox]", els => els.every(e => !e.checked && !e.disabled)), true, "fix2: re-pick checklist unticked and enabled"), "fix2: re-pick checklist unticked and enabled");
+  /* Complete again to test the Start another order flow */
+  await page.click("#btn-check-all");
+  await sleep(150);
+  await page.click("#sheet-primary"); /* Mark all */
+  await sleep(150);
+  await page.click("#btn-complete-pack");
+  await sleep(250);
+  await page.click("#sheet-primary"); /* Subtract anyway */
+  await sleep(600);
+  await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), false, "fix2: completed view shows again"), "fix2: completed view shows again");
   await page.click("#btn-pack-again");
   await sleep(300);
   await chk(async () => eq(await page.$eval("#pack-completed", e => e.hidden), true, "fix2: Start another order clears the completed view"), "fix2: Start another order clears the completed view");

@@ -32,7 +32,7 @@ function ok(cond, label) {
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 Object.keys(remoteData.inventory).forEach(k => { remoteData.inventory[k] = { qty: 100, threshold: null }; });
 remoteData.history = [];
 if (remoteData.settings && remoteData.settings.features) { remoteData.settings.features.boxes = false; remoteData.settings.features.bins = false; }

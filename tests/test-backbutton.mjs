@@ -21,7 +21,7 @@ function eq(a, b, label) { check(a === b, label + " (got " + JSON.stringify(a) +
 
 let remote;
 function resetRemote() {
-  const base = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+  const base = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
   base.history = [];
   for (const k of Object.keys(base.inventory)) base.inventory[k].qty = 100;
   base.settings = { features: { boxes: false, bins: false, bulkTab: true }, boxes: [], boxRules: [], bins: [] };
