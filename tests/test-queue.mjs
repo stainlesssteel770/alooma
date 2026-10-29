@@ -991,6 +991,28 @@ try {
   eq(remoteData.history.length, 1, "fix1: exactly 1 history entry after reload + complete");
   eq(remoteData.history[0].type, "hand-packed", "fix1: the entry is hand-packed");
 
+  /* ---- Fix 5: queue mode button reads Cancel when empty, Done with lines ---- */
+  resetRemote();
+  await page.evaluate(() => { localStorage.removeItem("alooma.packqueue.v1"); });
+  await reloadApp();
+  await queueFirst("Tambourines", 6);
+  eq(await page.$eval("#btn-queue-done", e => e.textContent), "Done", "fix5: button reads Done with 1 line");
+  await page.evaluate(() => { const b = document.querySelector("#pack-queue .queue-remove"); if (b) b.click(); });
+  await sleep(300);
+  eq(await page.$eval("#btn-queue-done", e => e.textContent), "Cancel", "fix5: button reads Cancel once the queue is empty");
+  const histBefore = remoteData.history.length;
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  eq(await page.$eval("#pack-queue-actions", e => e.hidden), true, "fix5: Cancel leaves queue mode for the normal Packing screen");
+  eq(remoteData.history.length, histBefore, "fix5: Cancel changes no stock or History");
+  await queueFirst("Tambourines", 6);
+  await addLine("Blooming Mirrors", 6);
+  eq(await page.$eval("#btn-queue-done", e => e.textContent), "Done", "fix5: Done with 2 lines");
+  await page.click("#btn-queue-done");
+  await sleep(300);
+  const savedBtns = await page.$$eval("#pack-queue-actions button", els => els.filter(b => !b.hidden).map(b => b.textContent.trim()));
+  eq(savedBtns.includes("Print all") && savedBtns.includes("Hand pack all"), true, "fix5: Done with orders shows Print all / Hand pack all as today");
+
   console.log(fail ? "QUEUE TESTS FAILED (" + fail + ")" : "all queue tests passed (" + pass + ")");
 } finally {
   await browser.close();

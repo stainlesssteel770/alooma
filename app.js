@@ -850,6 +850,10 @@
     $("pack-queue-actions").hidden = !queueMode && !saved && !walking;
     $("btn-queue-add").hidden = walking || saved;
     $("btn-queue-done").hidden = saved;
+    /* Fix 5: the mode button reads Cancel when the queue is empty and Done
+       once lines exist — the label tracks the queue live; the tap behavior
+       (leave Queue mode) is unchanged. */
+    $("btn-queue-done").textContent = packQueue.length > 0 ? "Done" : "Cancel";
     $("btn-queue-print").hidden = walking || queueMode;
     $("btn-queue-hand").hidden = walking || queueMode;
     /* Item 1 fold-in: the pinned queue row unpins during a walk so it
