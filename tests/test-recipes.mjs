@@ -146,7 +146,7 @@ catch (e) {
 const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 try { pdfjs.GlobalWorkerOptions.workerSrc = new URL("file://" + require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")).href; } catch (e) {}
 
-const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 remote.history = [];
 Object.keys(remote.inventory).forEach(k => { remote.inventory[k] = { qty: 100, threshold: null }; });
 let remoteSha = "sha-recipes";

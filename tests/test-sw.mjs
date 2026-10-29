@@ -28,7 +28,7 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "alooma-sw-"));
 for (const f of ["index.html", "app.js", "logic.js", "styles.css", "sw.js", "manifest.json", "icon-192.png", "icon-512.png"])
   fs.copyFileSync(path.join(ROOT, f), path.join(TMP, f));
 
-const remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+const remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 const b64e = s => Buffer.from(s, "utf8").toString("base64");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png" };
 const server = http.createServer((req, res) => {

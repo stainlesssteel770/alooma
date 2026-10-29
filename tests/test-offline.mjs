@@ -29,7 +29,7 @@ function eq(a, e, label) {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 let online = false;
-const remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+const remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 const b64e = s => Buffer.from(s, "utf8").toString("base64");
 
 import http from "http";

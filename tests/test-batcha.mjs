@@ -26,7 +26,7 @@ function eq(a, e, label) {
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+let remoteData = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 Object.keys(remoteData.inventory).forEach(k => { remoteData.inventory[k] = { qty: 100, threshold: null }; });
 remoteData.history = [];
 /* NOTE: bulkTab deliberately NOT set here — the default (absent = OFF) is

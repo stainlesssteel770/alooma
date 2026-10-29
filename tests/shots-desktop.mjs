@@ -22,7 +22,7 @@ fs.mkdirSync(OUT, { recursive: true });
 const PORT = 8914;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
+const remote = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "fixtures", "data-print.json"), "utf8"));
 remote.history = [];
 Object.keys(remote.inventory).forEach((k, i) => {
   remote.inventory[k].qty = 40 + ((i * 53) % 360);
