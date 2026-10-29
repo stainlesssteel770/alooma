@@ -309,6 +309,10 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   .tab-ic { margin: 0; line-height: 1.1; }
   main { margin: 8px 8px 16px; padding: 14px 12px 20px; }
   #tab-pack .action-bar, #tab-hand .action-bar, #tab-bulk .action-bar { position: sticky; bottom: 66px; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -4px 14px rgba(31,35,40,.08); padding: 10px 0; margin-top: 0; }
+  /* Fix 6: the Receive / Count save bar pins on screen like the hand-pack
+     Complete bar; the lists get bottom padding so no row hides under it. */
+  #count-entry .btn-row, #delivery-entry .btn-row { position: sticky; bottom: 66px; background: var(--surface); border-top: 1px solid var(--line); padding: 10px 0; }
+  #count-entry-list, #delivery-entry-list { padding-bottom: 8px; }
   /* v2 B3: two-column craft cards + one-row kit chips, so the picker fits a small phone */
   .craft-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* Polish item 2: every picker row the same height on phones — the

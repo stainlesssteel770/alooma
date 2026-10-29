@@ -161,17 +161,22 @@
     }
     return 0;
   }
-  /* The Inventory search box also filters the delivery / count forms:
-     rows hide in place (typed values are never wiped by a re-render) */
-  function filterEntryList(list) {
+  /* Fix 6: each entry form has its own search box at the top. Rows hide
+     in place (typed values are never wiped by a re-render). */
+  function entryQuery(inputId) {
+    var el = $(inputId);
+    return el ? el.value.trim().toLowerCase() : "";
+  }
+  function filterEntryList(list, query) {
     if (!list) return;
+    var q = query !== undefined ? query : invQuery;
     var head = null, headVisible = false;
     Array.prototype.forEach.call(list.children, function (el) {
       if (el.classList.contains("entry-head")) {
         if (head) head.style.display = headVisible ? "" : "none";
         head = el; headVisible = false;
       } else {
-        var show = !invQuery || (el.getAttribute("data-name") || "").indexOf(invQuery) >= 0;
+        var show = !q || (el.getAttribute("data-name") || "").indexOf(q) >= 0;
         el.style.display = show ? "" : "none";
         if (show) headVisible = true;
       }
@@ -1601,7 +1606,7 @@
         list.appendChild(row);
       });
     });
-    filterEntryList(list);
+    filterEntryList(list, entryQuery("count-search"));
   }
   function applyCounts() {
     if (!requireEditor()) return;
@@ -1674,7 +1679,7 @@
         list.appendChild(row);
       });
     });
-    filterEntryList(list);
+    filterEntryList(list, entryQuery("delivery-search"));
   }
   function applyDelivery() {
     if (!requireEditor()) return;
@@ -3233,7 +3238,10 @@
         onConfirm: function () { setAll(true); }
       });
     });
-    $("inv-search").addEventListener("input", function (ev) { invQuery = ev.target.value.trim().toLowerCase(); applyInvFilters(); filterEntryList($("delivery-entry-list")); filterEntryList($("count-entry-list")); });
+    $("inv-search").addEventListener("input", function (ev) { invQuery = ev.target.value.trim().toLowerCase(); applyInvFilters(); });
+    /* Fix 6: each entry form filters by its own top box */
+    $("count-search").addEventListener("input", function (ev) { filterEntryList($("count-entry-list"), ev.target.value.trim().toLowerCase()); });
+    $("delivery-search").addEventListener("input", function (ev) { filterEntryList($("delivery-entry-list"), ev.target.value.trim().toLowerCase()); });
     $("btn-filter-all").addEventListener("click", function () { invFilter = "all"; applyInvFilters(); });
     $("btn-lowfilter").addEventListener("click", function () { invFilter = "low"; applyInvFilters(); });
     $("btn-outfilter").addEventListener("click", function () { invFilter = "out"; applyInvFilters(); });
@@ -3447,7 +3455,7 @@
     $("btn-print-reorder").addEventListener("click", printReorder);
     $("btn-enter-counts").addEventListener("click", function () {
       var p = $("count-entry"); p.hidden = !p.hidden;
-      if (!p.hidden) renderCountEntry();
+      if (!p.hidden) { $("count-search").value = ""; renderCountEntry(); }
     });
     $("btn-retry-load").addEventListener("click", function () { loadData().then(renderAll); });
     setInterval(refreshSyncStatus, 30000);
@@ -3455,7 +3463,7 @@
     $("btn-cancel-counts").addEventListener("click", function () { $("count-entry").hidden = true; });
     $("btn-delivery").addEventListener("click", function () {
       var p = $("delivery-entry"); p.hidden = !p.hidden;
-      if (!p.hidden) renderDeliveryEntry();
+      if (!p.hidden) { $("delivery-search").value = ""; renderDeliveryEntry(); }
     });
     $("btn-apply-delivery").addEventListener("click", applyDelivery);
     $("btn-cancel-delivery").addEventListener("click", function () { $("delivery-entry").hidden = true; });

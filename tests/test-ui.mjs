@@ -404,7 +404,44 @@ async function tab(name) {
   await sleep(600);
   await chk(async () => eq(remoteData.inventory["wood-board"].qty, 0, "fix2: undo restores stock"), "fix2: undo restores stock");
 
-
+  /* Fix 6: Receive/Count get their own top search box; typed amounts survive filtering */
+  await page.evaluate(() => document.querySelector('[data-tab="inventory"]').click());
+  await sleep(300);
+  const tackyBefore = remoteData.inventory["tacky-glue"].qty, scisBefore = remoteData.inventory["scissors"].qty;
+  await page.click("#btn-delivery");
+  await sleep(300);
+  await chk(async () => eq(await page.$eval("#delivery-search", e => e.placeholder), "Search items…", "fix6: receive has its own search box"), "fix6: receive has its own search box");
+  await page.evaluate(() => { const s = document.querySelector("#delivery-search"); s.value = "tacky"; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(200);
+  await chk(async () => eq(await page.$$eval("#delivery-entry-list .count-row", els => els.filter(e => e.style.display !== "none").length), 1, "fix6: 'tacky' filters to 1 row"), "fix6: 'tacky' filters to 1 row");
+  await chk(async () => eq(await page.$eval("#delivery-entry-list .count-row:not([style*='none']) span", e => e.textContent.includes("Tacky Glue")), true, "fix6: the row is Tacky Glue"), "fix6: the row is Tacky Glue");
+  await page.evaluate(() => { document.querySelector('#delivery-entry-list input[data-item="tacky-glue"]').value = "20"; });
+  await page.evaluate(() => { const s = document.querySelector("#delivery-search"); s.value = "scissors"; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(200);
+  await page.evaluate(() => { document.querySelector('#delivery-entry-list input[data-item="scissors"]').value = "5"; });
+  await page.evaluate(() => { const s = document.querySelector("#delivery-search"); s.value = ""; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(200);
+  await chk(async () => eq(await page.$eval('#delivery-entry-list input[data-item="tacky-glue"]', e => e.value), "20", "fix6: typed amount survives filtering"), "fix6: typed amount survives filtering");
+  await chk(async () => eq(await page.$eval('#delivery-entry-list input[data-item="scissors"]', e => e.value), "5", "fix6: second amount survives"), "fix6: second amount survives");
+  await page.click("#btn-apply-delivery");
+  await sleep(300);
+  await chk(async () => eq(await page.$eval("#sheet-title", e => e.textContent), "Add 2 items to stock?", "fix6: confirm sheet counts the 2 items"), "fix6: confirm sheet counts the 2 items");
+  await chk(async () => eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Tacky Glue") && e.textContent.includes("Scissors")), true, "fix6: confirm sheet lists exact items"), "fix6: confirm sheet lists exact items");
+  await page.click("#sheet-primary");
+  await sleep(600);
+  await chk(async () => eq(remoteData.inventory["tacky-glue"].qty, tackyBefore + 20, "fix6: Tacky Glue +20 only"), "fix6: Tacky Glue +20 only");
+  await chk(async () => eq(remoteData.inventory["scissors"].qty, scisBefore + 5, "fix6: Scissors +5"), "fix6: Scissors +5");
+  /* Undo the delivery so later tests see the stock they expect */
+  await page.evaluate(() => document.querySelector('[data-tab="history"]').click());
+  await sleep(300);
+  await page.evaluate(() => { const b = document.querySelector(".history-entry .btn-undo"); if (b) b.click(); });
+  await sleep(250);
+  await page.click("#sheet-primary");
+  await sleep(600);
+  await page.evaluate(() => { const b = document.querySelector(".history-entry .btn-undo"); if (b) b.click(); });
+  await sleep(250);
+  await page.click("#sheet-primary");
+  await sleep(600);
 
 
   /* Hand pack on the Packing tab = the checklist: pick HCB-18, tap Hand pack,
@@ -706,18 +743,21 @@ async function tab(name) {
   await chk(async () => eq(putCount, putsBefore + 1, "B4: the whole delivery saved with ONE repo write"), "B4: the whole delivery saved with ONE repo write");
 
   /* v2 A3: search filters the delivery form; outlier flag; Edit numbers
-     saves nothing; the saved batch has one UNDO that reverses it all */
+     saves nothing; the saved batch has one UNDO that reverses it all
+     (Fix 6: the delivery form filters by its own top box, not inv-search) */
   await page.click("#btn-delivery");
   await sleep(250);
-  await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = "scissors"; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await page.evaluate(() => { const s = document.querySelector("#delivery-search"); s.value = "scissors"; s.dispatchEvent(new Event("input", { bubbles: true })); });
   await sleep(150);
   await chk(async () => eq(await page.$$eval("#delivery-entry-list .count-row", els => els.filter(e => e.style.display !== "none").length), 1, "v2 A3: search filters the delivery list"), "v2 A3: search filters the delivery list");
-  await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = ""; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await page.evaluate(() => { const s = document.querySelector("#delivery-search"); s.value = ""; s.dispatchEvent(new Event("input", { bubbles: true })); });
   await sleep(150);
   await chk(async () => eq(await page.$$eval("#delivery-entry-list .count-row", els => els.filter(e => e.style.display !== "none").length), 62, "v2 A3: clearing the search restores all rows"), "v2 A3: clearing the search restores all rows");
-  await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = "SCISSORS"; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await page.evaluate(() => { const s = document.querySelector("#delivery-search"); s.value = "SCISSORS"; s.dispatchEvent(new Event("input", { bubbles: true })); });
   await sleep(150);
   await chk(async () => eq(await page.$$eval("#delivery-entry-list .count-row", els => els.filter(e => e.style.display !== "none").length), 1, "search is case-insensitive: 'SCISSORS' finds the one delivery row"), "search is case-insensitive: 'SCISSORS' finds the one delivery row");
+  await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = "SCISSORS"; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  await sleep(150);
   await chk(async () => eq(await page.$$eval("#inventory-groups .inv-item", els => els.filter(e => e.style.display !== "none").length), 1, "search is case-insensitive: 'SCISSORS' filters the inventory list too"), "search is case-insensitive: 'SCISSORS' filters the inventory list too");
   await page.evaluate(() => { const s = document.querySelector("#inv-search"); s.value = "tAcKy GlUe"; s.dispatchEvent(new Event("input", { bubbles: true })); });
   await sleep(150);
