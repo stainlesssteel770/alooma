@@ -685,7 +685,7 @@ async function tab(name) {
   /* No fold anymore: the full picker (craft grid + chips + action row)
      sits above the table, so the first row lands lower than the folded
      ~420px — but still far from the ~857px buried-table case. */
-  await chk(async () => eq(firstRowTop < 700, true, "Batch B: first pack row near the top (was ~857px before the fold fix)"), "Batch B: first pack row near the top (was ~857px before the fold fix)");
+  await chk(async () => eq(firstRowTop < 750, true, "Batch B: first pack row near the top (was ~857px before the fold fix; Fix 7 raised fonts to 16px, measured 708px)"), "Batch B: first pack row near the top (was ~857px before the fold fix; Fix 7 raised fonts to 16px, measured 708px)");
   /* Switching craft just updates the highlight and SKU — no collapse. */
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Tambourines")).click());
   await sleep(150);
