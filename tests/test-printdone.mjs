@@ -238,7 +238,8 @@ try {
   const reprintText = await page.$eval("#print-area", e => e.textContent);
   eq(reprintText.includes("Hafrashat Challah"), true, "reprint: same craft sheet");
   eq(reprintText.includes("REPRINT"), true, "reprint: REPRINT line in footer");
-  eq(reprintText.includes(new Date(entryTs).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })), true, "reprint: original date on the sheet");
+  /* Fix 4 (final): Date removed from header per spec — reprint has no date. */
+  eq(reprintText.includes(new Date(entryTs).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })), false, "fix4-final: reprint has no date in header (Date removed from spec)");
   eq(JSON.stringify(remote.history), histBeforeReprint, "reprint: History unchanged");
   eq(JSON.stringify(remote.inventory), invBeforeReprint, "reprint: stock unchanged");
   /* Toast-UNDO the fresh print so History is back to the single hand
