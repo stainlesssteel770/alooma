@@ -686,10 +686,10 @@ async function tab(name) {
      sits above the table, so the first row lands lower than the folded
      ~420px — but still far from the ~857px buried-table case. */
   await chk(async () => eq(firstRowTop < 750, true, "Batch B: first pack row near the top (was ~857px before the fold fix; Fix 7 raised fonts to 16px, measured 708px)"), "Batch B: first pack row near the top (was ~857px before the fold fix; Fix 7 raised fonts to 16px, measured 708px)");
-  /* Switching craft just updates the highlight and SKU — no collapse. */
+  /* Fix 9: craft is LOCKED during hand-pack — tapping another craft does nothing. */
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("Tambourines")).click());
   await sleep(150);
-  await chk(async () => eq(await page.$eval("#pack-sku", e => e.textContent), "TAM-18", "Batch B: switching craft updates the SKU, picker stays open"), "Batch B: switching craft updates the SKU, picker stays open");
+  await chk(async () => eq(await page.$eval("#pack-sku", e => e.textContent), "CAK-18", "Fix 9: switching craft during hand-pack does nothing (locked)"), "Fix 9: craft locked during hand-pack");
   await chk(async () => eq(await page.$eval("#pack-picker", e => e.hidden), false, "Batch B: picker still open after switching craft"), "Batch B: picker still open after switching craft");
   await chk(async () => eq(await page.$eval("#btn-pack-print", e => e.textContent.trim()), "Print", "B2: print button is one short label"), "B2: print button is one short label");
   const barBg = await page.evaluate(() => getComputedStyle(document.querySelector("#tab-pack .action-bar")).backgroundColor);
@@ -953,9 +953,10 @@ async function tab(name) {
   await page.click("#btn-pack-hand");
   await waitDom(() => !document.querySelector("#pack-boxes").hidden, "boxes line shows");
   await chk(async () => eq(await page.$eval("#pack-boxes-text", e => e.textContent), "Box A + Box B", "C1: boxes line shows the rule's boxes"), "C1: boxes line shows the rule's boxes");
+  /* Fix 9: kit chips are LOCKED during hand-pack — tapping 18 does nothing. */
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await sleep(200);
-  await chk(async () => eq(await page.evaluate(() => document.querySelector("#pack-boxes").hidden), true, "C1: no boxes line for 18 kits (no exact rule)"), "C1: no boxes line for 18 kits (no exact rule)");
+  await chk(async () => eq(await page.evaluate(() => document.querySelector("#pack-boxes").hidden), false, "Fix 9: kit chip locked during hand-pack, boxes line unchanged"), "Fix 9: kit locked, boxes unchanged");
   // Change override for this order only: back to 12, add Box C
   await page.click('.kits-chip[data-for="pack"][data-kits="12"]');
   await page.click("#btn-pack-hand");
