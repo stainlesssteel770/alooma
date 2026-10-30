@@ -138,6 +138,11 @@ tr.checked-row td .row-name { text-decoration: line-through; }
 .action-bar { display: flex; gap: 8px; margin-top: 10px; }
 .action-bar .btn { min-height: 48px; font-size: 16.5px; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .action-bar .btn-primary { flex: 1; }
+/* Fix 9: locked craft cards + kit chips during single hand-pack look disabled. */
+.craft-btn.locked, .kits-chip.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* inventory */
 .search-box { width: 100%; height: 50px; border: 1.5px solid var(--line); border-radius: var(--radius); padding: 0 14px; font-size: 16.5px; margin: 4px 0 6px; background: var(--surface); }

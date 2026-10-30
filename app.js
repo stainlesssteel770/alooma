@@ -792,7 +792,8 @@
     wrap.innerHTML = "";
     /* Brief item 4: the count lives in the list's header row, beside Clear all. */
     $("pack-queue-count").textContent = packQueue.length;
-    if (!packQueue.length) {
+    /* Fix 9: hide the empty-queue message during a single hand-pack. */
+    if (!packQueue.length && packMode !== "hand") {
       wrap.innerHTML = '<p class="hint">No orders in the queue yet — pick a craft and kit amount above, then tap Queue.</p>';
     }
     packQueue.forEach(function (ln, i) {
@@ -885,6 +886,11 @@
   function renderPack() {
     renderQueue();
     craftButtons("pack-crafts", state.packCraft, function (id) {
+      /* Fix 9: lock selection during single hand-pack. Tapping does nothing. */
+      if (packMode === "hand" && !packCompleted) {
+        toast("Cancel this pack to change it");
+        return;
+      }
       if (queueHandIdx >= 0) endQueueWalk(); /* picking a different craft mid-walk ends the walk; queued lines stay */
       if (packCompleted) packCompleted = null; /* Fix 2: re-pick after Complete starts a new order */
       state.packCraft = id;
@@ -895,9 +901,18 @@
       if (packQueue.length > 0 && queueHandIdx < 0) queueMode = true;
       renderPack();
     });
+    /* Fix 9: lock craft cards + kit chips during single hand-pack (look disabled). */
+    var locked = packMode === "hand" && !packCompleted;
+    Array.prototype.forEach.call($("pack-crafts").querySelectorAll(".craft-btn"), function (b) {
+      b.classList.toggle("locked", locked);
+    });
     var rawKits = $("pack-kits").value;
     var kits = strictKits(rawKits);
     markChips("pack", kits);
+    /* Fix 9: lock kit chips during single hand-pack (look disabled). */
+    Array.prototype.forEach.call(document.querySelectorAll('.kits-chip[data-for="pack"]'), function (c) {
+      c.classList.toggle("locked", locked);
+    });
     /* Chips or the manual box, never both (brief 5a). */
     $("pack-chips").hidden = packKitsManual;
     $("pack-kits-manual").hidden = !packKitsManual;
@@ -1249,6 +1264,9 @@
     if (done) $("pack-completed-text").textContent = L.sku(packCompleted.craftId, packCompleted.kits);
     var ab = $("pack-order").querySelector(".action-bar"); if (ab) ab.hidden = done;
     var lt = $("pack-checklist").querySelector(".list-tools"); if (lt) lt.hidden = done;
+    /* Fix 9: Cancel button shows during single hand-pack (not completed). */
+    var showCancel = packMode === "hand" && !done;
+    $("btn-pack-cancel").hidden = !showCancel;
     /* Batch C item 12: strict parse — parseInt("6.5") is 6, which wrongly
        showed the action buttons for a decimal kits value. */
     var kits = strictKits($("pack-kits").value);
@@ -3220,6 +3238,11 @@
     document.querySelectorAll(".kits-chip[data-for]").forEach(function (chip) {
       chip.addEventListener("click", function () {
         var target = chip.getAttribute("data-for");
+        /* Fix 9: lock kit chips during single hand-pack. */
+        if (target === "pack" && packMode === "hand" && !packCompleted) {
+          toast("Cancel this pack to change it");
+          return;
+        }
         $(target + "-kits").value = chip.getAttribute("data-kits");
         if (target === "pack") { if (queueHandIdx >= 0) endQueueWalk(); packKitsTouched = true; if (packCompleted) packCompleted = null; renderPack(); } else renderBulk();
       });
@@ -3416,6 +3439,53 @@
     $("btn-complete-pack").addEventListener("click", function () {
       if (queueHandIdx >= 0) completeQueueLine(queueHandIdx, true);
       else completePacking();
+    });
+    /* Fix 9: Cancel button for single hand-pack. Mark's confirm rules:
+       0 ticked -> cancel with NO confirm; SOME ticked -> ask ONCE;
+       ALL ticked -> two confirms. Clears saved ticks, no stock/History change. */
+    $("btn-pack-cancel").addEventListener("click", function () {
+      var boxes = $("pack-table").querySelectorAll("tbody input[type=checkbox]");
+      var total = boxes.length;
+      var ticked = 0;
+      boxes.forEach(function (cb) { if (cb.checked) ticked++; });
+      var uid = currentHandUid();
+      function doCancel() {
+        if (uid) clearHandTicks(uid);
+        packMode = null;
+        singleHandUid = null;
+        state.packCraft = null;
+        $("pack-kits").value = "";
+        renderPack();
+      }
+      if (ticked === 0) {
+        doCancel();
+      } else if (ticked < total) {
+        openSheet({
+          title: "Cancel this order?",
+          summary: "Cancel this order? " + ticked + (ticked === 1 ? " item is" : " items are") + " ticked.",
+          primary: "Yes, cancel",
+          cancelLabel: "Keep packing",
+          onConfirm: doCancel
+        });
+      } else {
+        /* ALL ticked: two confirms */
+        openSheet({
+          title: "Cancel this pack?",
+          summary: "Cancel this pack? All items are checked.",
+          primary: "Yes",
+          cancelLabel: "Keep packing",
+          onConfirm: function () {
+            openSheet({
+              title: "Are you sure?",
+              summary: "Are you sure? This can't be undone.",
+              primary: "Yes, cancel",
+              cancelLabel: "Keep packing",
+              cancelDanger: true,
+              onConfirm: doCancel
+            });
+          }
+        });
+      }
     });
     /* Multi-craft queue buttons (brief item 1) */
     $("btn-queue-add").addEventListener("click", function () {
