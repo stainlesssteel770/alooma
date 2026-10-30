@@ -496,6 +496,10 @@ details > summary { min-height: 44px; box-sizing: border-box; padding-top: 10px;
   #print-area section.pack-sheet .print-foot { margin-top: 2pt; padding-top: 2pt; border-top: none; }
   #print-area section.pack-sheet tr.p-title th { padding-bottom: 2pt; }
   #print-area section.pack-sheet .label-sub { margin-top: 0; }
+  /* Fix 4: Packed by + BOXES share one footer line, Packed by right-aligned
+     (float). If too long, Packed by stays first and BOXES wraps below. */
+  #print-area section.pack-sheet .print-foot { overflow: hidden; }
+  #print-area section.pack-sheet .print-packedby { font-weight: 700; float: right; margin-left: 12pt; }
   /* Height budget (BM-36-boxes, measured 2026-10-26): the 4.5pt cell
      padding is the single biggest eater — 9pt × 13 rows = 117pt, more
      than the title block and the footer combined. Trimming it to 2.5pt

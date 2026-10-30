@@ -179,14 +179,15 @@ try {
     };
   });
   ok(pack.rows === 19 && pack.ticks === 19, "pack sheet CAK-36: 19 rows, 19 tick boxes");
-  ok(pack.text.includes("Total kits: 36") && pack.text.includes("Order ID:"), "pack sheet: subtitle is 'Total kits: 36 · Order ID: ___ Packed by: ___ · Date: ___'");
-  ok(pack.subText.includes("Packed by: ________"), "pack sheet: Packed by moved to header line 2 (blank when no name set)");
+  ok(pack.text.includes("Total kits: 36") && pack.text.includes("Order ID:"), "pack sheet: subtitle has Order ID and Total kits");
+  ok(!pack.subText.includes("Packed by"), "fix4: Packed by moved out of the subtitle to the sheet bottom");
+  ok(pack.text.includes("Packed by: ____________"), "fix4: Packed by renders at the bottom of the sheet");
   ok(pack.text.includes("Per 6") && pack.text.includes("Total"), "pack sheet: Per 6 + Total columns");
-  ok(!pack.text.includes("SKU"), "pack sheet: no SKU line (mockup)");
+  ok(!pack.subText.includes("CAK-36"), "fix4-final: no SKU in the header");
   ok(pack.text.includes("BOXES: Big Box, Small Box"), "pack sheet: the order's boxes are printed (comma-separated)");
   ok(!pack.titleText.includes("BOXES"), "pack sheet: top stays title + subtitle only (no BOXES under the title)");
-  ok(pack.footText.includes("BOXES: Big Box, Small Box") && !pack.footText.includes("Packed by"), "pack sheet: footer is BOXES-only (Packed by lives in the subtitle now)");
-  ok(!pack.footText.includes("Date:"), "pack sheet: Date left the footer (it lives in the subtitle now)");
+  ok(pack.footText.includes("BOXES: Big Box, Small Box") && pack.footText.includes("Packed by"), "fix4: footer has BOXES and Packed by at the bottom");
+  ok(!pack.text.includes("Date:"), "fix4-final: no Date in the header or footer");
   /* The 8pt + top-alignment proof lives on a throwaway page after the
      matrix (never emulateMediaType on a page that later calls page.pdf:
      restoring to "screen" makes every later PDF render in screen media
@@ -205,14 +206,16 @@ try {
   await checkGeometry("/tmp/alooma-packsheet.pdf", "pack sheet CAK-36");
   ok(packTexts.length >= 2, "pack sheet CAK-36: big rows spill to a 2nd page rather than shrinking (" + packTexts.length + " pages)");
   ok(packTexts.every(t => t.includes("Cakery") && t.trim().length > 30), "pack sheet: craft title repeats on every page, none blank (a footer flowed to its own last page is allowed)");
-  ok(packTexts.every(t => t.includes("Packed by")), "pack sheet: subtitle Packed by repeats on every page (it lives in the thead)");
+  /* Fix 4: Packed by lives at the bottom of the sheet (not in the thead),
+     so it appears on the last page only, not every page. */
+  ok(packTexts[packTexts.length - 1].includes("Packed by"), "fix4: Packed by renders at the bottom of the sheet (last page)");
   /* Header-repeat regression test (batch (b) fix): the longest sheet
      (Cakery, 2 pages) repeats the FULL header on its last page — title
      plus subtitle with both Packed by and Date. This FAILED on the
      3-line subtitle (runs 40372731228-40382956540: the last page had
      neither) and passes on the 2-line subtitle. */
   const lastPage = packTexts[packTexts.length - 1];
-  ok(lastPage.includes("Cakery") && lastPage.includes("Packed by") && lastPage.includes("Date:"), "pack sheet CAK-36: last page repeats the full header (title + Packed by + Date)");
+  ok(lastPage.includes("Cakery") && lastPage.includes("Total kits:"), "fix4-final: last page repeats the header (title + Total kits) and has Packed by at the bottom");
 
   ok(!packTexts[0].includes("BOXES") && packTexts[packTexts.length - 1].includes("BOXES: Big Box, Small Box"), "pack sheet PDF: BOXES appears only on the last page, with the footer");
   {
@@ -283,13 +286,12 @@ try {
     await page.pdf({ path: file, preferCSSPageSize: true, printBackground: true });
     const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(file)) }).promise;
     const p1 = await doc.getPage(1);
-    const runs1 = (await p1.getTextContent()).items.filter(it => it.str.trim()).map(it => ({ s: it.str, y: it.transform[5] }));
-    const nm = runs1.find(r => r.s.includes(name.split(" ")[0]));
-    const dt = runs1.find(r => r.s.includes("Date:"));
-    const sb = runs1.find(r => r.s.includes("Total kits:"));
-    ok(!!nm && !!dt && !!sb && dt.y < sb.y, name + "-" + kits + ": Date sits on subtitle line 2, below line 1 (never on the title line)");
-    const subFoot = await page.evaluate(() => ({ sub: (document.querySelector("#print-area .label-sub") || {}).textContent || "", hasFoot: !!document.querySelector("#print-area .print-foot") }));
-    ok(subFoot.sub.includes("Packed by") && !subFoot.hasFoot, name + "-" + kits + ": subtitle carries Packed by, no footer without boxes");
+    const subText = await page.evaluate(() => (document.querySelector("#print-area .label-sub") || {}).textContent || "");
+    /* Fix 4 (final): header is 2 lines. Line 1: craft name. Line 2: "Total kits: N · Order ID: ____". No SKU, no Date. */
+    ok(subText.includes("Total kits:") && subText.includes("Order ID:"), name + "-" + kits + ": subtitle is 'Total kits: N · Order ID: ____'");
+    ok(!subText.includes("Date:"), name + "-" + kits + ": fix4-final no Date in subtitle");
+    const subFoot = await page.evaluate(() => ({ sub: (document.querySelector("#print-area .label-sub") || {}).textContent || "", hasPackedBy: !!document.querySelector("#print-area .print-packedby") }));
+    ok(!subFoot.sub.includes("Packed by") && subFoot.hasPackedBy, name + "-" + kits + ": fix4 subtitle has no Packed by, Packed by renders at sheet bottom");
     await checkGeometry(file, name + "-" + kits + " new-layout geometry");
     return doc.numPages;
   }
@@ -657,8 +659,8 @@ try {
     });
     ok(!!hdr, "header proof: title + subtitle rendered");
     if (hdr) {
-      ok(!hdr.hasAbsDate, "pack sheet: no absolute Date element left (Date lives in the subtitle now)");
-      ok(hdr.subText.includes("Date: ________"), "pack sheet: subtitle carries the blank Date on line 2 (" + hdr.subText + ")");
+      ok(!hdr.hasAbsDate, "pack sheet: no absolute Date element (Date removed from header in fix4-final)");
+      ok(hdr.subText.includes("Total kits:") && hdr.subText.includes("Order ID:"), "fix4-final: subtitle is 'Total kits: N · Order ID: ____' (" + hdr.subText + ")");
       ok(hdr.titleRowKids === 1, "pack sheet: title row holds only the title");
       ok(!hdr.overlap, "pack sheet: subtitle sits below the title, never overlapping it");
       ok(hdr.footText.includes("BOXES:"), "pack sheet: boxes footer rendered for the border check");
@@ -798,9 +800,10 @@ try {
       const tops = new Set([...r.getClientRects()].map(x => Math.round(x.top)));
       return { lines: tops.size, text: sub.textContent };
     });
-    ok(subInfo.lines !== -1 && subInfo.lines <= 2, "subtitle lines: " + craft.name + " renders at most 2 subtitle lines (" + subInfo.lines + ")");
-    ok(subInfo.text.includes("Packed by"), "subtitle content: " + craft.name + " subtitle still carries Packed by");
-    ok(subInfo.text.includes("Date:"), "subtitle content: " + craft.name + " subtitle still carries Date");
+    ok(subInfo.lines !== -1 && subInfo.lines <= 1, "fix4-final: " + craft.name + " subtitle is 1 line (" + subInfo.lines + ")");
+    ok(!subInfo.text.includes("Packed by"), "fix4: " + craft.name + " subtitle has no Packed by (moved to sheet bottom)");
+    ok(!subInfo.text.includes("Date:"), "fix4-final: " + craft.name + " subtitle has no Date");
+    ok(subInfo.text.includes("Total kits:") && subInfo.text.includes("Order ID:"), "fix4-final: " + craft.name + " subtitle is 'Total kits: N · Order ID: ____'");
   }
 
   } catch (e) { fail++; console.log("FAIL (subtitle): " + e.message); }

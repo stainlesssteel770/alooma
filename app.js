@@ -1997,17 +1997,24 @@
        textContent gives a bare <br> no separator at all, so without it
        the subtitle reads "____________Packed by" to the queue tests'
        normalized-text assertions. */
-    var foot = "";
-    if ((boxes && boxes.length) || opts.reprint) {
-      foot = '<div class="print-foot">' + (boxes && boxes.length ? '<span class="foot-boxes">BOXES: ' + esc(boxes.join(", ")) + "</span>" : "") +
-        (opts.reprint ? "<div>REPRINT</div>" : "") + "</div>";
-    }
+    /* Fix 4: Packed by lives at the bottom of the sheet (not in the header),
+       on the same line as BOXES (right-aligned). If they don't fit, Packed by
+       comes first and BOXES wraps. */
+    var foot = '<div class="print-foot">' +
+      '<span class="print-packedby">Packed by: ' + (by ? esc(by) : "____________") + "</span>" +
+      (boxes && boxes.length ? '<span class="foot-boxes">BOXES: ' + esc(boxes.join(", ")) + "</span>" : "") +
+      (opts.reprint ? "<div>REPRINT</div>" : "") + "</div>";
     return '<section class="print-page pack-sheet"><table><thead>' +
       '<tr class="p-title"><th colspan="' + (binsOn ? 5 : 4) + '"><div class="label-title-row"><div class="label-title">' + esc(craft.name) + "</div></div>" +
-      '<div class="label-sub">Total kits: ' + kits + " · Order ID: ____________ <br>Packed by: " + (by ? esc(by) : "________") + " · Date: " + (opts.date ? esc(opts.date) : "________") + "</div>" +
+      /* Fix 4 (final): header is exactly 2 lines. Line 1: craft name only (30pt).
+         Line 2: "Total kits: N · Order ID: ____" (13.5pt). No SKU, no date,
+         no Packed by in the header. If line 2 overflows, shorten the Order ID
+         blank (fewer underscores) — never shrink text. */
+      '<div class="label-sub">Total kits: ' + kits + " · Order ID: ____________</div>" +
       "</th></tr>" +
       "<tr><th class='tick'></th><th>Item</th>" + (binsOn ? "<th>Bin</th>" : "") + "<th class='qty'>Per 6</th><th class='qty'>Total</th></tr></thead>" +
-      "<tbody>" + rows + "</tbody></table>" + foot + "</section>";
+      "<tbody>" + rows + "</tbody></table>" +
+      foot + "</section>";
   }
   /* A4: single Print prints this one craft's sheet and completes it at the
      same moment — stock deducts and History logs at print time. A short
