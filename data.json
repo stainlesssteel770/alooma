@@ -70,7 +70,7 @@
       "threshold": null
     },
     "jca-frame": {
-      "qty": 1338,
+      "qty": 1332,
       "threshold": 1000
     },
     "clay-tray-a": {
@@ -78,31 +78,31 @@
       "threshold": null
     },
     "clay-tray-b": {
-      "qty": 105,
+      "qty": 104,
       "threshold": null
     },
     "jca-embellishment-tray": {
-      "qty": 259,
+      "qty": 258,
       "threshold": null
     },
     "bag-with-tools": {
-      "qty": 131,
+      "qty": 130,
       "threshold": null
     },
     "jca-placemats": {
-      "qty": 117,
+      "qty": 111,
       "threshold": null
     },
     "parchment-paper": {
-      "qty": 998,
+      "qty": 992,
       "threshold": null
     },
     "jca-templates": {
-      "qty": 1393,
+      "qty": 1387,
       "threshold": null
     },
     "jca-instructions": {
-      "qty": 449,
+      "qty": 447,
       "threshold": null
     },
     "wood-board": {
@@ -255,11 +255,11 @@
       "id": "hmvtwg7m2zbayp",
       "ts": "2026-10-29T18:51:25.706Z",
       "type": "packed",
-      "title": "Packed Judaic Clay-Art — 42 kits (JCA-42)",
+      "title": "Packed Judaic Clay-Art — 48 kits (JCA-48)",
       "effects": [
         {
           "item": "jca-frame",
-          "delta": -42
+          "delta": -48
         },
         {
           "item": "clay-tray-a",
@@ -267,41 +267,41 @@
         },
         {
           "item": "clay-tray-b",
-          "delta": -3
+          "delta": -4
         },
         {
           "item": "jca-embellishment-tray",
-          "delta": -7
+          "delta": -8
         },
         {
           "item": "bag-with-tools",
-          "delta": -7
+          "delta": -8
         },
         {
           "item": "jca-placemats",
-          "delta": -42
+          "delta": -48
         },
         {
           "item": "parchment-paper",
-          "delta": -42
+          "delta": -48
         },
         {
           "item": "jca-templates",
-          "delta": -42
+          "delta": -48
         },
         {
           "item": "jca-instructions",
-          "delta": -14
+          "delta": -16
         }
       ],
       "undone": false,
       "craftId": "jca",
-      "kits": 42,
+      "kits": 48,
       "recipe": [
         {
           "item": "jca-frame",
           "name": "Frame",
-          "qty": 42,
+          "qty": 48,
           "per6": 6,
           "per": 6
         },
@@ -315,53 +315,54 @@
         {
           "item": "clay-tray-b",
           "name": "Clay Tray B",
-          "qty": 3,
+          "qty": 4,
           "per6": 0,
           "per": 6
         },
         {
           "item": "jca-embellishment-tray",
           "name": "JCA Embellishment Tray",
-          "qty": 7,
+          "qty": 8,
           "per6": 1,
           "per": 6
         },
         {
           "item": "bag-with-tools",
           "name": "Bag with Tools",
-          "qty": 7,
+          "qty": 8,
           "per6": 1,
           "per": 6
         },
         {
           "item": "jca-placemats",
           "name": "JCA Placemats",
-          "qty": 42,
+          "qty": 48,
           "per6": 6,
           "per": 6
         },
         {
           "item": "parchment-paper",
           "name": "1/2 Parchment Paper",
-          "qty": 42,
+          "qty": 48,
           "per6": 6,
           "per": 6
         },
         {
           "item": "jca-templates",
           "name": "Templates",
-          "qty": 42,
+          "qty": 48,
           "per6": 6,
           "per": 6
         },
         {
           "item": "jca-instructions",
           "name": "JCA Instructions",
-          "qty": 14,
+          "qty": 16,
           "per6": 2,
           "per": 6
         }
-      ]
+      ],
+      "editedAt": "2026-10-30T16:31:02.796Z"
     },
     {
       "id": "hmvtwg7m22fixm",
