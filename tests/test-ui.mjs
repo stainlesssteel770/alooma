@@ -287,7 +287,7 @@ async function tab(name) {
   await page.evaluate(() => [...document.querySelectorAll("#pack-crafts .craft-btn")].find(b => b.textContent.includes("The Cakery")).click());
   await page.click('.kits-chip[data-for="pack"][data-kits="18"]');
   await sleep(200);
-  await chk(async () => eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Check 19 more|true", "A4: disabled reason counts unchecked items"), "A4: disabled reason counts unchecked items");
+  await chk(async () => eq(await page.$eval("#btn-complete-pack", e => e.textContent + "|" + e.disabled), "Pack 19 more|true", "A4: disabled reason counts unpacked items (fix8: Check->Pack)"), "A4: disabled reason counts unchecked items");
   await page.evaluate(() => { window.print = () => {}; });
   await page.click("#btn-pack-hand");
   await sleep(200);
@@ -303,11 +303,11 @@ async function tab(name) {
   await chk(async () => eq(await page.$eval("#pack-warning .short-list li", e => e.textContent.includes("short 18")), true, "v3 E1: biggest shortage is listed first"), "v3 E1: biggest shortage is listed first");
   await page.click("#btn-check-all");
   await sleep(150);
-  await chk(async () => eq(await page.$eval("#sheet-summary", e => e.textContent), "Mark all 19 packed?", "v2 A5: Check all asks first"), "v2 A5: Check all asks first");
+  await chk(async () => eq(await page.$eval("#sheet-summary", e => e.textContent), "Pack all 19 packed?", "v2 A5: Pack all asks first (fix8: Mark all->Pack all)"), "v2 A5: Pack all asks first (fix8)");
   await chk(async () => eq(await page.$eval("#pack-progress", e => e.textContent), "0 of 19 checked", "v2 A5: nothing is checked until the sheet confirms"), "v2 A5: nothing is checked until the sheet confirms");
   await page.click("#sheet-primary");
   await sleep(150);
-  await chk(async () => eq(await page.$eval("#pack-progress", e => e.textContent), "19 of 19 checked", "check-all progress text"), "check-all progress text");
+  await chk(async () => eq(await page.$eval("#pack-progress", e => e.textContent), "19 of 19 packed", "check-all progress text (fix8: checked->packed)"), "check-all progress text");
   await chk(async () => eq(await page.$eval("#btn-complete-pack", e => e.disabled), false, "complete enabled after check-all"), "complete enabled after check-all");
   const smallPack = await page.evaluate(() =>
     [...document.querySelectorAll('#tab-pack button, #tab-pack input:not([type="checkbox"])')]
@@ -322,7 +322,7 @@ async function tab(name) {
   /* v2 A2: this order IS short (most CAK items sit at 0 here) — the sheet must shout it */
   await chk(async () => eq(await page.$eval("#sheet-extra", e => !e.hidden && e.textContent.includes("items short")), true, "v2 A2: red short block shows on a short order"), "v2 A2: red short block shows on a short order");
   await chk(async () => eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heart Jewelry Box: have 0, need 18, short 18")), true, "v3 E1: sheet line gives have / need / short"), "v3 E1: sheet line gives have / need / short");
-  await chk(async () => eq(/^Subtract anyway \(\d+ short\)$/.test(await page.$eval("#sheet-primary", e => e.textContent)), true, "v2 A2: primary becomes Subtract anyway (N short)"), "v2 A2: primary becomes Subtract anyway (N short)");
+  await chk(async () => eq(/^Pack anyway - \d+ items? short$/.test(await page.$eval("#sheet-primary", e => e.textContent)), true, "v2 A2: primary becomes Pack anyway (N short) (fix8)"), "v2 A2: primary becomes Pack anyway (N short) (fix8)");
   await chk(async () => eq(await page.$eval("#sheet-primary", e => e.classList.contains("danger")), true, "v2 A2: primary is the danger outline style"), "v2 A2: primary is the danger outline style");
   await chk(async () => eq(await page.$eval("#sheet-cancel", e => e.textContent + "|" + e.classList.contains("btn-primary")), "Go back|true", "v2 A2: Go back becomes the filled button"), "v2 A2: Go back becomes the filled button");
   await page.click("#sheet-primary");
@@ -425,7 +425,7 @@ async function tab(name) {
   await chk(async () => eq(await page.$eval('#delivery-entry-list input[data-item="scissors"]', e => e.value), "5", "fix6: second amount survives"), "fix6: second amount survives");
   await page.click("#btn-apply-delivery");
   await sleep(300);
-  await chk(async () => eq(await page.$eval("#sheet-title", e => e.textContent), "Add 2 items to stock?", "fix6: confirm sheet counts the 2 items"), "fix6: confirm sheet counts the 2 items");
+  await chk(async () => eq(await page.$eval("#sheet-title", e => e.textContent), "Receive 2 items?", "fix6: confirm sheet counts the 2 items (fix8: Add->Receive)"), "fix6: confirm sheet counts the 2 items");
   await chk(async () => eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Tacky Glue") && e.textContent.includes("Scissors")), true, "fix6: confirm sheet lists exact items"), "fix6: confirm sheet lists exact items");
   await page.click("#sheet-primary");
   await sleep(600);
@@ -656,7 +656,7 @@ async function tab(name) {
   });
   await page.click("#btn-apply-delivery");
   await sleep(250);
-  await chk(async () => eq(await page.$eval("#sheet-title", e => e.textContent), "Add 60 items to stock?", "v2 A3: a delivery opens a confirm sheet before saving"), "v2 A3: a delivery opens a confirm sheet before saving");
+  await chk(async () => eq(await page.$eval("#sheet-title", e => e.textContent), "Receive 60 items?", "v2 A3: a delivery opens a confirm sheet before saving (fix8: Add->Receive)"), "v2 A3: a delivery opens a confirm sheet before saving");
   await page.click("#sheet-primary");
   await sleep(700);
   await page.evaluate(() => document.querySelector('[data-tab="pack"]').click());
@@ -732,7 +732,7 @@ async function tab(name) {
   });
   await page.click("#btn-apply-delivery");
   await sleep(250);
-  await chk(async () => eq(await page.$eval("#sheet-title", e => e.textContent), "Add 2 items to stock?", "v2 A3: two-item delivery sheet"), "v2 A3: two-item delivery sheet");
+  await chk(async () => eq(await page.$eval("#sheet-title", e => e.textContent), "Receive 2 items?", "v2 A3: two-item delivery sheet (fix8: Add->Receive)"), "v2 A3: two-item delivery sheet");
   await chk(async () => eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Scissors +50")), true, "v2 A3: delivery sheet lists each amount"), "v2 A3: delivery sheet lists each amount");
   await page.click("#sheet-primary");
   await sleep(700);
@@ -1124,7 +1124,7 @@ async function tab(name) {
   await sleep(250);
   await chk(async () => eq(await page.$eval("#sheet-extra", e => !e.hidden && e.textContent.includes("1 item short")), true, "v2 A2: one-short order shows the block"), "v2 A2: one-short order shows the block");
   await chk(async () => eq(await page.$eval("#sheet-extra", e => e.textContent.includes("Heat gun: have 0, need 1, short 1")), true, "v3 E1: sheet line gives have / need / short"), "v3 E1: sheet line gives have / need / short");
-  await chk(async () => eq(await page.$eval("#sheet-primary", e => e.textContent), "Subtract anyway (1 short)", "v2 A2: primary label for one short"), "v2 A2: primary label for one short");
+  await chk(async () => eq(await page.$eval("#sheet-primary", e => e.textContent), "Pack anyway - 1 item short", "v2 A2: primary label for one short (fix8)"), "v2 A2: primary label for one short");
   const histBeforeA2 = remoteData.history.length;
   await page.click("#sheet-cancel"); /* Go back */
   await sleep(300);
