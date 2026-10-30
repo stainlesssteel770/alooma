@@ -670,7 +670,7 @@
     var checked = 0;
     boxes.forEach(function (cb) { if (cb.checked) checked++; });
     var total = boxes.length;
-    $("pack-progress").textContent = total ? checked + " of " + total + " checked" : "";
+    $("pack-progress").textContent = total ? checked + " of " + total + " packed" : "";
     $("pack-progress-fill").style.width = total ? Math.round(checked / total * 100) + "%" : "0";
     var btn = $("btn-complete-pack");
     var kitsNow = strictKits($("pack-kits").value);
@@ -678,9 +678,9 @@
     btn.disabled = !ready;
     if (!state.packCraft) btn.textContent = "Choose a craft";
     else if (!L.validKits(kitsNow)) btn.textContent = "Choose kits";
-    else if (!ready) btn.textContent = "Check " + (total - checked) + " more";
+    else if (!ready) btn.textContent = "Pack " + (total - checked) + " more";
     else btn.textContent = "Complete " + L.sku(state.packCraft, kitsNow);
-    $("btn-check-all").textContent = total > 0 && checked === total ? "Uncheck all" : "Check all";
+    $("btn-check-all").textContent = total > 0 && checked === total ? "Unpack all" : "Pack all";
   }
   var packMode = null; /* null until the packer taps Hand pack; "hand" shows the checklist */
   var packCompleted = null; /* Fix 2: {craftId, kits} after a single hand-pack completes — the list stays on screen as completed until a new order starts */
@@ -1026,7 +1026,7 @@
     if (shorts.length) {
       sheetOpts.extraHtml = '<div class="sheet-short"><p class="sheet-short-title">⚠ ' + shorts.length + (shorts.length === 1 ? " item short" : " items short") + "</p><ul>" +
         shorts.map(function (r) { var have = qtyOf(r.item); return "<li>" + esc(r.name) + ": have " + have + ", need " + r.qty + ", short " + (r.qty - have) + "</li>"; }).join("") + "</ul></div>";
-      sheetOpts.primary = "Subtract anyway (" + shorts.length + " short)";
+      sheetOpts.primary = "Pack anyway - " + shorts.length + (shorts.length === 1 ? " item short" : " items short");
       sheetOpts.primaryDanger = true;
       sheetOpts.cancelLabel = "Go back";
       sheetOpts.cancelFilled = true;
@@ -1227,7 +1227,7 @@
     if (shorts.length) {
       sheetOpts.extraHtml = '<div class="sheet-short"><p class="sheet-short-title">⚠ ' + shorts.length + (shorts.length === 1 ? " item short" : " items short") + "</p><ul>" +
         shorts.map(function (r) { var have = qtyOf(r.item); return "<li>" + esc(r.name) + ": have " + have + ", need " + r.qty + ", short " + (r.qty - have) + "</li>"; }).join("") + "</ul></div>";
-      sheetOpts.primary = "Subtract anyway (" + shorts.length + " short)";
+      sheetOpts.primary = "Pack anyway - " + shorts.length + (shorts.length === 1 ? " item short" : " items short");
       sheetOpts.primaryDanger = true;
       sheetOpts.cancelLabel = "Go back";
       sheetOpts.cancelFilled = true;
@@ -1569,7 +1569,7 @@
           if (v === cur) { toast(name + " is already " + cur + " — nothing to fix."); return; }
           clearError();
           commitChange(
-            newEntry("count-fix", "Count fix " + name + ": " + cur + " → " + v, [{ item: itemId, delta: v - cur }], { item: itemId, counted: v }),
+            newEntry("count-fix", "Count corrected: " + name + ": " + cur + " → " + v, [{ item: itemId, delta: v - cur }], { item: itemId, counted: v }),
             "Count fix " + name + " to " + v
           );
         } else if (invPanelMode === "bin") {
@@ -1657,8 +1657,8 @@
         });
         $("count-entry").hidden = true;
         renderAll();
-        saveData("Count entry: " + entries.length + " item(s) fixed").then(function () {
-          batchToast("Counts applied: " + entries.length + " item(s) updated.", entries);
+        saveData("Count entry: " + entries.length + (entries.length === 1 ? " item fixed" : " items fixed")).then(function () {
+          batchToast("Counts applied: " + entries.length + (entries.length === 1 ? " item updated." : " items updated."), entries);
         });
       }
     });
@@ -1710,10 +1710,10 @@
       return "<li>" + esc(L.ITEMS[r.item]) + " +" + r.amount + flag + "</li>";
     }).join("");
     openSheet({
-      title: "Add " + received.length + (received.length === 1 ? " item" : " items") + " to stock?",
+      title: "Receive " + received.length + (received.length === 1 ? " item?" : " items?"),
       summary: "Check the amounts — nothing is saved yet.",
       extraHtml: '<ul class="sheet-lines">' + lines + "</ul>",
-      primary: "Add to stock",
+      primary: "Receive",
       cancelLabel: "Edit numbers",
       onConfirm: function () {
         var entries = [];
@@ -1731,8 +1731,8 @@
         });
         $("delivery-entry").hidden = true;
         renderAll();
-        saveData("Delivery: " + received.length + " item(s) received").then(function () {
-          batchToast("Delivery saved: " + received.length + " item(s) received.", entries);
+        saveData("Delivery: " + received.length + (received.length === 1 ? " item received" : " items received")).then(function () {
+          batchToast("Delivery saved: " + received.length + (received.length === 1 ? " item received." : " items received."), entries);
         });
       }
     });
@@ -2302,9 +2302,11 @@
       /* leaveFromHash stays as the hashchange handler set it (true for a
          Back/forward prompt, false for a tab click) — it decides below
          whether Discard pushes a new entry or not. */
+      /* Fix 8: specific message for genuinely unfinished pack work. */
+      var packSku = state.packCraft ? L.sku(state.packCraft, $("pack-kits").value || "?") : null;
       openSheet({
         title: "Unsaved changes",
-        summary: "You have unsaved changes.",
+        summary: packSku ? "You're in the middle of packing " + packSku + ". Leave anyway?" : "You have unsaved changes.",
         primary: "Stay and finish",
         cancelLabel: "Discard",
         cancelDanger: true,
@@ -3239,9 +3241,9 @@
       if (allChecked) { setAll(false); return; } /* unchecking is safe — no confirm */
       /* v2 A5: checking everything in one tap is the risky direction — ask first */
       openSheet({
-        title: "Check all",
-        summary: "Mark all " + boxes.length + " packed?",
-        primary: "Mark all",
+        title: "Pack all",
+        summary: "Pack all " + boxes.length + " packed?",
+        primary: "Pack all",
         onConfirm: function () { setAll(true); }
       });
     });
