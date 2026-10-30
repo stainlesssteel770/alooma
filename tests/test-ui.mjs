@@ -304,7 +304,7 @@ async function tab(name) {
   await page.click("#btn-check-all");
   await sleep(150);
   await chk(async () => eq(await page.$eval("#sheet-summary", e => e.textContent), "Pack all 19 packed?", "v2 A5: Pack all asks first (fix8: Mark all->Pack all)"), "v2 A5: Pack all asks first (fix8)");
-  await chk(async () => eq(await page.$eval("#pack-progress", e => e.textContent), "0 of 19 checked", "v2 A5: nothing is checked until the sheet confirms"), "v2 A5: nothing is checked until the sheet confirms");
+  await chk(async () => eq(await page.$eval("#pack-progress", e => e.textContent), "0 of 19 packed", "v2 A5: nothing is packed until the sheet confirms (fix8: checked->packed)"), "v2 A5: nothing is packed until the sheet confirms (fix8: checked->packed)");
   await page.click("#sheet-primary");
   await sleep(150);
   await chk(async () => eq(await page.$eval("#pack-progress", e => e.textContent), "19 of 19 packed", "check-all progress text (fix8: checked->packed)"), "check-all progress text");
