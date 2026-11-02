@@ -38,71 +38,71 @@
       "threshold": null
     },
     "tambourines": {
-      "qty": 448,
+      "qty": 442,
       "threshold": 1000
     },
     "tamb-embellishment-tray-large": {
-      "qty": 97,
+      "qty": 96,
       "threshold": null
     },
     "embellishment-containers": {
-      "qty": 4,
+      "qty": 3,
       "threshold": null
     },
     "wooden-mini-spoons": {
-      "qty": 688,
+      "qty": 682,
       "threshold": null
     },
     "wooden-picks": {
-      "qty": 1988,
+      "qty": 1982,
       "threshold": null
     },
     "tamb-placemats": {
-      "qty": -12,
+      "qty": -18,
       "threshold": null
     },
     "jerusalem-printouts": {
-      "qty": -12,
+      "qty": -18,
       "threshold": null
     },
     "tamb-instructions": {
-      "qty": -12,
+      "qty": -18,
       "threshold": null
     },
     "jca-frame": {
-      "qty": 1332,
+      "qty": 1314,
       "threshold": 1000
     },
     "clay-tray-a": {
-      "qty": 44,
+      "qty": 42,
       "threshold": null
     },
     "clay-tray-b": {
-      "qty": 104,
+      "qty": 103,
       "threshold": null
     },
     "jca-embellishment-tray": {
-      "qty": 258,
+      "qty": 255,
       "threshold": null
     },
     "bag-with-tools": {
-      "qty": 130,
+      "qty": 127,
       "threshold": null
     },
     "jca-placemats": {
-      "qty": 111,
+      "qty": 93,
       "threshold": null
     },
     "parchment-paper": {
-      "qty": 992,
+      "qty": 974,
       "threshold": null
     },
     "jca-templates": {
-      "qty": 1387,
+      "qty": 1369,
       "threshold": null
     },
     "jca-instructions": {
-      "qty": 447,
+      "qty": 441,
       "threshold": null
     },
     "wood-board": {
@@ -238,11 +238,11 @@
       "threshold": null
     },
     "scissors": {
-      "qty": 1146,
+      "qty": 1143,
       "threshold": null
     },
     "tacky-glue": {
-      "qty": 1932,
+      "qty": 1926,
       "threshold": null
     },
     "permanent-markers": {
@@ -251,6 +251,241 @@
     }
   },
   "history": [
+    {
+      "id": "hmvyiav6hmhw5t",
+      "ts": "2026-11-02T00:14:12.569Z",
+      "type": "packed",
+      "title": "Packed Tambourines — 6 kits (TAM-6)",
+      "effects": [
+        {
+          "item": "tambourines",
+          "delta": -6
+        },
+        {
+          "item": "tamb-embellishment-tray-large",
+          "delta": -1
+        },
+        {
+          "item": "embellishment-containers",
+          "delta": -1
+        },
+        {
+          "item": "wooden-mini-spoons",
+          "delta": -6
+        },
+        {
+          "item": "wooden-picks",
+          "delta": -6
+        },
+        {
+          "item": "scissors",
+          "delta": -3
+        },
+        {
+          "item": "tacky-glue",
+          "delta": -6
+        },
+        {
+          "item": "tamb-placemats",
+          "delta": -6
+        },
+        {
+          "item": "jerusalem-printouts",
+          "delta": -6
+        },
+        {
+          "item": "tamb-instructions",
+          "delta": -6
+        }
+      ],
+      "undone": false,
+      "craftId": "tam",
+      "kits": 6,
+      "recipe": [
+        {
+          "item": "tambourines",
+          "name": "Tambourines",
+          "qty": 6,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "tamb-embellishment-tray-large",
+          "name": "Tam Decor Tray",
+          "qty": 1,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "embellishment-containers",
+          "name": "Tam Decor Stack",
+          "qty": 1,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "wooden-mini-spoons",
+          "name": "Wooden mini Spoons",
+          "qty": 6,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "wooden-picks",
+          "name": "Wooden Picks",
+          "qty": 6,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "scissors",
+          "name": "Scissors",
+          "qty": 3,
+          "per6": 3,
+          "per": 6
+        },
+        {
+          "item": "tacky-glue",
+          "name": "Tacky Glue",
+          "qty": 6,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "tamb-placemats",
+          "name": "Tamb Placemats",
+          "qty": 6,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jerusalem-printouts",
+          "name": "Jerusalem Printouts",
+          "qty": 6,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "tamb-instructions",
+          "name": "Tam Instructions",
+          "qty": 6,
+          "per6": 6,
+          "per": 6
+        }
+      ]
+    },
+    {
+      "id": "hmvyiav6h78mzx",
+      "ts": "2026-11-02T00:14:12.569Z",
+      "type": "packed",
+      "title": "Packed Judaic Clay-Art — 18 kits (JCA-18)",
+      "effects": [
+        {
+          "item": "jca-frame",
+          "delta": -18
+        },
+        {
+          "item": "clay-tray-a",
+          "delta": -2
+        },
+        {
+          "item": "clay-tray-b",
+          "delta": -1
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "delta": -3
+        },
+        {
+          "item": "bag-with-tools",
+          "delta": -3
+        },
+        {
+          "item": "jca-placemats",
+          "delta": -18
+        },
+        {
+          "item": "parchment-paper",
+          "delta": -18
+        },
+        {
+          "item": "jca-templates",
+          "delta": -18
+        },
+        {
+          "item": "jca-instructions",
+          "delta": -6
+        }
+      ],
+      "undone": false,
+      "craftId": "jca",
+      "kits": 18,
+      "recipe": [
+        {
+          "item": "jca-frame",
+          "name": "Frame",
+          "qty": 18,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-a",
+          "name": "Clay Tray A",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-b",
+          "name": "Clay Tray B",
+          "qty": 1,
+          "per6": 0,
+          "per": 6
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "name": "JCA Embellishment Tray",
+          "qty": 3,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "bag-with-tools",
+          "name": "Bag with Tools",
+          "qty": 3,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "jca-placemats",
+          "name": "JCA Placemats",
+          "qty": 18,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "parchment-paper",
+          "name": "1/2 Parchment Paper",
+          "qty": 18,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-templates",
+          "name": "Templates",
+          "qty": 18,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-instructions",
+          "name": "JCA Instructions",
+          "qty": 6,
+          "per6": 2,
+          "per": 6
+        }
+      ]
+    },
     {
       "id": "hmvtwg7m2zbayp",
       "ts": "2026-10-29T18:51:25.706Z",
