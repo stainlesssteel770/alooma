@@ -2290,7 +2290,7 @@
         "id": "cak",
         "code": "CAK",
         "name": "The Cakery",
-        "hidden": false,
+        "hidden": true,
         "lines": [
           {
             "item": "heart-jewelry-box",
