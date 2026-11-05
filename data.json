@@ -2798,6 +2798,16 @@
             "item": "jca-instructions",
             "qty": 2,
             "per": 6
+          },
+          {
+            "item": "dreidel-cutter",
+            "qty": 1,
+            "per": 6
+          },
+          {
+            "item": "dreidel-template",
+            "qty": 6,
+            "per": 6
           }
         ]
       },
@@ -3001,7 +3011,18 @@
         ]
       }
     ],
-    "customItems": [],
+    "customItems": [
+      {
+        "id": "dreidel-cutter",
+        "name": "Dreidel cutter",
+        "unit": ""
+      },
+      {
+        "id": "dreidel-template",
+        "name": "Dreidel template",
+        "unit": ""
+      }
+    ],
     "reorderQty": 1000,
     "hideReorderQtys": false
   }
