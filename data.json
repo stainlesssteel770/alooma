@@ -70,39 +70,39 @@
       "threshold": null
     },
     "jca-frame": {
-      "qty": 1284,
+      "qty": 1296,
       "threshold": 1000
     },
     "clay-tray-a": {
-      "qty": 39,
+      "qty": 40,
       "threshold": null
     },
     "clay-tray-b": {
-      "qty": 101,
+      "qty": 102,
       "threshold": null
     },
     "jca-embellishment-tray": {
-      "qty": 250,
+      "qty": 252,
       "threshold": null
     },
     "bag-with-tools": {
-      "qty": 122,
+      "qty": 124,
       "threshold": null
     },
     "jca-placemats": {
-      "qty": 63,
+      "qty": 75,
       "threshold": null
     },
     "parchment-paper": {
-      "qty": 944,
+      "qty": 956,
       "threshold": null
     },
     "jca-templates": {
-      "qty": 1339,
+      "qty": 1351,
       "threshold": null
     },
     "jca-instructions": {
-      "qty": 431,
+      "qty": 435,
       "threshold": null
     },
     "wood-board": {
@@ -524,7 +524,7 @@
           "delta": -4
         }
       ],
-      "undone": false,
+      "undone": true,
       "craftId": "jca",
       "kits": 12,
       "recipe": [
