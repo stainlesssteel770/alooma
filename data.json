@@ -70,39 +70,39 @@
       "threshold": null
     },
     "jca-frame": {
-      "qty": 1236,
+      "qty": 1164,
       "threshold": 1000
     },
     "clay-tray-a": {
-      "qty": 34,
+      "qty": 27,
       "threshold": null
     },
     "clay-tray-b": {
-      "qty": 98,
+      "qty": 93,
       "threshold": null
     },
     "jca-embellishment-tray": {
-      "qty": 242,
+      "qty": 230,
       "threshold": null
     },
     "bag-with-tools": {
-      "qty": 114,
+      "qty": 102,
       "threshold": null
     },
     "jca-placemats": {
-      "qty": 15,
+      "qty": -57,
       "threshold": null
     },
     "parchment-paper": {
-      "qty": 896,
+      "qty": 824,
       "threshold": null
     },
     "jca-templates": {
-      "qty": 1291,
+      "qty": 1219,
       "threshold": null
     },
     "jca-instructions": {
-      "qty": 415,
+      "qty": 391,
       "threshold": null
     },
     "wood-board": {
@@ -134,71 +134,71 @@
       "threshold": null
     },
     "heart-jewelry-box": {
-      "qty": 744,
+      "qty": 732,
       "threshold": 1000
     },
     "cake-box": {
-      "qty": 262,
+      "qty": 250,
       "threshold": null
     },
     "circle-cardboard": {
-      "qty": 262,
+      "qty": 250,
       "threshold": null
     },
     "parchment-circle": {
-      "qty": 444,
+      "qty": 432,
       "threshold": null
     },
     "plastic-pet-bowl": {
-      "qty": 389,
+      "qty": 377,
       "threshold": null
     },
     "cream-circle-tray": {
-      "qty": 281,
+      "qty": 279,
       "threshold": 1000
     },
     "sprinkles-pack": {
-      "qty": 85,
+      "qty": 83,
       "threshold": 1000
     },
     "faux-cherries-bag": {
-      "qty": 674,
+      "qty": 672,
       "threshold": 1000
     },
     "glue-dots": {
-      "qty": 329,
+      "qty": 327,
       "threshold": null
     },
     "popsicle-stick": {
-      "qty": 1894,
+      "qty": 1882,
       "threshold": null
     },
     "ck-placemat": {
-      "qty": 1428,
+      "qty": 1416,
       "threshold": null
     },
     "printed-posters": {
-      "qty": 287,
+      "qty": 285,
       "threshold": null
     },
     "poster-stands": {
-      "qty": 1997,
+      "qty": 1991,
       "threshold": null
     },
     "ck-name-labels": {
-      "qty": 3427,
+      "qty": 3415,
       "threshold": null
     },
     "apron": {
-      "qty": -6,
+      "qty": -18,
       "threshold": 1000
     },
     "gloves": {
-      "qty": 7244,
+      "qty": 7232,
       "threshold": 1000
     },
     "ck-instructions": {
-      "qty": 1422,
+      "qty": 1410,
       "threshold": null
     },
     "mi-frames": {
@@ -238,7 +238,7 @@
       "threshold": null
     },
     "scissors": {
-      "qty": 1141,
+      "qty": 1137,
       "threshold": null
     },
     "tacky-glue": {
@@ -246,19 +246,643 @@
       "threshold": null
     },
     "permanent-markers": {
-      "qty": 99,
+      "qty": 97,
       "threshold": null
     },
     "dreidel-cutter": {
-      "qty": -10,
+      "qty": -22,
       "threshold": null
     },
     "dreidel-template": {
-      "qty": -60,
+      "qty": -132,
       "threshold": null
     }
   },
   "history": [
+    {
+      "id": "hmwclinckd8lst",
+      "ts": "2026-11-11T20:53:00.980Z",
+      "type": "packed",
+      "title": "Packed Judaic Clay-Art — 18 kits (JCA-18)",
+      "effects": [
+        {
+          "item": "jca-frame",
+          "delta": -18
+        },
+        {
+          "item": "clay-tray-a",
+          "delta": -2
+        },
+        {
+          "item": "clay-tray-b",
+          "delta": -1
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "delta": -3
+        },
+        {
+          "item": "bag-with-tools",
+          "delta": -3
+        },
+        {
+          "item": "jca-placemats",
+          "delta": -18
+        },
+        {
+          "item": "parchment-paper",
+          "delta": -18
+        },
+        {
+          "item": "jca-templates",
+          "delta": -18
+        },
+        {
+          "item": "jca-instructions",
+          "delta": -6
+        },
+        {
+          "item": "dreidel-cutter",
+          "delta": -3
+        },
+        {
+          "item": "dreidel-template",
+          "delta": -18
+        }
+      ],
+      "undone": false,
+      "craftId": "jca",
+      "kits": 18,
+      "recipe": [
+        {
+          "item": "jca-frame",
+          "name": "Frame",
+          "qty": 18,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-a",
+          "name": "Clay Tray A",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-b",
+          "name": "Clay Tray B",
+          "qty": 1,
+          "per6": 0,
+          "per": 6
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "name": "JCA Embellishment Tray",
+          "qty": 3,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "bag-with-tools",
+          "name": "Bag with Tools",
+          "qty": 3,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "jca-placemats",
+          "name": "JCA Placemats",
+          "qty": 18,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "parchment-paper",
+          "name": "1/2 Parchment Paper",
+          "qty": 18,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-templates",
+          "name": "Templates",
+          "qty": 18,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-instructions",
+          "name": "JCA Instructions",
+          "qty": 6,
+          "per6": 2,
+          "per": 6
+        },
+        {
+          "item": "dreidel-cutter",
+          "name": "Dreidel cutter",
+          "qty": 3,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "dreidel-template",
+          "name": "Dreidel template",
+          "qty": 18,
+          "per6": 6,
+          "per": 6
+        }
+      ]
+    },
+    {
+      "id": "hmwclinck7n4d0",
+      "ts": "2026-11-11T20:53:00.980Z",
+      "type": "packed",
+      "title": "Packed Judaic Clay-Art — 42 kits (JCA-42)",
+      "effects": [
+        {
+          "item": "jca-frame",
+          "delta": -42
+        },
+        {
+          "item": "clay-tray-a",
+          "delta": -4
+        },
+        {
+          "item": "clay-tray-b",
+          "delta": -3
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "delta": -7
+        },
+        {
+          "item": "bag-with-tools",
+          "delta": -7
+        },
+        {
+          "item": "jca-placemats",
+          "delta": -42
+        },
+        {
+          "item": "parchment-paper",
+          "delta": -42
+        },
+        {
+          "item": "jca-templates",
+          "delta": -42
+        },
+        {
+          "item": "jca-instructions",
+          "delta": -14
+        },
+        {
+          "item": "dreidel-cutter",
+          "delta": -7
+        },
+        {
+          "item": "dreidel-template",
+          "delta": -42
+        }
+      ],
+      "undone": false,
+      "craftId": "jca",
+      "kits": 42,
+      "recipe": [
+        {
+          "item": "jca-frame",
+          "name": "Frame",
+          "qty": 42,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-a",
+          "name": "Clay Tray A",
+          "qty": 4,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-b",
+          "name": "Clay Tray B",
+          "qty": 3,
+          "per6": 0,
+          "per": 6
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "name": "JCA Embellishment Tray",
+          "qty": 7,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "bag-with-tools",
+          "name": "Bag with Tools",
+          "qty": 7,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "jca-placemats",
+          "name": "JCA Placemats",
+          "qty": 42,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "parchment-paper",
+          "name": "1/2 Parchment Paper",
+          "qty": 42,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-templates",
+          "name": "Templates",
+          "qty": 42,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-instructions",
+          "name": "JCA Instructions",
+          "qty": 14,
+          "per6": 2,
+          "per": 6
+        },
+        {
+          "item": "dreidel-cutter",
+          "name": "Dreidel cutter",
+          "qty": 7,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "dreidel-template",
+          "name": "Dreidel template",
+          "qty": 42,
+          "per6": 6,
+          "per": 6
+        }
+      ]
+    },
+    {
+      "id": "hmwclinck6wgo8",
+      "ts": "2026-11-11T20:53:00.980Z",
+      "type": "packed",
+      "title": "Packed Judaic Clay-Art — 12 kits (JCA-12)",
+      "effects": [
+        {
+          "item": "jca-frame",
+          "delta": -12
+        },
+        {
+          "item": "clay-tray-a",
+          "delta": -1
+        },
+        {
+          "item": "clay-tray-b",
+          "delta": -1
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "delta": -2
+        },
+        {
+          "item": "bag-with-tools",
+          "delta": -2
+        },
+        {
+          "item": "jca-placemats",
+          "delta": -12
+        },
+        {
+          "item": "parchment-paper",
+          "delta": -12
+        },
+        {
+          "item": "jca-templates",
+          "delta": -12
+        },
+        {
+          "item": "jca-instructions",
+          "delta": -4
+        },
+        {
+          "item": "dreidel-cutter",
+          "delta": -2
+        },
+        {
+          "item": "dreidel-template",
+          "delta": -12
+        }
+      ],
+      "undone": false,
+      "craftId": "jca",
+      "kits": 12,
+      "recipe": [
+        {
+          "item": "jca-frame",
+          "name": "Frame",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-a",
+          "name": "Clay Tray A",
+          "qty": 1,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-b",
+          "name": "Clay Tray B",
+          "qty": 1,
+          "per6": 0,
+          "per": 6
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "name": "JCA Embellishment Tray",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "bag-with-tools",
+          "name": "Bag with Tools",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "jca-placemats",
+          "name": "JCA Placemats",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "parchment-paper",
+          "name": "1/2 Parchment Paper",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-templates",
+          "name": "Templates",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-instructions",
+          "name": "JCA Instructions",
+          "qty": 4,
+          "per6": 2,
+          "per": 6
+        },
+        {
+          "item": "dreidel-cutter",
+          "name": "Dreidel cutter",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "dreidel-template",
+          "name": "Dreidel template",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        }
+      ]
+    },
+    {
+      "id": "hmwclinckn21qq",
+      "ts": "2026-11-11T20:53:00.980Z",
+      "type": "packed",
+      "title": "Packed The Cakery — 12 kits (CAK-12)",
+      "effects": [
+        {
+          "item": "heart-jewelry-box",
+          "delta": -12
+        },
+        {
+          "item": "cake-box",
+          "delta": -12
+        },
+        {
+          "item": "circle-cardboard",
+          "delta": -12
+        },
+        {
+          "item": "parchment-circle",
+          "delta": -12
+        },
+        {
+          "item": "plastic-pet-bowl",
+          "delta": -12
+        },
+        {
+          "item": "cream-circle-tray",
+          "delta": -2
+        },
+        {
+          "item": "sprinkles-pack",
+          "delta": -2
+        },
+        {
+          "item": "faux-cherries-bag",
+          "delta": -2
+        },
+        {
+          "item": "scissors",
+          "delta": -4
+        },
+        {
+          "item": "glue-dots",
+          "delta": -2
+        },
+        {
+          "item": "popsicle-stick",
+          "delta": -12
+        },
+        {
+          "item": "ck-placemat",
+          "delta": -12
+        },
+        {
+          "item": "printed-posters",
+          "delta": -2
+        },
+        {
+          "item": "poster-stands",
+          "delta": -6
+        },
+        {
+          "item": "ck-name-labels",
+          "delta": -12
+        },
+        {
+          "item": "permanent-markers",
+          "delta": -2
+        },
+        {
+          "item": "apron",
+          "delta": -12
+        },
+        {
+          "item": "gloves",
+          "delta": -12
+        },
+        {
+          "item": "ck-instructions",
+          "delta": -12
+        }
+      ],
+      "undone": false,
+      "craftId": "cak",
+      "kits": 12,
+      "recipe": [
+        {
+          "item": "heart-jewelry-box",
+          "name": "Heart Jewelry Box",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "cake-box",
+          "name": "Cake box",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "circle-cardboard",
+          "name": "Circle cardboard",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "parchment-circle",
+          "name": "Parchment (circle)",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "plastic-pet-bowl",
+          "name": "Plastic pet bowl",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "cream-circle-tray",
+          "name": "Cream circle tray",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "sprinkles-pack",
+          "name": "Sprinkles (pack)",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "faux-cherries-bag",
+          "name": "Faux cherries bag",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "scissors",
+          "name": "Scissors",
+          "qty": 4,
+          "per6": 2,
+          "per": 6
+        },
+        {
+          "item": "glue-dots",
+          "name": "Glue dots",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "popsicle-stick",
+          "name": "Popsicle stick",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "ck-placemat",
+          "name": "CK Placemat",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "printed-posters",
+          "name": "Printed Posters (set of 3)",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "poster-stands",
+          "name": "Poster stands (for quotes)",
+          "qty": 6,
+          "per6": 3,
+          "per": 6
+        },
+        {
+          "item": "ck-name-labels",
+          "name": "CK Name labels",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "permanent-markers",
+          "name": "Permanent Markers",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "apron",
+          "name": "Apron",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "gloves",
+          "name": "Gloves",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "ck-instructions",
+          "name": "CK Instructions",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        }
+      ]
+    },
     {
       "id": "hmw3pog2re4p4y",
       "ts": "2026-11-05T15:39:34.371Z",
