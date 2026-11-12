@@ -70,39 +70,39 @@
       "threshold": null
     },
     "jca-frame": {
-      "qty": 1164,
+      "qty": 1140,
       "threshold": 1000
     },
     "clay-tray-a": {
-      "qty": 27,
+      "qty": 25,
       "threshold": null
     },
     "clay-tray-b": {
-      "qty": 93,
+      "qty": 91,
       "threshold": null
     },
     "jca-embellishment-tray": {
-      "qty": 230,
+      "qty": 226,
       "threshold": null
     },
     "bag-with-tools": {
-      "qty": 102,
+      "qty": 98,
       "threshold": null
     },
     "jca-placemats": {
-      "qty": -57,
+      "qty": -81,
       "threshold": null
     },
     "parchment-paper": {
-      "qty": 824,
+      "qty": 800,
       "threshold": null
     },
     "jca-templates": {
-      "qty": 1219,
+      "qty": 1195,
       "threshold": null
     },
     "jca-instructions": {
-      "qty": 391,
+      "qty": 383,
       "threshold": null
     },
     "wood-board": {
@@ -250,15 +250,285 @@
       "threshold": null
     },
     "dreidel-cutter": {
-      "qty": -22,
+      "qty": -26,
       "threshold": null
     },
     "dreidel-template": {
-      "qty": -132,
+      "qty": -156,
       "threshold": null
     }
   },
   "history": [
+    {
+      "id": "hmwdw1ox71zbgc",
+      "ts": "2026-11-12T18:35:31.819Z",
+      "type": "packed",
+      "title": "Packed Judaic Clay-Art — 12 kits (JCA-12)",
+      "effects": [
+        {
+          "item": "jca-frame",
+          "delta": -12
+        },
+        {
+          "item": "clay-tray-a",
+          "delta": -1
+        },
+        {
+          "item": "clay-tray-b",
+          "delta": -1
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "delta": -2
+        },
+        {
+          "item": "bag-with-tools",
+          "delta": -2
+        },
+        {
+          "item": "jca-placemats",
+          "delta": -12
+        },
+        {
+          "item": "parchment-paper",
+          "delta": -12
+        },
+        {
+          "item": "jca-templates",
+          "delta": -12
+        },
+        {
+          "item": "jca-instructions",
+          "delta": -4
+        },
+        {
+          "item": "dreidel-cutter",
+          "delta": -2
+        },
+        {
+          "item": "dreidel-template",
+          "delta": -12
+        }
+      ],
+      "undone": false,
+      "craftId": "jca",
+      "kits": 12,
+      "recipe": [
+        {
+          "item": "jca-frame",
+          "name": "Frame",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-a",
+          "name": "Clay Tray A",
+          "qty": 1,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-b",
+          "name": "Clay Tray B",
+          "qty": 1,
+          "per6": 0,
+          "per": 6
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "name": "JCA Embellishment Tray",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "bag-with-tools",
+          "name": "Bag with Tools",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "jca-placemats",
+          "name": "JCA Placemats",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "parchment-paper",
+          "name": "1/2 Parchment Paper",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-templates",
+          "name": "Templates",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-instructions",
+          "name": "JCA Instructions",
+          "qty": 4,
+          "per6": 2,
+          "per": 6
+        },
+        {
+          "item": "dreidel-cutter",
+          "name": "Dreidel cutter",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "dreidel-template",
+          "name": "Dreidel template",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        }
+      ],
+      "packedBy": "Emms"
+    },
+    {
+      "id": "hmwdw1ox8sqoob",
+      "ts": "2026-11-12T18:35:31.820Z",
+      "type": "packed",
+      "title": "Packed Judaic Clay-Art — 12 kits (JCA-12)",
+      "effects": [
+        {
+          "item": "jca-frame",
+          "delta": -12
+        },
+        {
+          "item": "clay-tray-a",
+          "delta": -1
+        },
+        {
+          "item": "clay-tray-b",
+          "delta": -1
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "delta": -2
+        },
+        {
+          "item": "bag-with-tools",
+          "delta": -2
+        },
+        {
+          "item": "jca-placemats",
+          "delta": -12
+        },
+        {
+          "item": "parchment-paper",
+          "delta": -12
+        },
+        {
+          "item": "jca-templates",
+          "delta": -12
+        },
+        {
+          "item": "jca-instructions",
+          "delta": -4
+        },
+        {
+          "item": "dreidel-cutter",
+          "delta": -2
+        },
+        {
+          "item": "dreidel-template",
+          "delta": -12
+        }
+      ],
+      "undone": false,
+      "craftId": "jca",
+      "kits": 12,
+      "recipe": [
+        {
+          "item": "jca-frame",
+          "name": "Frame",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-a",
+          "name": "Clay Tray A",
+          "qty": 1,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "clay-tray-b",
+          "name": "Clay Tray B",
+          "qty": 1,
+          "per6": 0,
+          "per": 6
+        },
+        {
+          "item": "jca-embellishment-tray",
+          "name": "JCA Embellishment Tray",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "bag-with-tools",
+          "name": "Bag with Tools",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "jca-placemats",
+          "name": "JCA Placemats",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "parchment-paper",
+          "name": "1/2 Parchment Paper",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-templates",
+          "name": "Templates",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        },
+        {
+          "item": "jca-instructions",
+          "name": "JCA Instructions",
+          "qty": 4,
+          "per6": 2,
+          "per": 6
+        },
+        {
+          "item": "dreidel-cutter",
+          "name": "Dreidel cutter",
+          "qty": 2,
+          "per6": 1,
+          "per": 6
+        },
+        {
+          "item": "dreidel-template",
+          "name": "Dreidel template",
+          "qty": 12,
+          "per6": 6,
+          "per": 6
+        }
+      ],
+      "packedBy": "Emms"
+    },
     {
       "id": "hmwclinckd8lst",
       "ts": "2026-11-11T20:53:00.980Z",
