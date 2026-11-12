@@ -70,39 +70,39 @@
       "threshold": null
     },
     "jca-frame": {
-      "qty": 1140,
+      "qty": 1116,
       "threshold": 1000
     },
     "clay-tray-a": {
-      "qty": 25,
+      "qty": 23,
       "threshold": null
     },
     "clay-tray-b": {
-      "qty": 91,
+      "qty": 89,
       "threshold": null
     },
     "jca-embellishment-tray": {
-      "qty": 226,
+      "qty": 222,
       "threshold": null
     },
     "bag-with-tools": {
-      "qty": 98,
+      "qty": 94,
       "threshold": null
     },
     "jca-placemats": {
-      "qty": -81,
+      "qty": -105,
       "threshold": null
     },
     "parchment-paper": {
-      "qty": 800,
+      "qty": 776,
       "threshold": null
     },
     "jca-templates": {
-      "qty": 1195,
+      "qty": 1171,
       "threshold": null
     },
     "jca-instructions": {
-      "qty": 383,
+      "qty": 375,
       "threshold": null
     },
     "wood-board": {
@@ -250,11 +250,11 @@
       "threshold": null
     },
     "dreidel-cutter": {
-      "qty": -26,
+      "qty": -30,
       "threshold": null
     },
     "dreidel-template": {
-      "qty": -156,
+      "qty": -180,
       "threshold": null
     }
   },
